@@ -1,0 +1,20 @@
+Error [AuthApiError]: Invalid Refresh Token: Refresh Token Not Found
+    at sB (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:41724)
+    at async sH (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:42668)
+    at async sq (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:42108)
+    at async r (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:54:22444)
+    at async (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:54:22707) {
+  __isAuthError: true,
+  status: 400,
+  code: 'refresh_token_not_found'
+}
+Error [AuthApiError]: Invalid Refresh Token: Refresh Token Not Found
+    at sB (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:41724)
+    at async sH (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:42668)
+    at async sq (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:41:42108)
+    at async r (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:54:22444)
+    at async (D:\PROJECT\sistem-ujian-online-sagaya\.next\server\chunks\[root-of-the-server]__0va35dr._.js:54:22707) {
+  __isAuthError: true,
+  status: 400,
+  code: 'refresh_token_not_found'
+}

@@ -1,0 +1,38 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const envPath = resolve(process.cwd(), ".env.local");
+
+if (existsSync(envPath)) {
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^["']|["']$/g, "");
+
+    process.env[key] ??= value;
+  }
+}
+
+const required = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+];
+
+const missing = required.filter((key) => !process.env[key]);
+
+if (missing.length > 0) {
+  console.error(`Missing required environment variables: ${missing.join(", ")}`);
+  process.exit(1);
+}
+
+console.log("Required environment variables are configured.");
