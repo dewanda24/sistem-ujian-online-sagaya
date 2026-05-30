@@ -1,10 +1,23 @@
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
 import { getAuditLogs } from "@/features/admin/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
 
-function formatMetadata(value: unknown) {
+type PageProps = {
+  searchParams: Promise<{
+    q?: string;
+    action?: string;
+    entity_type?: string;
+    user_id?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: string;
+  }>;
+};
+
+function formatPayload(value: unknown) {
   if (!value) {
     return "-";
   }
@@ -13,12 +26,43 @@ function formatMetadata(value: unknown) {
     return value;
   }
 
-  return JSON.stringify(value);
+  return JSON.stringify(value, null, 2);
 }
 
-export default async function AuditLogsPage() {
+function formatShortPayload(value: unknown) {
+  const text = formatPayload(value);
+
+  if (text.length <= 120) {
+    return text;
+  }
+
+  return `${text.slice(0, 120)}...`;
+}
+
+export default async function AuditLogsPage({ searchParams }: PageProps) {
   await requirePermission("audit_logs.view");
-  const auditLogs = await getAuditLogs();
+  const params = await searchParams;
+  const auditLogs = await getAuditLogs({
+    q: params.q,
+    action: params.action,
+    entity_type: params.entity_type,
+    user_id: params.user_id,
+    date_from: params.date_from,
+    date_to: params.date_to,
+    limit: params.limit,
+  });
+  const actionOptions = Array.from(
+    new Set(auditLogs.rows.map((item) => item.action).filter(Boolean)),
+  ).sort((a, b) => String(a).localeCompare(String(b)));
+  const entityOptions = Array.from(
+    new Set(auditLogs.rows.map((item) => item.entity_type).filter(Boolean)),
+  ).sort((a, b) => String(a).localeCompare(String(b)));
+  const uniqueUsers = new Set(
+    auditLogs.rows.map((item) => item.user_id).filter(Boolean),
+  ).size;
+  const latestEvent = auditLogs.rows[0]?.created_at
+    ? new Date(auditLogs.rows[0].created_at).toLocaleString("id-ID")
+    : "-";
 
   return (
     <div className="space-y-6">
@@ -27,8 +71,110 @@ export default async function AuditLogsPage() {
         description="Lihat jejak aktivitas sistem dan perubahan data sensitif."
       />
 
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Events"
+          value={String(auditLogs.rows.length)}
+          description="Jumlah event sesuai filter."
+        />
+        <DashboardCard
+          title="Actions"
+          value={String(actionOptions.length)}
+          description="Jenis action pada hasil saat ini."
+        />
+        <DashboardCard
+          title="Users"
+          value={String(uniqueUsers)}
+          description="User unik yang tercatat."
+        />
+        <DashboardCard
+          title="Latest Event"
+          value={latestEvent}
+          description="Aktivitas terbaru pada hasil filter."
+        />
+      </section>
+
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-6">
+        <input
+          name="q"
+          defaultValue={params.q ?? ""}
+          placeholder="Cari action, entity, payload"
+          className="rounded-md border px-3 py-2 text-sm md:col-span-2"
+        />
+        <input
+          name="action"
+          list="audit-action-options"
+          defaultValue={params.action ?? ""}
+          placeholder="Action"
+          className="rounded-md border px-3 py-2 text-sm"
+        />
+        <datalist id="audit-action-options">
+          {actionOptions.map((action) => (
+            <option key={action} value={String(action)} />
+          ))}
+        </datalist>
+        <input
+          name="entity_type"
+          list="audit-entity-options"
+          defaultValue={params.entity_type ?? ""}
+          placeholder="Entity"
+          className="rounded-md border px-3 py-2 text-sm"
+        />
+        <datalist id="audit-entity-options">
+          {entityOptions.map((entity) => (
+            <option key={entity} value={String(entity)} />
+          ))}
+        </datalist>
+        <input
+          name="user_id"
+          defaultValue={params.user_id ?? ""}
+          placeholder="User ID"
+          className="rounded-md border px-3 py-2 text-sm"
+        />
+        <select
+          name="limit"
+          defaultValue={params.limit ?? "100"}
+          className="rounded-md border px-3 py-2 text-sm"
+        >
+          <option value="50">50 data</option>
+          <option value="100">100 data</option>
+          <option value="200">200 data</option>
+            <option value="300">300 data</option>
+          </select>
+        <input
+          name="date_from"
+          type="date"
+          defaultValue={params.date_from ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+          aria-label="Tanggal mulai"
+        />
+        <input
+          name="date_to"
+          type="date"
+          defaultValue={params.date_to ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+          aria-label="Tanggal akhir"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-6">
+          <p className="text-xs text-muted-foreground">
+            Menampilkan {auditLogs.rows.length} event audit terbaru sesuai filter.
+          </p>
+          <div className="flex gap-2">
+            <a
+              href="/dashboard/admin/audit-logs"
+              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+            >
+              Reset
+            </a>
+            <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
+              Filter
+            </button>
+          </div>
+        </div>
+      </form>
+
       <DataTable
-        columns={["Waktu", "Action", "Table", "Record", "User", "Metadata"]}
+        columns={["Waktu", "Action", "Entity", "Record", "User", "Payload"]}
         isEmpty={auditLogs.rows.length === 0}
         empty={
           <EmptyState
@@ -52,15 +198,22 @@ export default async function AuditLogsPage() {
                 : "-"}
             </td>
             <td className="px-4 py-3 font-medium">{item.action ?? "-"}</td>
-            <td className="px-4 py-3">{item.table_name ?? "-"}</td>
+            <td className="px-4 py-3">{item.entity_type ?? "-"}</td>
             <td className="px-4 py-3 font-mono text-xs">
-              {item.record_id ?? "-"}
+              {item.entity_id ?? "-"}
             </td>
             <td className="px-4 py-3 font-mono text-xs">
               {item.user_id ?? "-"}
             </td>
-            <td className="max-w-xs truncate px-4 py-3 text-xs">
-              {formatMetadata(item.metadata)}
+            <td className="max-w-sm px-4 py-3 text-xs">
+              <details className="group">
+                <summary className="cursor-pointer truncate text-muted-foreground group-open:mb-2">
+                  {formatShortPayload(item.payload)}
+                </summary>
+                <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] leading-5">
+                  {formatPayload(item.payload)}
+                </pre>
+              </details>
             </td>
           </tr>
         ))}

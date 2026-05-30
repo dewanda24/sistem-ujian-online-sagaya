@@ -85,7 +85,7 @@ export async function getClasses(search = "") {
   let query = supabase
     .from("classes")
     .select(
-      "*, schools(name), academic_years(name), users!classes_homeroom_teacher_id_fkey(id, username, user_profiles(full_name)), class_members(id)",
+      "*, schools(name), academic_years(name), users!classes_homeroom_teacher_id_fkey(id, username, user_profiles(full_name)), class_members(id, left_at)",
     )
     .order("grade_level")
     .order("name");
@@ -205,6 +205,34 @@ export async function getTeacherAssignments(teacherId: string) {
   return data ?? [];
 }
 
+export async function getTeacherAssignmentCounts(teacherIds: string[]) {
+  if (teacherIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("teacher_subjects")
+    .select("teacher_id")
+    .in("teacher_id", teacherIds);
+
+  if (error || !data) {
+    return new Map<string, number>();
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const item of data) {
+    const teacherId = item.teacher_id as string | null;
+
+    if (teacherId) {
+      counts.set(teacherId, (counts.get(teacherId) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
 export async function getStudentClassHistory(studentId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -218,4 +246,33 @@ export async function getStudentClassHistory(studentId: string) {
   }
 
   return data ?? [];
+}
+
+export async function getStudentActiveClassCounts(studentIds: string[]) {
+  if (studentIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("class_members")
+    .select("student_id")
+    .in("student_id", studentIds)
+    .is("left_at", null);
+
+  if (error || !data) {
+    return new Map<string, number>();
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const item of data) {
+    const studentId = item.student_id as string | null;
+
+    if (studentId) {
+      counts.set(studentId, (counts.get(studentId) ?? 0) + 1);
+    }
+  }
+
+  return counts;
 }

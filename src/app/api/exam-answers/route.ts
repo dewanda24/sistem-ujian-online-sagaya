@@ -9,6 +9,7 @@ type AttemptTiming = {
   id: string;
   exam_participant_id: string;
   status: string;
+  locked_at?: string | null;
   exam_schedules?: { end_at?: string | null } | Array<{ end_at?: string | null }> | null;
 };
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, exam_schedules(end_at)")
+    .select("id, exam_participant_id, status, locked_at, exam_schedules(end_at)")
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user!.id)
     .eq("status", "in_progress")
@@ -48,6 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: "Attempt tidak aktif." },
       { status: 409 },
+    );
+  }
+
+  if ((attempt as AttemptTiming).locked_at) {
+    return NextResponse.json(
+      { ok: false, message: "Attempt sedang dikunci oleh pengawas." },
+      { status: 423 },
     );
   }
 

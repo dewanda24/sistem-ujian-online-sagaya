@@ -219,11 +219,183 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
       </div>
 
       <div className="mt-6">
-        <EmptyState
-          title={content.workbenchTitle}
-          description={content.workbenchDescription}
-        />
+        {role === "admin" ? <AdminOperationalWorkbench /> : null}
+        {role === "teacher" ? <TeacherOperationalWorkbench /> : null}
+        {role === "proctor" ? <ProctorOperationalWorkbench /> : null}
+        {role !== "admin" && role !== "teacher" && role !== "proctor" ? (
+            <EmptyState
+              title={content.workbenchTitle}
+              description={content.workbenchDescription}
+            />
+          ) : null}
       </div>
     </div>
+  );
+}
+
+function AdminOperationalWorkbench() {
+  const actions = [
+    {
+      title: "Lengkapi Master Data",
+      description: "Sekolah, tahun ajaran, kelas, mapel, guru, dan siswa.",
+      href: "/dashboard/master-data",
+    },
+    {
+      title: "Siapkan Paket Ujian",
+      description: "Cek readiness paket sebelum dipakai pada jadwal.",
+      href: "/dashboard/exams/packages",
+    },
+    {
+      title: "Atur Jadwal & Peserta",
+      description: "Pastikan kelas target, peserta, token, dan konflik waktu aman.",
+      href: "/dashboard/exams/schedules",
+    },
+    {
+      title: "Pantau Ujian",
+      description: "Monitoring peserta, progress, event, lock, dan tindakan darurat.",
+      href: "/dashboard/admin/monitoring",
+    },
+    {
+      title: "Review Laporan",
+      description: "Lihat rekap ujian, kelas, mapel, siswa, dan export CSV.",
+      href: "/dashboard/reports",
+    },
+    {
+      title: "Import Data",
+      description: "Ambil template CSV dan validasi staging sebelum commit data.",
+      href: "/dashboard/import-export",
+    },
+  ];
+
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {actions.map((action) => (
+        <Link key={action.href} href={action.href}>
+          <DashboardCard
+            title={action.title}
+            description={action.description}
+            className="h-full transition hover:border-primary/40 hover:shadow-md"
+          />
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+function ProctorOperationalWorkbench() {
+  const actions = [
+    {
+      title: "Jadwal Pengawasan",
+      description: "Lihat jadwal, kelas target, token terbatas, dan status peserta.",
+      href: "/dashboard/proctor/schedules",
+    },
+    {
+      title: "Monitoring Live",
+      description: "Pantau peserta, progress submit, event, lock, dan aksi darurat.",
+      href: "/dashboard/proctor/monitoring",
+    },
+    {
+      title: "Token Ujian",
+      description: "Lihat dan print token ujian yang wajib token.",
+      href: "/dashboard/proctor/tokens",
+    },
+    {
+      title: "Peserta Belum Mulai",
+      description: "Fokus ke siswa assigned yang belum membuka ujian.",
+      href: "/dashboard/proctor/monitoring?status=assigned",
+    },
+    {
+      title: "Peserta Sedang Ujian",
+      description: "Pantau attempt yang sedang in progress.",
+      href: "/dashboard/proctor/monitoring?status=in_progress",
+    },
+    {
+      title: "Peserta Submitted",
+      description: "Cek peserta yang sudah mengumpulkan ujian.",
+      href: "/dashboard/proctor/monitoring?status=submitted",
+    },
+    {
+      title: "Profile Pengawas",
+      description: "Perbarui data profil pengawas dan kontak operasional.",
+      href: "/dashboard/profile",
+    },
+  ];
+
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {actions.map((action) => (
+        <Link key={action.href} href={action.href}>
+          <DashboardCard
+            title={action.title}
+            description={action.description}
+            className="h-full transition hover:border-primary/40 hover:shadow-md"
+          />
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+function TeacherOperationalWorkbench() {
+  const actions = [
+    {
+      title: "Kelola Bank Soal",
+      description: "Buat, edit, publish, dan arsipkan soal sesuai mapel assigned.",
+      href: "/dashboard/question-bank/questions",
+    },
+    {
+      title: "Kategori Soal",
+      description: "Rapikan soal dengan kategori per mapel.",
+      href: "/dashboard/question-bank/categories",
+    },
+    {
+      title: "Susun Paket Ujian",
+      description: "Pilih soal published dan cek readiness paket.",
+      href: "/dashboard/exams/packages",
+    },
+    {
+      title: "Atur Jadwal",
+      description: "Lihat atau kelola jadwal sesuai permission dan mapel.",
+      href: "/dashboard/exams/schedules",
+    },
+    {
+      title: "Koreksi Essay",
+      description: "Tangani jawaban essay yang masih pending grading.",
+      href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
+    },
+    {
+      title: "Monitoring Guru",
+      description: "Pantau sesi ujian yang terkait mapel guru.",
+      href: "/dashboard/teacher/monitoring",
+    },
+    {
+      title: "Mapel & Kelas Saya",
+      description: "Lihat assignment mengajar sebelum menyusun soal dan ujian.",
+      href: "/dashboard/teacher/assignments",
+    },
+    {
+      title: "Kelas Binaan",
+      description: "Pantau siswa dan ujian kelas wali.",
+      href: "/dashboard/teacher/homeroom",
+    },
+    {
+      title: "Laporan",
+      description: "Review nilai siswa, kelas, mapel, dan export laporan.",
+      href: "/dashboard/reports",
+    },
+  ];
+
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {actions.map((action) => (
+        <Link key={action.href} href={action.href}>
+          <DashboardCard
+            title={action.title}
+            description={action.description}
+            className="h-full transition hover:border-primary/40 hover:shadow-md"
+          />
+        </Link>
+      ))}
+    </section>
   );
 }

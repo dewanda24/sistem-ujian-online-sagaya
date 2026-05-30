@@ -1,3 +1,4 @@
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -10,6 +11,7 @@ import {
   archiveExamScheduleAction,
   regenerateExamTokenAction,
   saveExamScheduleAction,
+  syncExamScheduleParticipantsAction,
   toggleExamScheduleActiveAction,
   updateExamScheduleStatusAction,
 } from "@/features/exams/actions";
@@ -29,6 +31,8 @@ type PageProps = {
     q?: string;
     status?: string;
     package_id?: string;
+    date_from?: string;
+    date_to?: string;
     edit?: string;
     notice?: string;
     message?: string;
@@ -61,6 +65,81 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
+type ScheduleClassRelation = {
+  class_id?: string | null;
+  classes?: { name?: string | null } | { name?: string | null }[] | null;
+};
+
+type ScheduleReadinessRow = {
+  id: string;
+  title: string;
+  status?: string | null;
+  start_at: string;
+  end_at: string;
+  is_active?: boolean | null;
+  token_required?: boolean | null;
+  access_token?: string | null;
+  exam_packages?: {
+    status?: string | null;
+    is_active?: boolean | null;
+    title?: string | null;
+  } | null;
+  exam_schedule_classes?: ScheduleClassRelation[] | null;
+  exam_participants?: Array<{ status?: string | null }> | null;
+};
+
+function getScheduleWarnings(
+  schedule: ScheduleReadinessRow,
+  schedules: ScheduleReadinessRow[],
+) {
+  const classes = schedule.exam_schedule_classes ?? [];
+  const classIds = classes
+    .map((item) => item.class_id)
+    .filter((classId): classId is string => Boolean(classId));
+  const participants = schedule.exam_participants ?? [];
+  const packageReady =
+    schedule.exam_packages?.status === "published" &&
+    Boolean(schedule.exam_packages?.is_active);
+  const shouldHaveParticipants =
+    schedule.status === "scheduled" || schedule.status === "active";
+  const conflicts = schedules.filter((other) => {
+    if (other.id === schedule.id) {
+      return false;
+    }
+
+    if (other.status !== "scheduled" && other.status !== "active") {
+      return false;
+    }
+
+    if (!other.is_active) {
+      return false;
+    }
+
+    const overlaps =
+      new Date(other.start_at) < new Date(schedule.end_at) &&
+      new Date(other.end_at) > new Date(schedule.start_at);
+    const otherClassIds = new Set(
+      (other.exam_schedule_classes ?? [])
+        .map((item) => item.class_id)
+        .filter(Boolean),
+    );
+
+    return overlaps && classIds.some((classId) => otherClassIds.has(classId));
+  });
+
+  return [
+    !packageReady ? "Paket belum published/aktif" : "",
+    classIds.length === 0 ? "Belum ada kelas target" : "",
+    new Date(schedule.end_at) <= new Date(schedule.start_at)
+      ? "Waktu selesai tidak valid"
+      : "",
+    shouldHaveParticipants && participants.length === 0
+      ? "Belum ada peserta"
+      : "",
+    conflicts.length > 0 ? `Bentrok dengan ${conflicts[0]?.title}` : "",
+  ].filter(Boolean);
+}
+
 export default async function ExamSchedulesPage({ searchParams }: PageProps) {
   await requirePermission("exam_schedules.view");
   const params = await searchParams;
@@ -68,6 +147,8 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
     q: params.q,
     status: params.status,
     package_id: params.package_id,
+    date_from: params.date_from,
+    date_to: params.date_to,
   };
   const [
     schoolId,
@@ -87,6 +168,25 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
   const editable = schedules.find((schedule) => schedule.id === params.edit);
   const selectedClassIds = await getExamScheduleClassIds(editable?.id);
   const selectedClassSet = new Set(selectedClassIds);
+  const scheduleRows = schedules as ScheduleReadinessRow[];
+  const readiness = scheduleRows.map((schedule) =>
+    getScheduleWarnings(schedule, scheduleRows),
+  );
+  const readySchedules = readiness.filter((warnings) => warnings.length === 0).length;
+  const schedulesWithoutParticipants = scheduleRows.filter(
+    (schedule) =>
+      (schedule.status === "scheduled" || schedule.status === "active") &&
+      (schedule.exam_participants ?? []).length === 0,
+  ).length;
+  const conflictSchedules = readiness.filter((warnings) =>
+    warnings.some((warning) => warning.startsWith("Bentrok")),
+  ).length;
+  const tokenRequiredWithoutToken = scheduleRows.filter(
+    (schedule) =>
+      schedule.token_required &&
+      !schedule.access_token &&
+      (schedule.status === "scheduled" || schedule.status === "active"),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -95,6 +195,34 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
         title="Jadwal Ujian"
         description="Atur jadwal ujian, target kelas, token masuk, dan kontrol sesi ujian."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Jadwal"
+          value={String(schedules.length)}
+          description="Jadwal sesuai filter saat ini."
+        />
+        <DashboardCard
+          title="Ready"
+          value={String(readySchedules)}
+          description="Jadwal tanpa warning dasar."
+        />
+        <DashboardCard
+          title="Tanpa Peserta"
+          value={String(schedulesWithoutParticipants)}
+          description="Scheduled/active tapi peserta kosong."
+        />
+        <DashboardCard
+          title="Bentrok"
+          value={String(conflictSchedules)}
+          description="Jadwal visible yang bentrok kelas/waktu."
+        />
+        <DashboardCard
+          title="Token Kosong"
+          value={String(tokenRequiredWithoutToken)}
+          description="Token required tapi token belum dibuat."
+        />
+      </section>
 
       <FormSection
         title={editable ? "Edit Jadwal Ujian" : "Tambah Jadwal Ujian"}
@@ -234,12 +362,12 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
         </form>
       </FormSection>
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-4">
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-6">
         <input
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Cari jadwal"
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-md border px-3 py-2 text-sm md:col-span-2"
         />
         <select
           name="package_id"
@@ -266,9 +394,31 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
           <option value="cancelled">Cancelled</option>
           <option value="archived">Archived</option>
         </select>
-        <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
-          Filter
-        </button>
+        <input
+          name="date_from"
+          type="date"
+          defaultValue={params.date_from ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+          aria-label="Tanggal mulai"
+        />
+        <input
+          name="date_to"
+          type="date"
+          defaultValue={params.date_to ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+          aria-label="Tanggal akhir"
+        />
+        <div className="flex flex-wrap justify-end gap-2 md:col-span-6">
+          <a
+            href="/dashboard/exams/schedules"
+            className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Reset
+          </a>
+          <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
+            Filter
+          </button>
+        </div>
       </form>
 
       <DataTable
@@ -278,6 +428,7 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
           "Waktu",
           "Token",
           "Kelas",
+          "Peserta",
           "Status",
           "Aktif",
           "Aksi",
@@ -292,7 +443,33 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
       >
         {schedules.map((schedule) => (
           <tr key={schedule.id} className="align-top">
-            <td className="px-4 py-3 font-medium">{schedule.title}</td>
+            <td className="px-4 py-3">
+              <div className="font-medium">{schedule.title}</div>
+              {(() => {
+                const warnings = getScheduleWarnings(schedule, scheduleRows);
+
+                return (
+                  <div className="mt-3 space-y-2">
+                    <span
+                      className={
+                        warnings.length === 0
+                          ? "rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700"
+                          : "rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700"
+                      }
+                    >
+                      {warnings.length === 0 ? "Ready" : "Perlu dicek"}
+                    </span>
+                    {warnings.length > 0 ? (
+                      <ul className="space-y-1 text-xs text-amber-700">
+                        {warnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                );
+              })()}
+            </td>
             <td className="px-4 py-3">
               {schedule.exam_packages?.title ?? "-"}
               <div className="mt-1 text-xs text-muted-foreground">
@@ -314,6 +491,13 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                   <div className="mt-1 text-xs text-muted-foreground">
                     wajib token
                   </div>
+                  {!schedule.access_token &&
+                  (schedule.status === "scheduled" ||
+                    schedule.status === "active") ? (
+                    <div className="mt-2 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                      Token belum dibuat
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <span className="text-sm text-muted-foreground">Tidak wajib</span>
@@ -326,6 +510,24 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                 )
                 .filter(Boolean)
                 .join(", ") || "-"}
+            </td>
+            <td className="px-4 py-3">
+              <div className="font-medium">
+                {schedule.exam_participants?.length ?? 0} peserta
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {(schedule.exam_participants ?? []).filter(
+                  (participant: { status?: string | null }) =>
+                    participant.status === "submitted",
+                ).length}{" "}
+                submitted
+              </div>
+              {(schedule.status === "scheduled" || schedule.status === "active") &&
+              (schedule.exam_participants ?? []).length === 0 ? (
+                <div className="mt-2 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                  Klik Sync Peserta
+                </div>
+              ) : null}
             </td>
             <td className="px-4 py-3">
               <StatusPill value={schedule.status} />
@@ -380,6 +582,12 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                   <input type="hidden" name="id" value={schedule.id} />
                   <ConfirmSubmitButton confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi.">
                     Token Baru
+                  </ConfirmSubmitButton>
+                </form>
+                <form action={syncExamScheduleParticipantsAction}>
+                  <input type="hidden" name="id" value={schedule.id} />
+                  <ConfirmSubmitButton confirmMessage="Sync peserta dari kelas target? Peserta lama dan attempt tidak akan dihapus.">
+                    Sync Peserta
                   </ConfirmSubmitButton>
                 </form>
                 <form action={archiveExamScheduleAction}>

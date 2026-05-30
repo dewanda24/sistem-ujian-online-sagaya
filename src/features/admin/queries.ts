@@ -52,11 +52,23 @@ export type RolePermissionMap = Record<string, Set<string>>;
 export type AuditLogRow = {
   id?: string | number;
   action?: string | null;
-  table_name?: string | null;
-  record_id?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
   user_id?: string | null;
-  metadata?: unknown;
+  payload?: unknown;
+  ip_address?: string | null;
+  user_agent?: string | null;
   created_at?: string | null;
+};
+
+export type AuditLogFilters = {
+  q?: string;
+  action?: string;
+  entity_type?: string;
+  user_id?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: string | number;
 };
 
 export async function getAdminRoleOptions() {
@@ -74,11 +86,93 @@ export async function getAdminRoleOptions() {
   return data as Array<{ id: string; name: string; label: string }>;
 }
 
+export async function getOperationalUserRoleOptions() {
+  await requirePermission("users.view");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, name, label")
+    .not("name", "in", "(teacher,student)")
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as Array<{ id: string; name: string; label: string }>;
+}
+
+export async function getRoleOptionsByNames(roleNames: string[]) {
+  await requirePermission("users.view");
+
+  if (roleNames.length === 0) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, name, label")
+    .in("name", roleNames)
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as Array<{ id: string; name: string; label: string }>;
+}
+
 export type AdminUserFilters = {
   q?: string;
   role_id?: string;
+  role_names?: string[];
   status?: string;
 };
+
+export async function getUserGovernanceSummary() {
+  await requirePermission("users.view");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, auth_user_id, status, roles(name, label)");
+
+  if (error || !data) {
+    return {
+      total: 0,
+      inactive: 0,
+      withoutAuth: 0,
+      withoutRole: 0,
+      byRole: [] as Array<{ role: string; label: string; count: number }>,
+    };
+  }
+
+  const roleMap = new Map<string, { label: string; count: number }>();
+
+  for (const user of data) {
+    const role = firstRelation(user.roles);
+    const roleName = role?.name ?? "tanpa_role";
+    const current = roleMap.get(roleName) ?? {
+      label: role?.label ?? "Tanpa role",
+      count: 0,
+    };
+
+    current.count += 1;
+    roleMap.set(roleName, current);
+  }
+
+  return {
+    total: data.length,
+    inactive: data.filter((user) => user.status !== "active").length,
+    withoutAuth: data.filter((user) => !user.auth_user_id).length,
+    withoutRole: data.filter((user) => !firstRelation(user.roles)?.name).length,
+    byRole: Array.from(roleMap, ([role, item]) => ({
+      role,
+      label: item.label,
+      count: item.count,
+    })).sort((a, b) => a.role.localeCompare(b.role)),
+  };
+}
 
 export async function getAdminUsers(filters: AdminUserFilters | string = "") {
   await requirePermission("users.view");
@@ -99,6 +193,14 @@ export async function getAdminUsers(filters: AdminUserFilters | string = "") {
 
   if (typeof filters !== "string" && filters.role_id) {
     query = query.eq("role_id", filters.role_id);
+  }
+
+  if (
+    typeof filters !== "string" &&
+    filters.role_names &&
+    filters.role_names.length > 0
+  ) {
+    query = query.in("roles.name", filters.role_names);
   }
 
   if (typeof filters !== "string" && filters.status) {
@@ -169,14 +271,70 @@ export async function getPermissionMatrix() {
   };
 }
 
-export async function getAuditLogs() {
+function parseAuditLogLimit(value: AuditLogFilters["limit"]) {
+  const limit = Number(value ?? 100);
+
+  if (!Number.isFinite(limit)) {
+    return 100;
+  }
+
+  return Math.min(Math.max(limit, 50), 300);
+}
+
+function auditLogMatchesKeyword(row: AuditLogRow, keyword: string) {
+  const haystack = [
+    row.action,
+    row.entity_type,
+    row.entity_id,
+    row.user_id,
+    row.ip_address,
+    row.user_agent,
+    row.payload ? JSON.stringify(row.payload) : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(keyword.toLowerCase());
+}
+
+export async function getAuditLogs(filters: AuditLogFilters = {}) {
   await requirePermission("audit_logs.view");
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const limit = parseAuditLogLimit(filters.limit);
+  const action = filters.action?.trim();
+  const entityType = filters.entity_type?.trim();
+  const userId = filters.user_id?.trim();
+  const keyword = filters.q?.trim();
+  const dateFrom = filters.date_from?.trim();
+  const dateTo = filters.date_to?.trim();
+
+  let query = supabase
     .from("audit_logs")
     .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
+
+  if (action) {
+    query = query.ilike("action", `%${action}%`);
+  }
+
+  if (entityType) {
+    query = query.ilike("entity_type", `%${entityType}%`);
+  }
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  if (dateFrom) {
+    query = query.gte("created_at", `${dateFrom}T00:00:00.000Z`);
+  }
+
+  if (dateTo) {
+    query = query.lte("created_at", `${dateTo}T23:59:59.999Z`);
+  }
+
+  const { data, error } = await query.limit(keyword ? 300 : limit);
 
   if (error) {
     return {
@@ -186,8 +344,12 @@ export async function getAuditLogs() {
     };
   }
 
+  const rows = ((data ?? []) as AuditLogRow[]).filter((row) =>
+    keyword ? auditLogMatchesKeyword(row, keyword) : true,
+  );
+
   return {
-    rows: (data ?? []) as AuditLogRow[],
+    rows: rows.slice(0, limit),
     unavailable: false,
     message: "",
   };

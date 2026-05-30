@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -8,6 +9,7 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  importTeacherSubjectAssignmentsCsvAction,
   importTeachersCsvAction,
   saveTeacherAction,
   saveTeacherAssignmentAction,
@@ -18,6 +20,7 @@ import {
   getAcademicYearOptions,
   getClassOptions,
   getSubjectOptions,
+  getTeacherAssignmentCounts,
   getTeacherAssignments,
   getUsersByRole,
 } from "@/lib/master-data/queries";
@@ -58,9 +61,23 @@ export default async function TeachersPage({ searchParams }: PageProps) {
     getClassOptions(),
     getAcademicYearOptions(),
   ]);
+  const assignmentCounts = await getTeacherAssignmentCounts(
+    teachers.map((teacher) => teacher.id),
+  );
   const editable = teachers.find((teacher) => teacher.id === params.edit);
   const editableProfile = editable ? getProfile(editable) : null;
   const assignments = editable ? await getTeacherAssignments(editable.id) : [];
+  const activeTeachers = teachers.filter(
+    (teacher) => teacher.status === "active",
+  ).length;
+  const withoutAssignments = teachers.filter(
+    (teacher) =>
+      teacher.status === "active" && (assignmentCounts.get(teacher.id) ?? 0) === 0,
+  ).length;
+  const totalAssignments = Array.from(assignmentCounts.values()).reduce(
+    (total, count) => total + count,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -69,6 +86,29 @@ export default async function TeachersPage({ searchParams }: PageProps) {
         title="Guru"
         description="Kelola akun guru dan assignment guru ke mata pelajaran, kelas, dan tahun ajaran melalui teacher_subjects."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Guru"
+          value={String(teachers.length)}
+          description="Guru sesuai filter saat ini."
+        />
+        <DashboardCard
+          title="Guru Aktif"
+          value={String(activeTeachers)}
+          description="Akun guru dengan status active."
+        />
+        <DashboardCard
+          title="Tanpa Assignment"
+          value={String(withoutAssignments)}
+          description="Guru aktif tanpa mapel/kelas."
+        />
+        <DashboardCard
+          title="Total Assignment"
+          value={String(totalAssignments)}
+          description="Relasi teacher_subjects."
+        />
+      </section>
 
       <FormSection
         title="Import Guru CSV"
@@ -90,6 +130,33 @@ export default async function TeachersPage({ searchParams }: PageProps) {
           </Link>
           <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Import Guru
+          </button>
+        </form>
+      </FormSection>
+
+      <FormSection
+        title="Import Assignment Guru-Mapel-Kelas CSV"
+        description="Gunakan teacher_email, subject_code, class_name, dan academic_year. Duplikat assignment akan dilewati."
+      >
+        <form
+          action={importTeacherSubjectAssignmentsCsvAction}
+          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+        >
+          <input
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+            className="rounded-md border px-3 py-2 text-sm"
+          />
+          <Link
+            href="/api/templates/teacher-subject-assignments"
+            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Download Template
+          </Link>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Import Assignment
           </button>
         </form>
       </FormSection>
@@ -253,7 +320,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
       </div>
 
       <DataTable
-        columns={["Nama", "NIP", "Email", "Status", "Aksi"]}
+        columns={["Nama", "NIP", "Email", "Assignment", "Status", "Aksi"]}
         isEmpty={teachers.length === 0}
         empty={
           <EmptyState
@@ -264,16 +331,31 @@ export default async function TeachersPage({ searchParams }: PageProps) {
       >
         {teachers.map((teacher) => {
           const profile = getProfile(teacher);
+          const assignmentCount = assignmentCounts.get(teacher.id) ?? 0;
+          const needsAssignment =
+            teacher.status === "active" && assignmentCount === 0;
 
           return (
             <tr key={teacher.id}>
-              <td className="px-4 py-3 font-medium">
-                {profile?.full_name ?? teacher.username}
+              <td className="px-4 py-3">
+                <div className="font-medium">
+                  {profile?.full_name ?? teacher.username}
+                </div>
+                {needsAssignment ? (
+                  <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                    Belum ada assignment
+                  </span>
+                ) : (
+                  <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                    Ready
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3">{profile?.nip ?? "-"}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {teacher.email}
               </td>
+              <td className="px-4 py-3">{assignmentCount}</td>
               <td className="px-4 py-3">
                 <StatusBadge active={teacher.status === "active"} />
               </td>

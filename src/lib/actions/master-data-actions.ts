@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -115,7 +116,7 @@ function serviceRoleClient() {
 }
 
 export async function saveSchoolAction(formData: FormData) {
-  await requirePermission("schools.manage");
+  const currentUser = await requirePermission("schools.manage");
   const parsed = schoolSchema.safeParse({
     id: formString(formData, "id"),
     name: formString(formData, "name"),
@@ -135,9 +136,24 @@ export async function saveSchoolAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
-  const { error } = id
-    ? await supabase.from("schools").update(payload).eq("id", id)
-    : await supabase.from("schools").insert(payload);
+  const { data: savedSchool, error } = id
+    ? await supabase
+        .from("schools")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase.from("schools").insert(payload).select("id").single();
+
+  if (!error && savedSchool?.id) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "schools.update" : "schools.create",
+      entityType: "schools",
+      entityId: savedSchool.id,
+      payload,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/schools");
   redirectTo("/dashboard/master-data/schools", {
@@ -147,7 +163,7 @@ export async function saveSchoolAction(formData: FormData) {
 }
 
 export async function toggleSchoolAction(formData: FormData) {
-  await requirePermission("schools.manage");
+  const currentUser = await requirePermission("schools.manage");
   const supabase = await createClient();
   const id = formString(formData, "id");
   const isActive = formBoolean(formData, "is_active");
@@ -155,6 +171,16 @@ export async function toggleSchoolAction(formData: FormData) {
     .from("schools")
     .update({ is_active: isActive })
     .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "schools.active_update",
+      entityType: "schools",
+      entityId: id,
+      payload: { is_active: isActive },
+    });
+  }
 
   revalidatePath("/dashboard/master-data/schools");
   redirectTo("/dashboard/master-data/schools", {
@@ -164,7 +190,7 @@ export async function toggleSchoolAction(formData: FormData) {
 }
 
 export async function saveAcademicYearAction(formData: FormData) {
-  await requirePermission("academic_years.manage");
+  const currentUser = await requirePermission("academic_years.manage");
   const parsed = academicYearSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -199,9 +225,28 @@ export async function saveAcademicYearAction(formData: FormData) {
     is_active,
   };
 
-  const { error } = id
-    ? await supabase.from("academic_years").update(payload).eq("id", id)
-    : await supabase.from("academic_years").insert(payload);
+  const { data: savedAcademicYear, error } = id
+    ? await supabase
+        .from("academic_years")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase
+        .from("academic_years")
+        .insert(payload)
+        .select("id")
+        .single();
+
+  if (!error && savedAcademicYear?.id) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "academic_years.update" : "academic_years.create",
+      entityType: "academic_years",
+      entityId: savedAcademicYear.id,
+      payload,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/academic-years", {
@@ -211,7 +256,7 @@ export async function saveAcademicYearAction(formData: FormData) {
 }
 
 export async function toggleAcademicYearAction(formData: FormData) {
-  await requirePermission("academic_years.manage");
+  const currentUser = await requirePermission("academic_years.manage");
   const supabase = await createClient();
   const id = formString(formData, "id");
   const schoolId = formString(formData, "school_id");
@@ -229,6 +274,16 @@ export async function toggleAcademicYearAction(formData: FormData) {
     .update({ is_active: isActive })
     .eq("id", id);
 
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "academic_years.active_update",
+      entityType: "academic_years",
+      entityId: id,
+      payload: { school_id: schoolId, is_active: isActive },
+    });
+  }
+
   revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/academic-years", {
     ok: !error,
@@ -237,7 +292,7 @@ export async function toggleAcademicYearAction(formData: FormData) {
 }
 
 export async function saveSemesterAction(formData: FormData) {
-  await requirePermission("semesters.manage");
+  const currentUser = await requirePermission("semesters.manage");
   const parsed = semesterSchema.safeParse({
     id: formString(formData, "id"),
     academic_year_id: formString(formData, "academic_year_id"),
@@ -271,9 +326,24 @@ export async function saveSemesterAction(formData: FormData) {
     is_active,
   };
 
-  const { error } = id
-    ? await supabase.from("semesters").update(payload).eq("id", id)
-    : await supabase.from("semesters").insert(payload);
+  const { data: savedSemester, error } = id
+    ? await supabase
+        .from("semesters")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase.from("semesters").insert(payload).select("id").single();
+
+  if (!error && savedSemester?.id) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "semesters.update" : "semesters.create",
+      entityType: "semesters",
+      entityId: savedSemester.id,
+      payload,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/semesters");
   redirectTo("/dashboard/master-data/semesters", {
@@ -283,7 +353,7 @@ export async function saveSemesterAction(formData: FormData) {
 }
 
 export async function toggleSemesterAction(formData: FormData) {
-  await requirePermission("semesters.manage");
+  const currentUser = await requirePermission("semesters.manage");
   const supabase = await createClient();
   const id = formString(formData, "id");
   const academicYearId = formString(formData, "academic_year_id");
@@ -301,6 +371,16 @@ export async function toggleSemesterAction(formData: FormData) {
     .update({ is_active: isActive })
     .eq("id", id);
 
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "semesters.active_update",
+      entityType: "semesters",
+      entityId: id,
+      payload: { academic_year_id: academicYearId, is_active: isActive },
+    });
+  }
+
   revalidatePath("/dashboard/master-data/semesters");
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
@@ -309,7 +389,7 @@ export async function toggleSemesterAction(formData: FormData) {
 }
 
 export async function saveClassAction(formData: FormData) {
-  await requirePermission("classes.manage");
+  const currentUser = await requirePermission("classes.manage");
   const parsed = classSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -329,9 +409,24 @@ export async function saveClassAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
-  const { error } = id
-    ? await supabase.from("classes").update(payload).eq("id", id)
-    : await supabase.from("classes").insert(payload);
+  const { data: savedClass, error } = id
+    ? await supabase
+        .from("classes")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase.from("classes").insert(payload).select("id").single();
+
+  if (!error && savedClass?.id) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "classes.update" : "classes.create",
+      entityType: "classes",
+      entityId: savedClass.id,
+      payload,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/classes");
   redirectTo("/dashboard/master-data/classes", {
@@ -341,12 +436,24 @@ export async function saveClassAction(formData: FormData) {
 }
 
 export async function toggleClassAction(formData: FormData) {
-  await requirePermission("classes.manage");
+  const currentUser = await requirePermission("classes.manage");
   const supabase = await createClient();
+  const id = formString(formData, "id");
+  const isActive = formBoolean(formData, "is_active");
   const { error } = await supabase
     .from("classes")
-    .update({ is_active: formBoolean(formData, "is_active") })
-    .eq("id", formString(formData, "id"));
+    .update({ is_active: isActive })
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "classes.active_update",
+      entityType: "classes",
+      entityId: id,
+      payload: { is_active: isActive },
+    });
+  }
 
   revalidatePath("/dashboard/master-data/classes");
   redirectTo("/dashboard/master-data/classes", {
@@ -356,7 +463,7 @@ export async function toggleClassAction(formData: FormData) {
 }
 
 export async function saveSubjectAction(formData: FormData) {
-  await requirePermission("subjects.manage");
+  const currentUser = await requirePermission("subjects.manage");
   const parsed = subjectSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -375,9 +482,24 @@ export async function saveSubjectAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
-  const { error } = id
-    ? await supabase.from("subjects").update(payload).eq("id", id)
-    : await supabase.from("subjects").insert(payload);
+  const { data: savedSubject, error } = id
+    ? await supabase
+        .from("subjects")
+        .update(payload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase.from("subjects").insert(payload).select("id").single();
+
+  if (!error && savedSubject?.id) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "subjects.update" : "subjects.create",
+      entityType: "subjects",
+      entityId: savedSubject.id,
+      payload,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/subjects");
   redirectTo("/dashboard/master-data/subjects", {
@@ -387,12 +509,24 @@ export async function saveSubjectAction(formData: FormData) {
 }
 
 export async function toggleSubjectAction(formData: FormData) {
-  await requirePermission("subjects.manage");
+  const currentUser = await requirePermission("subjects.manage");
   const supabase = await createClient();
+  const id = formString(formData, "id");
+  const isActive = formBoolean(formData, "is_active");
   const { error } = await supabase
     .from("subjects")
-    .update({ is_active: formBoolean(formData, "is_active") })
-    .eq("id", formString(formData, "id"));
+    .update({ is_active: isActive })
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "subjects.active_update",
+      entityType: "subjects",
+      entityId: id,
+      payload: { is_active: isActive },
+    });
+  }
 
   revalidatePath("/dashboard/master-data/subjects");
   redirectTo("/dashboard/master-data/subjects", {
@@ -424,6 +558,503 @@ async function createAuthUser(email: string, password?: string) {
   };
 }
 
+async function getDefaultSchoolId() {
+  const supabase = await createClient();
+  const { data: activeSchool } = await supabase
+    .from("schools")
+    .select("id")
+    .eq("is_active", true)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+
+  if (activeSchool?.id) {
+    return activeSchool.id as string;
+  }
+
+  const { data: fallbackSchool } = await supabase
+    .from("schools")
+    .select("id")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+
+  return fallbackSchool?.id ? (fallbackSchool.id as string) : null;
+}
+
+async function getAcademicYearIdByName(name: string, schoolId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("academic_years")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("name", name)
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
+async function getTeacherIdByEmail(email: string) {
+  if (!email.trim()) {
+    return "";
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("users")
+    .select("id, roles!inner(name)")
+    .eq("email", email.trim())
+    .eq("roles.name", "teacher")
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : "";
+}
+
+async function getStudentIdByEmail(email: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("users")
+    .select("id, roles!inner(name)")
+    .eq("email", email.trim())
+    .eq("roles.name", "student")
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
+async function getClassIdByNameAndAcademicYear({
+  className,
+  academicYearName,
+  schoolId,
+}: {
+  className: string;
+  academicYearName: string;
+  schoolId: string;
+}) {
+  const academicYearId = await getAcademicYearIdByName(
+    academicYearName,
+    schoolId,
+  );
+
+  if (!academicYearId) {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("academic_year_id", academicYearId)
+    .ilike("name", className.trim())
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
+async function getSubjectIdByCode(code: string, schoolId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("subjects")
+    .select("id")
+    .eq("school_id", schoolId)
+    .ilike("code", code.trim())
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
+export async function importClassesCsvAction(formData: FormData) {
+  const currentUser = await requirePermission("classes.manage");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "File CSV kelas wajib diunggah.",
+    });
+  }
+
+  const rows = parseCsv(await file.text());
+
+  if (rows.length === 0) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "CSV kosong atau header tidak valid.",
+    });
+  }
+
+  const schoolId = await getDefaultSchoolId();
+
+  if (!schoolId) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "Sekolah aktif/default tidak ditemukan.",
+    });
+  }
+
+  const supabase = await createClient();
+  let created = 0;
+  let updated = 0;
+  const errors: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const academicYearName = String(row.academic_year ?? "").trim();
+    const academicYearId = await getAcademicYearIdByName(
+      academicYearName,
+      schoolId,
+    );
+
+    if (!academicYearId) {
+      errors.push(
+        `Baris ${rowNumber}: academic_year ${academicYearName || "-"} tidak ditemukan`,
+      );
+      continue;
+    }
+
+    const homeroomTeacherId = await getTeacherIdByEmail(
+      row.homeroom_teacher_email ?? "",
+    );
+    const parsed = classSchema.safeParse({
+      school_id: schoolId,
+      academic_year_id: academicYearId,
+      name: row.name ?? "",
+      grade_level: row.grade_level ?? "",
+      homeroom_teacher_id: homeroomTeacherId,
+      is_active: String(row.is_active ?? "true").toLowerCase() !== "false",
+    });
+
+    if (!parsed.success) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          parsed.error.issues[0]?.message ?? "data kelas tidak valid"
+        }`,
+      );
+      continue;
+    }
+
+    const { data: existingClass } = await supabase
+      .from("classes")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("academic_year_id", academicYearId)
+      .ilike("name", parsed.data.name)
+      .maybeSingle();
+    const payload = {
+      school_id: parsed.data.school_id,
+      academic_year_id: parsed.data.academic_year_id,
+      name: parsed.data.name,
+      grade_level: parsed.data.grade_level,
+      homeroom_teacher_id: parsed.data.homeroom_teacher_id,
+      is_active: parsed.data.is_active,
+    };
+    const { data: savedClass, error } = existingClass?.id
+      ? await supabase
+          .from("classes")
+          .update(payload)
+          .eq("id", existingClass.id)
+          .select("id")
+          .single()
+      : await supabase.from("classes").insert(payload).select("id").single();
+
+    if (error || !savedClass?.id) {
+      errors.push(
+        `Baris ${rowNumber}: ${error?.message ?? "gagal menyimpan kelas"}`,
+      );
+      continue;
+    }
+
+    if (existingClass?.id) {
+      updated += 1;
+    } else {
+      created += 1;
+    }
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "classes.import_csv",
+    entityType: "classes",
+    payload: {
+      total_rows: rows.length,
+      created_count: created,
+      updated_count: updated,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
+  revalidatePath("/dashboard/master-data/classes");
+  redirectTo("/dashboard/master-data/classes", {
+    ok: errors.length === 0,
+    message:
+      errors.length > 0
+        ? `Import selesai: ${created} dibuat, ${updated} diperbarui, ${errors.length} gagal. ${errors
+            .slice(0, 3)
+            .join("; ")}`
+        : `Import berhasil: ${created} kelas dibuat, ${updated} diperbarui.`,
+  });
+}
+
+export async function importStudentClassAssignmentsCsvAction(formData: FormData) {
+  const currentUser = await requirePermission("students.manage");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message: "File CSV assignment siswa-kelas wajib diunggah.",
+    });
+  }
+
+  const rows = parseCsv(await file.text());
+
+  if (rows.length === 0) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message: "CSV kosong atau header tidak valid.",
+    });
+  }
+
+  const schoolId = await getDefaultSchoolId();
+
+  if (!schoolId) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message: "Sekolah aktif/default tidak ditemukan.",
+    });
+  }
+
+  const supabase = await createClient();
+  let success = 0;
+  const errors: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const studentId = await getStudentIdByEmail(row.student_email ?? "");
+    const classId = await getClassIdByNameAndAcademicYear({
+      className: row.class_name ?? "",
+      academicYearName: row.academic_year ?? "",
+      schoolId,
+    });
+    const parsed = classMemberSchema.safeParse({
+      student_id: studentId ?? "",
+      class_id: classId ?? "",
+      joined_at: row.joined_at ?? "",
+    });
+
+    if (!studentId) {
+      errors.push(`Baris ${rowNumber}: student_email tidak ditemukan`);
+      continue;
+    }
+
+    if (!classId) {
+      errors.push(`Baris ${rowNumber}: kelas atau academic_year tidak ditemukan`);
+      continue;
+    }
+
+    if (!parsed.success) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          parsed.error.issues[0]?.message ?? "assignment tidak valid"
+        }`,
+      );
+      continue;
+    }
+
+    const { data: activeMembership } = await supabase
+      .from("class_members")
+      .select("id, class_id")
+      .eq("student_id", parsed.data.student_id)
+      .is("left_at", null)
+      .maybeSingle();
+
+    if (activeMembership?.class_id === parsed.data.class_id) {
+      success += 1;
+      continue;
+    }
+
+    if (activeMembership?.id) {
+      await supabase
+        .from("class_members")
+        .update({ left_at: new Date().toISOString().slice(0, 10) })
+        .eq("id", activeMembership.id);
+    }
+
+    const { error } = await supabase.from("class_members").insert({
+      student_id: parsed.data.student_id,
+      class_id: parsed.data.class_id,
+      joined_at: parsed.data.joined_at || new Date().toISOString().slice(0, 10),
+      left_at: null,
+    });
+
+    if (error) {
+      errors.push(`Baris ${rowNumber}: ${error.message}`);
+      continue;
+    }
+
+    success += 1;
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "class_members.import_csv",
+    entityType: "class_members",
+    payload: {
+      total_rows: rows.length,
+      success_count: success,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
+  revalidatePath("/dashboard/master-data/students");
+  redirectTo("/dashboard/master-data/students", {
+    ok: errors.length === 0,
+    message:
+      errors.length > 0
+        ? `Import selesai: ${success} berhasil, ${errors.length} gagal. ${errors
+            .slice(0, 3)
+            .join("; ")}`
+        : `Import berhasil: ${success} assignment siswa-kelas diproses.`,
+  });
+}
+
+export async function importTeacherSubjectAssignmentsCsvAction(formData: FormData) {
+  const currentUser = await requirePermission("teachers.manage");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "File CSV assignment guru-mapel-kelas wajib diunggah.",
+    });
+  }
+
+  const rows = parseCsv(await file.text());
+
+  if (rows.length === 0) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "CSV kosong atau header tidak valid.",
+    });
+  }
+
+  const schoolId = await getDefaultSchoolId();
+
+  if (!schoolId) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "Sekolah aktif/default tidak ditemukan.",
+    });
+  }
+
+  const supabase = await createClient();
+  let success = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const teacherId = await getTeacherIdByEmail(row.teacher_email ?? "");
+    const subjectId = await getSubjectIdByCode(row.subject_code ?? "", schoolId);
+    const academicYearId = await getAcademicYearIdByName(
+      row.academic_year ?? "",
+      schoolId,
+    );
+    const classId = await getClassIdByNameAndAcademicYear({
+      className: row.class_name ?? "",
+      academicYearName: row.academic_year ?? "",
+      schoolId,
+    });
+    const parsed = teacherAssignmentSchema.safeParse({
+      teacher_id: teacherId,
+      subject_id: subjectId ?? "",
+      class_id: classId ?? "",
+      academic_year_id: academicYearId ?? "",
+    });
+
+    if (!teacherId) {
+      errors.push(`Baris ${rowNumber}: teacher_email tidak ditemukan`);
+      continue;
+    }
+
+    if (!subjectId) {
+      errors.push(`Baris ${rowNumber}: subject_code tidak ditemukan`);
+      continue;
+    }
+
+    if (!academicYearId) {
+      errors.push(`Baris ${rowNumber}: academic_year tidak ditemukan`);
+      continue;
+    }
+
+    if (!classId) {
+      errors.push(`Baris ${rowNumber}: class_name tidak ditemukan`);
+      continue;
+    }
+
+    if (!parsed.success) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          parsed.error.issues[0]?.message ?? "assignment tidak valid"
+        }`,
+      );
+      continue;
+    }
+
+    const { data: existingAssignment } = await supabase
+      .from("teacher_subjects")
+      .select("id")
+      .eq("teacher_id", parsed.data.teacher_id)
+      .eq("subject_id", parsed.data.subject_id)
+      .eq("class_id", parsed.data.class_id)
+      .eq("academic_year_id", parsed.data.academic_year_id)
+      .maybeSingle();
+
+    if (existingAssignment?.id) {
+      skipped += 1;
+      continue;
+    }
+
+    const { error } = await supabase
+      .from("teacher_subjects")
+      .insert(parsed.data);
+
+    if (error) {
+      errors.push(`Baris ${rowNumber}: ${error.message}`);
+      continue;
+    }
+
+    success += 1;
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "teacher_subjects.import_csv",
+    entityType: "teacher_subjects",
+    payload: {
+      total_rows: rows.length,
+      success_count: success,
+      skipped_count: skipped,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
+  revalidatePath("/dashboard/master-data/teachers");
+  redirectTo("/dashboard/master-data/teachers", {
+    ok: errors.length === 0,
+    message:
+      errors.length > 0
+        ? `Import selesai: ${success} berhasil, ${skipped} duplikat dilewati, ${errors.length} gagal. ${errors
+            .slice(0, 3)
+            .join("; ")}`
+        : `Import berhasil: ${success} assignment diproses, ${skipped} duplikat dilewati.`,
+  });
+}
+
 async function importRoleUsers({
   formData,
   roleName,
@@ -435,7 +1066,7 @@ async function importRoleUsers({
   permission: "teachers.manage" | "students.manage";
   redirectPath: string;
 }) {
-  await requirePermission(permission);
+  const currentUser = await requirePermission(permission);
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -589,6 +1220,19 @@ async function importRoleUsers({
   }
 
   revalidatePath(redirectPath);
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: `${roleName}s.import_csv`,
+    entityType: "users",
+    payload: {
+      role: roleName,
+      total_rows: rows.length,
+      success_count: success,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
   redirectTo(redirectPath, {
     ok: errors.length === 0,
     message:
@@ -619,7 +1263,7 @@ export async function importStudentsCsvAction(formData: FormData) {
 }
 
 export async function saveTeacherAction(formData: FormData) {
-  await requirePermission("teachers.manage");
+  const currentUser = await requirePermission("teachers.manage");
   const parsed = teacherSchema.safeParse({
     id: formString(formData, "id"),
     email: formString(formData, "email"),
@@ -694,6 +1338,22 @@ export async function saveTeacherAction(formData: FormData) {
     { onConflict: "user_id" },
   );
 
+  if (!profileError) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "teachers.update" : "teachers.create",
+      entityType: "users",
+      entityId: savedUser.id,
+      payload: {
+        role: "teacher",
+        email: userPayload.email,
+        username: userPayload.username,
+        status: userPayload.status,
+        nip,
+      },
+    });
+  }
+
   revalidatePath("/dashboard/master-data/teachers");
   redirectTo("/dashboard/master-data/teachers", {
     ok: !profileError,
@@ -702,7 +1362,7 @@ export async function saveTeacherAction(formData: FormData) {
 }
 
 export async function saveTeacherAssignmentAction(formData: FormData) {
-  await requirePermission("teachers.manage");
+  const currentUser = await requirePermission("teachers.manage");
   const parsed = teacherAssignmentSchema.safeParse({
     teacher_id: formString(formData, "teacher_id"),
     subject_id: formString(formData, "subject_id"),
@@ -718,7 +1378,21 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("teacher_subjects").insert(parsed.data);
+  const { data: assignment, error } = await supabase
+    .from("teacher_subjects")
+    .insert(parsed.data)
+    .select("id")
+    .single();
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "teacher_subjects.create",
+      entityType: "teacher_subjects",
+      entityId: assignment?.id ?? null,
+      payload: parsed.data,
+    });
+  }
 
   revalidatePath("/dashboard/master-data/teachers");
   redirectTo("/dashboard/master-data/teachers", {
@@ -729,13 +1403,26 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
 
 export async function toggleUserStatusAction(formData: FormData) {
   const target = formString(formData, "target") as "teachers" | "students";
-  await requirePermission(target === "teachers" ? "teachers.manage" : "students.manage");
+  const currentUser = await requirePermission(
+    target === "teachers" ? "teachers.manage" : "students.manage",
+  );
   const supabase = await createClient();
   const status = formString(formData, "status") === "active" ? "active" : "inactive";
+  const id = formString(formData, "id");
   const { error } = await supabase
     .from("users")
     .update({ status })
-    .eq("id", formString(formData, "id"));
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: `${target}.status_update`,
+      entityType: "users",
+      entityId: id,
+      payload: { target, status },
+    });
+  }
 
   revalidatePath(`/dashboard/master-data/${target}`);
   redirectTo(`/dashboard/master-data/${target}`, {
@@ -745,7 +1432,7 @@ export async function toggleUserStatusAction(formData: FormData) {
 }
 
 export async function saveStudentAction(formData: FormData) {
-  await requirePermission("students.manage");
+  const currentUser = await requirePermission("students.manage");
   const parsed = studentSchema.safeParse({
     id: formString(formData, "id"),
     email: formString(formData, "email"),
@@ -823,6 +1510,23 @@ export async function saveStudentAction(formData: FormData) {
     { onConflict: "user_id" },
   );
 
+  if (!profileError) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "students.update" : "students.create",
+      entityType: "users",
+      entityId: savedUser.id,
+      payload: {
+        role: "student",
+        email: userPayload.email,
+        username: userPayload.username,
+        status: userPayload.status,
+        nis,
+        nisn,
+      },
+    });
+  }
+
   revalidatePath("/dashboard/master-data/students");
   redirectTo("/dashboard/master-data/students", {
     ok: !profileError,
@@ -831,7 +1535,7 @@ export async function saveStudentAction(formData: FormData) {
 }
 
 export async function saveClassMemberAction(formData: FormData) {
-  await requirePermission("students.manage");
+  const currentUser = await requirePermission("students.manage");
   const parsed = classMemberSchema.safeParse({
     student_id: formString(formData, "student_id"),
     class_id: formString(formData, "class_id"),
@@ -861,12 +1565,30 @@ export async function saveClassMemberAction(formData: FormData) {
       .eq("id", activeMembership.id);
   }
 
-  const { error } = await supabase.from("class_members").insert({
+  const membershipPayload = {
     student_id,
     class_id,
     joined_at: joined_at || new Date().toISOString().slice(0, 10),
     left_at: null,
-  });
+  };
+  const { data: membership, error } = await supabase
+    .from("class_members")
+    .insert(membershipPayload)
+    .select("id")
+    .single();
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "class_members.create",
+      entityType: "class_members",
+      entityId: membership?.id ?? null,
+      payload: {
+        ...membershipPayload,
+        previous_membership_id: activeMembership?.id ?? null,
+      },
+    });
+  }
 
   revalidatePath("/dashboard/master-data/students");
   redirectTo("/dashboard/master-data/students", {

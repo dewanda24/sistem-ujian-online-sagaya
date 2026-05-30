@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -5,6 +7,7 @@ import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  importQuestionsCsvAction,
   saveQuestionAction,
   toggleQuestionActiveAction,
   updateQuestionStatusAction,
@@ -15,6 +18,7 @@ import { QuestionStatusBadge } from "@/features/question-bank/components/questio
 import {
   getDefaultSchoolId,
   getQuestionCategoryOptions,
+  getQuestionStimulusOptions,
   getQuestions,
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
@@ -72,6 +76,25 @@ function correctOption(
   );
 }
 
+function firstAttachment(
+  question:
+    | {
+        question_attachments?: Array<{
+          media_type: string;
+          url: string;
+          file_name?: string | null;
+          caption?: string | null;
+          order_number: number;
+        }> | null;
+      }
+    | null
+    | undefined,
+) {
+  return [...(question?.question_attachments ?? [])].sort(
+    (a, b) => a.order_number - b.order_number,
+  )[0];
+}
+
 export default async function QuestionsPage({ searchParams }: PageProps) {
   await requirePermission("question_bank.view");
   const params = await searchParams;
@@ -83,13 +106,15 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
     difficulty: params.difficulty,
     status: params.status,
   };
-  const [subjects, schoolId, categories, questions] = await Promise.all([
+  const [subjects, schoolId, categories, stimuli, questions] = await Promise.all([
     getScopedSubjectOptions(),
     getDefaultSchoolId(),
     getQuestionCategoryOptions(params.subject_id),
+    getQuestionStimulusOptions(params.subject_id),
     getQuestions(filters),
   ]);
   const editable = questions.find((question) => question.id === params.edit);
+  const attachment = firstAttachment(editable);
 
   return (
     <div className="space-y-6">
@@ -98,6 +123,33 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
         title="Semua Soal"
         description="Kelola soal pilihan ganda dan essay. Target kelas tidak disimpan di soal; targeting akan dilakukan pada paket dan jadwal ujian."
       />
+
+      <FormSection
+        title="Import Bank Soal CSV"
+        description="Gunakan subject_code sesuai mapel. Guru hanya dapat import ke mapel yang ditugaskan."
+      >
+        <form
+          action={importQuestionsCsvAction}
+          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+        >
+          <input
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          />
+          <Link
+            href="/api/templates/questions"
+            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
+          >
+            Download Template
+          </Link>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Import CSV
+          </button>
+        </form>
+      </FormSection>
 
       <FormSection
         title={editable ? "Edit Soal" : "Tambah Soal"}
@@ -131,6 +183,18 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
               {categories.map((category) => (
                 <option key={category.value} value={category.value}>
                   {category.label}
+                </option>
+              ))}
+            </select>
+            <select
+              name="stimulus_id"
+              defaultValue={editable?.stimulus_id ?? ""}
+              className="rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">Tanpa stimulus</option>
+              {stimuli.map((stimulus) => (
+                <option key={stimulus.value} value={stimulus.value}>
+                  {stimulus.label}
                 </option>
               ))}
             </select>
@@ -179,6 +243,81 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
             className="min-h-32 rounded-md border px-3 py-2 text-sm"
             required
           />
+
+          <div className="rounded-lg border bg-background p-4">
+            <h3 className="text-sm font-semibold">Stimulus Baru</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Opsional. Isi bagian ini jika ingin membuat stimulus bersama baru
+              untuk dipakai ulang oleh soal lain.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <input
+                name="new_stimulus_title"
+                placeholder="Judul stimulus"
+                className="rounded-md border px-3 py-2 text-sm"
+              />
+              <select
+                name="new_stimulus_media_type"
+                defaultValue=""
+                className="rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">Tanpa media</option>
+                <option value="image">Image</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+                <option value="file">File</option>
+                <option value="link">Link</option>
+              </select>
+              <input
+                name="new_stimulus_media_url"
+                placeholder="URL media stimulus"
+                className="rounded-md border px-3 py-2 text-sm md:col-span-2"
+              />
+              <textarea
+                name="new_stimulus_content"
+                placeholder="Teks stimulus"
+                className="min-h-24 rounded-md border px-3 py-2 text-sm md:col-span-2"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-background p-4">
+            <h3 className="text-sm font-semibold">Media Soal</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Opsional. Simpan metadata media/link yang melekat pada soal ini.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <select
+                name="attachment_media_type"
+                defaultValue={attachment?.media_type ?? "image"}
+                className="rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="image">Image</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+                <option value="file">File</option>
+                <option value="link">Link</option>
+              </select>
+              <input
+                name="attachment_file_name"
+                defaultValue={attachment?.file_name ?? ""}
+                placeholder="Nama file/link"
+                className="rounded-md border px-3 py-2 text-sm"
+              />
+              <input
+                name="attachment_url"
+                defaultValue={attachment?.url ?? ""}
+                placeholder="https://..."
+                className="rounded-md border px-3 py-2 text-sm md:col-span-2"
+              />
+              <input
+                name="attachment_caption"
+                defaultValue={attachment?.caption ?? ""}
+                placeholder="Caption media"
+                className="rounded-md border px-3 py-2 text-sm md:col-span-2"
+              />
+            </div>
+          </div>
 
           <div className="rounded-lg border bg-background p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -254,6 +393,8 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
           "Tipe",
           "Difficulty",
           "Poin",
+          "Versi",
+          "Media",
           "Status",
           "Aktif",
           "Aksi",
@@ -289,6 +430,17 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
             </td>
             <td className="px-4 py-3">{question.difficulty}</td>
             <td className="px-4 py-3">{question.point}</td>
+            <td className="px-4 py-3">v{question.current_version ?? 1}</td>
+            <td className="px-4 py-3">
+              {question.stimulus_id ? "Stimulus" : ""}
+              {question.question_attachments?.length ? (
+                <div className="text-xs text-muted-foreground">
+                  {question.question_attachments.length} media
+                </div>
+              ) : question.stimulus_id ? null : (
+                "-"
+              )}
+            </td>
             <td className="px-4 py-3">
               <QuestionStatusBadge status={question.status} />
             </td>

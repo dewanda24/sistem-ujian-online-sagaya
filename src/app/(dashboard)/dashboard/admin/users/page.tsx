@@ -1,9 +1,23 @@
+import Link from "next/link";
+
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
+import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { getAdminRoleOptions, getAdminUsers } from "@/features/admin/queries";
+import {
+  getAdminRoleOptions,
+  getAdminUsers,
+  getOperationalUserRoleOptions,
+  getUserGovernanceSummary,
+} from "@/features/admin/queries";
+import {
+  resetAdminUserPasswordAction,
+  saveAdminUserAction,
+  toggleAdminUserStatusAction,
+} from "@/features/admin/actions";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type PageProps = {
@@ -11,6 +25,7 @@ type PageProps = {
     q?: string;
     role_id?: string;
     user_status?: string;
+    edit?: string;
     status?: string;
     message?: string;
   }>;
@@ -19,22 +34,152 @@ type PageProps = {
 export default async function UsersPage({ searchParams }: PageProps) {
   await requirePermission("users.view");
   const params = await searchParams;
-  const [users, roles] = await Promise.all([
+  const [users, roles, operationalRoles, summary] = await Promise.all([
     getAdminUsers({
       q: params.q,
       role_id: params.role_id,
       status: params.user_status,
     }),
     getAdminRoleOptions(),
+    getOperationalUserRoleOptions(),
+    getUserGovernanceSummary(),
   ]);
+  const editable = users.find((user) => user.id === params.edit);
 
   return (
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
         title="Users"
-        description="Pantau akun aplikasi, status pengguna, dan mapping auth user ke profil internal. CRUD guru dan siswa dikelola dari Master Data."
+        description="Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan proctor diarahkan ke Master Data agar struktur operasional tetap rapi."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Users"
+          value={String(summary.total)}
+          description="Semua akun internal yang terdaftar."
+        />
+        <DashboardCard
+          title="Tanpa Auth"
+          value={String(summary.withoutAuth)}
+          description="Belum tersambung ke Supabase Auth."
+        />
+        <DashboardCard
+          title="Tanpa Role"
+          value={String(summary.withoutRole)}
+          description="Berisiko gagal akses dashboard."
+        />
+        <DashboardCard
+          title="Inactive"
+          value={String(summary.inactive)}
+          description="Akun nonaktif atau status tidak active."
+        />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <DashboardCard
+          title="Role Distribution"
+          description="Ringkasan jumlah akun per role untuk audit cepat."
+        >
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            {summary.byRole.map((item) => (
+              <div
+                key={item.role}
+                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+              >
+                <span className="truncate">
+                  {item.label}{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({item.role})
+                  </span>
+                </span>
+                <span className="font-semibold">{item.count}</span>
+              </div>
+            ))}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard
+          title="CRUD Operasional"
+          description="Gunakan jalur Master Data untuk role yang punya konteks akademik atau operasional khusus."
+        >
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <QuickLink href="/dashboard/master-data/admins" label="Admin Sekolah" />
+            <QuickLink href="/dashboard/master-data/proctors" label="Proctor" />
+            <QuickLink href="/dashboard/master-data/teachers" label="Guru" />
+            <QuickLink href="/dashboard/master-data/students" label="Siswa" />
+          </div>
+        </DashboardCard>
+      </section>
+
+      <FormSection
+        title={editable ? "Edit User Operasional Umum" : "Tambah User Operasional Umum"}
+        description="Form ini tetap tersedia untuk akun umum. Role guru, siswa, admin sekolah, dan proctor sebaiknya dikelola dari Master Data masing-masing."
+      >
+        <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
+          <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
+          <input
+            type="hidden"
+            name="auth_user_id"
+            defaultValue={editable?.auth_user_id ?? ""}
+          />
+          <input
+            name="full_name"
+            defaultValue={editable?.profile?.full_name ?? ""}
+            placeholder="Nama lengkap"
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          />
+          <input
+            name="email"
+            type="email"
+            defaultValue={editable?.email ?? ""}
+            placeholder="Email"
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          />
+          <input
+            name="username"
+            defaultValue={editable?.username ?? ""}
+            placeholder="Username"
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          />
+          <input
+            name="password"
+            type="password"
+            placeholder={editable ? "Kosongkan jika tidak diubah" : "Password awal"}
+            className="rounded-md border px-3 py-2 text-sm"
+            required={!editable}
+          />
+          <select
+            name="role_id"
+            defaultValue={editable?.role_id ?? operationalRoles[0]?.id ?? ""}
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          >
+            {operationalRoles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.label} ({role.name})
+              </option>
+            ))}
+          </select>
+          <select
+            name="status"
+            defaultValue={editable?.status ?? "active"}
+            className="rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <div className="flex justify-end md:col-span-2">
+            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+              {editable ? "Update User" : "Tambah User"}
+            </button>
+          </div>
+        </form>
+      </FormSection>
 
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-4">
         <input
@@ -76,6 +221,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           "Role",
           "Auth User",
           "Status",
+          "Aksi",
         ]}
         isEmpty={users.length === 0}
         empty={
@@ -110,9 +256,64 @@ export default async function UsersPage({ searchParams }: PageProps) {
             <td className="px-4 py-3">
               <StatusBadge active={item.status === "active"} />
             </td>
+            <td className="px-4 py-3">
+              {item.role?.name === "teacher" || item.role?.name === "student" ? (
+                <span className="text-xs text-muted-foreground">
+                  Kelola di Master Data
+                </span>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={`/dashboard/admin/users?edit=${item.id}`}
+                    className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  >
+                    Edit
+                  </a>
+                  <form action={toggleAdminUserStatusAction}>
+                    <input type="hidden" name="id" value={item.id} />
+                    <input
+                      type="hidden"
+                      name="status"
+                      value={item.status === "active" ? "inactive" : "active"}
+                    />
+                    <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                      {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                    </button>
+                  </form>
+                  <form
+                    action={resetAdminUserPasswordAction}
+                    className="flex flex-wrap gap-2"
+                  >
+                    <input type="hidden" name="id" value={item.id} />
+                    <input
+                      name="password"
+                      type="password"
+                      placeholder="Password baru"
+                      className="w-32 rounded-md border px-2 py-1.5 text-xs"
+                      required
+                      minLength={6}
+                    />
+                    <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                      Reset
+                    </button>
+                  </form>
+                </div>
+              )}
+            </td>
           </tr>
         ))}
       </DataTable>
     </div>
+  );
+}
+
+function QuickLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md border px-3 py-2 font-medium transition hover:bg-muted"
+    >
+      {label}
+    </Link>
   );
 }

@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
-import { adminUserSchema } from "@/lib/validations/admin";
+import {
+  adminRoleLabelSchema,
+  adminUserPasswordResetSchema,
+  adminUserSchema,
+} from "@/lib/validations/admin";
 
 type ActionResult = {
   ok: boolean;
@@ -24,6 +29,17 @@ function redirectTo(path: string, result: ActionResult): never {
   });
 
   redirect(`${path}${path.includes("?") ? "&" : "?"}${params.toString()}`);
+}
+
+function getOperationalUserRedirectPath(formData: FormData) {
+  const path = formString(formData, "redirect_path");
+  const allowedPaths = new Set([
+    "/dashboard/admin/users",
+    "/dashboard/master-data/admins",
+    "/dashboard/master-data/proctors",
+  ]);
+
+  return allowedPaths.has(path) ? path : "/dashboard/admin/users";
 }
 
 function serviceRoleClient() {
@@ -45,7 +61,30 @@ function serviceRoleClient() {
   );
 }
 
+async function getRoleNameById(roleId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("roles")
+    .select("name")
+    .eq("id", roleId)
+    .maybeSingle();
+
+  return data?.name ? String(data.name) : null;
+}
+
+async function getPermissionCodeById(permissionId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("permissions")
+    .select("code")
+    .eq("id", permissionId)
+    .maybeSingle();
+
+  return data?.code ? String(data.code) : null;
+}
+
 export async function saveAdminUserAction(formData: FormData) {
+  const redirectPath = getOperationalUserRedirectPath(formData);
   const parsed = adminUserSchema.safeParse({
     id: formString(formData, "id"),
     auth_user_id: formString(formData, "auth_user_id"),
@@ -58,13 +97,15 @@ export async function saveAdminUserAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirectTo("/dashboard/admin/users", {
+    redirectTo(redirectPath, {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Data user tidak valid.",
     });
   }
 
-  await requirePermission(parsed.data.id ? "users.update" : "users.create");
+  const currentUser = await requirePermission(
+    parsed.data.id ? "users.update" : "users.create",
+  );
   const supabase = await createClient();
   const adminClient = serviceRoleClient();
   const {
@@ -78,10 +119,19 @@ export async function saveAdminUserAction(formData: FormData) {
     status,
   } = parsed.data;
   let authUserId = auth_user_id;
+  const roleName = await getRoleNameById(role_id);
+
+  if (!roleName || roleName === "teacher" || roleName === "student") {
+    redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
+      ok: false,
+      message:
+        "Role guru dan siswa dikelola dari Master Data. Pilih role operasional.",
+    });
+  }
 
   if (!id) {
     if (!adminClient) {
-      redirectTo("/dashboard/admin/users", {
+      redirectTo(redirectPath, {
         ok: false,
         message:
           "SUPABASE_SERVICE_ROLE_KEY belum tersedia. User auth tidak dapat dibuat.",
@@ -95,7 +145,7 @@ export async function saveAdminUserAction(formData: FormData) {
     });
 
     if (error || !data.user) {
-      redirectTo("/dashboard/admin/users", {
+      redirectTo(redirectPath, {
         ok: false,
         message: error?.message ?? "Gagal membuat auth user.",
       });
@@ -110,7 +160,7 @@ export async function saveAdminUserAction(formData: FormData) {
     });
 
     if (error) {
-      redirectTo(`/dashboard/admin/users?edit=${id}`, {
+      redirectTo(`${redirectPath}?edit=${id}`, {
         ok: false,
         message: error.message,
       });
@@ -123,7 +173,7 @@ export async function saveAdminUserAction(formData: FormData) {
     });
 
     if (error) {
-      redirectTo(`/dashboard/admin/users?edit=${id}`, {
+      redirectTo(`${redirectPath}?edit=${id}`, {
         ok: false,
         message: error.message,
       });
@@ -148,7 +198,7 @@ export async function saveAdminUserAction(formData: FormData) {
     : await supabase.from("users").insert(userPayload).select("id").single();
 
   if (userError || !savedUser) {
-    redirectTo(id ? `/dashboard/admin/users?edit=${id}` : "/dashboard/admin/users", {
+    redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
       ok: false,
       message: userError?.message ?? "Gagal menyimpan user.",
     });
@@ -162,47 +212,252 @@ export async function saveAdminUserAction(formData: FormData) {
     { onConflict: "user_id" },
   );
 
+  if (!profileError) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: id ? "users.update" : "users.create",
+      entityType: "users",
+      entityId: savedUser.id,
+      payload: {
+        email,
+        username,
+        role_id,
+        status,
+      },
+    });
+  }
+
   revalidatePath("/dashboard/admin/users");
-  redirectTo("/dashboard/admin/users", {
+  revalidatePath("/dashboard/master-data/admins");
+  revalidatePath("/dashboard/master-data/proctors");
+  redirectTo(redirectPath, {
     ok: !profileError,
     message: profileError ? profileError.message : "User berhasil disimpan.",
   });
 }
 
 export async function toggleAdminUserStatusAction(formData: FormData) {
-  await requirePermission("users.update");
+  const redirectPath = getOperationalUserRedirectPath(formData);
+  const currentUser = await requirePermission("users.update");
   const supabase = await createClient();
   const id = formString(formData, "id");
   const status = formString(formData, "status") === "active" ? "active" : "inactive";
   const { error } = await supabase.from("users").update({ status }).eq("id", id);
 
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "users.status_update",
+      entityType: "users",
+      entityId: id,
+      payload: { status },
+    });
+  }
+
   revalidatePath("/dashboard/admin/users");
-  redirectTo("/dashboard/admin/users", {
+  revalidatePath("/dashboard/master-data/admins");
+  revalidatePath("/dashboard/master-data/proctors");
+  redirectTo(redirectPath, {
     ok: !error,
     message: error ? error.message : "Status user berhasil diperbarui.",
   });
 }
 
+export async function resetAdminUserPasswordAction(formData: FormData) {
+  const redirectPath = getOperationalUserRedirectPath(formData);
+  const currentUser = await requirePermission("users.update");
+  const parsed = adminUserPasswordResetSchema.safeParse({
+    id: formString(formData, "id"),
+    password: formString(formData, "password"),
+  });
+
+  if (!parsed.success) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message:
+        parsed.error.issues[0]?.message ?? "Password baru tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: targetUser } = await supabase
+    .from("users")
+    .select("id, auth_user_id, email, roles(name)")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+  const role = Array.isArray(targetUser?.roles)
+    ? targetUser?.roles[0]
+    : targetUser?.roles;
+
+  if (!targetUser?.auth_user_id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Auth user belum terhubung.",
+    });
+  }
+
+  if (role?.name === "teacher" || role?.name === "student") {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Password guru dan siswa dikelola dari Master Data.",
+    });
+  }
+
+  const adminClient = serviceRoleClient();
+
+  if (!adminClient) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message:
+        "SUPABASE_SERVICE_ROLE_KEY belum tersedia. Password auth tidak dapat diubah.",
+    });
+  }
+
+  const { error } = await adminClient.auth.admin.updateUserById(
+    targetUser.auth_user_id,
+    {
+      password: parsed.data.password,
+    },
+  );
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "users.password_reset",
+      entityType: "users",
+      entityId: targetUser.id,
+      payload: {
+        email: targetUser.email,
+      },
+    });
+  }
+
+  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/master-data/admins");
+  revalidatePath("/dashboard/master-data/proctors");
+  redirectTo(redirectPath, {
+    ok: !error,
+    message: error ? error.message : "Password user berhasil direset.",
+  });
+}
+
 export async function updateRolePermissionAction(formData: FormData) {
-  await requirePermission("roles.manage");
+  const currentUser = await requirePermission("roles.manage");
   const supabase = await createClient();
   const roleId = formString(formData, "role_id");
   const permissionId = formString(formData, "permission_id");
   const enabled = formString(formData, "enabled") === "true";
+  const roleName = await getRoleNameById(roleId);
+  const permissionCode = await getPermissionCodeById(permissionId);
 
-  const { error } = enabled
-    ? await supabase
-        .from("role_permissions")
-        .insert({ role_id: roleId, permission_id: permissionId })
-    : await supabase
-        .from("role_permissions")
-        .delete()
-        .eq("role_id", roleId)
-        .eq("permission_id", permissionId);
+  if (!roleName || !permissionCode) {
+    redirectTo("/dashboard/admin/permissions", {
+      ok: false,
+      message: "Role atau permission tidak ditemukan.",
+    });
+  }
+
+  if (roleName === "super_admin") {
+    redirectTo("/dashboard/admin/permissions", {
+      ok: false,
+      message: "Permission super admin tidak dapat diubah dari matrix.",
+    });
+  }
+
+  const { data: existing } = await supabase
+    .from("role_permissions")
+    .select("role_id, permission_id")
+    .eq("role_id", roleId)
+    .eq("permission_id", permissionId)
+    .maybeSingle();
+  const { error } =
+    enabled && !existing
+      ? await supabase
+          .from("role_permissions")
+          .insert({ role_id: roleId, permission_id: permissionId })
+      : !enabled
+        ? await supabase
+            .from("role_permissions")
+            .delete()
+            .eq("role_id", roleId)
+            .eq("permission_id", permissionId)
+        : { error: null };
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: enabled
+        ? "role_permissions.grant"
+        : "role_permissions.revoke",
+      entityType: "role_permissions",
+      entityId: roleId,
+      payload: {
+        role_id: roleId,
+        role_name: roleName,
+        permission_id: permissionId,
+        permission_code: permissionCode,
+        enabled,
+      },
+    });
+  }
 
   revalidatePath("/dashboard/admin/permissions");
   redirectTo("/dashboard/admin/permissions", {
     ok: !error,
     message: error ? error.message : "Matrix permission berhasil diperbarui.",
+  });
+}
+
+export async function updateRoleLabelAction(formData: FormData) {
+  const currentUser = await requirePermission("roles.manage");
+  const parsed = adminRoleLabelSchema.safeParse({
+    id: formString(formData, "id"),
+    label: formString(formData, "label"),
+  });
+
+  if (!parsed.success) {
+    redirectTo("/dashboard/admin/roles", {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Label role tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: roleBefore } = await supabase
+    .from("roles")
+    .select("id, name, label")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+
+  if (!roleBefore) {
+    redirectTo("/dashboard/admin/roles", {
+      ok: false,
+      message: "Role tidak ditemukan.",
+    });
+  }
+
+  const { error } = await supabase
+    .from("roles")
+    .update({ label: parsed.data.label })
+    .eq("id", parsed.data.id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "roles.label_update",
+      entityType: "roles",
+      entityId: parsed.data.id,
+      payload: {
+        name: roleBefore.name,
+        old_label: roleBefore.label,
+        new_label: parsed.data.label,
+      },
+    });
+  }
+
+  revalidatePath("/dashboard/admin/roles");
+  redirectTo("/dashboard/admin/roles", {
+    ok: !error,
+    message: error ? error.message : "Label role berhasil diperbarui.",
   });
 }

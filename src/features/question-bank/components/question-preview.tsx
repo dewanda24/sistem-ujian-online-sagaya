@@ -2,6 +2,20 @@ type QuestionPreviewProps = {
   question: {
     content: string;
     explanation?: string | null;
+    question_stimuli?: {
+      title?: string | null;
+      content?: string | null;
+      media_url?: string | null;
+      media_type?: string | null;
+    } | null;
+    question_attachments?: Array<{
+      id: string;
+      media_type: string;
+      url: string;
+      file_name?: string | null;
+      caption?: string | null;
+      order_number: number;
+    }> | null;
     question_options?: Array<{
       id: string;
       option_label: string;
@@ -16,12 +30,52 @@ export function QuestionPreview({ question }: QuestionPreviewProps) {
   const options = [...(question.question_options ?? [])].sort(
     (a, b) => a.order_number - b.order_number,
   );
+  const attachments = [...(question.question_attachments ?? [])].sort(
+    (a, b) => a.order_number - b.order_number,
+  );
 
   return (
     <details className="rounded-md border bg-background p-3">
       <summary className="cursor-pointer text-sm font-medium">Preview</summary>
       <div className="mt-3 space-y-3 text-sm">
+        {question.question_stimuli ? (
+          <div className="rounded-md border border-dashed p-3">
+            <div className="font-medium">{question.question_stimuli.title}</div>
+            {question.question_stimuli.content ? (
+              <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                {question.question_stimuli.content}
+              </div>
+            ) : null}
+            {question.question_stimuli.media_url ? (
+              <a
+                href={question.question_stimuli.media_url}
+                className="mt-2 inline-flex text-primary hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Buka stimulus {question.question_stimuli.media_type ?? "media"}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         <div className="whitespace-pre-wrap leading-6">{question.content}</div>
+        {attachments.length ? (
+          <div className="grid gap-2">
+            {attachments.map((attachment) => (
+              <a
+                key={attachment.id}
+                href={attachment.url}
+                className="rounded-md border px-3 py-2 text-primary hover:bg-muted"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {attachment.caption ||
+                  attachment.file_name ||
+                  `Buka ${attachment.media_type}`}
+              </a>
+            ))}
+          </div>
+        ) : null}
         {options.length ? (
           <div className="grid gap-2">
             {options.map((option) => (

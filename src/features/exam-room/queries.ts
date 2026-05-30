@@ -16,6 +16,24 @@ export async function getStudentClassIds(studentId: string) {
   return data.map((item) => item.class_id as string).filter(Boolean);
 }
 
+export async function getStudentAcademicContext() {
+  const user = await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("class_members")
+    .select(
+      "id, joined_at, left_at, classes(id, name, grade_level, schools(name), academic_years(name))",
+    )
+    .eq("student_id", user.id)
+    .order("joined_at", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data;
+}
+
 export async function getStudentExamSchedules(options?: { activeOnly?: boolean }) {
   const user = await requireAuth();
   const supabase = await createClient();

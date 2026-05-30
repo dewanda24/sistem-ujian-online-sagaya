@@ -17,6 +17,8 @@ export type ExamScheduleFilters = {
   q?: string;
   status?: string;
   package_id?: string;
+  date_from?: string;
+  date_to?: string;
 };
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -198,7 +200,7 @@ export async function getExamPackages(filters: ExamPackageFilters) {
   let query = supabase
     .from("exam_packages")
     .select(
-      "*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id)",
+      "*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id, questions(id, subject_id, type, difficulty, point, status, is_active, deleted_at))",
     )
     .is("deleted_at", null)
     .in("subject_id", subjectIds)
@@ -268,7 +270,7 @@ export async function getExamSchedules(filters: ExamScheduleFilters) {
   let query = supabase
     .from("exam_schedules")
     .select(
-      "*, exam_packages(id, title, subjects(code, name)), academic_years(name), semesters(name), exam_schedule_classes(id, class_id, classes(name))",
+      "*, exam_packages(id, title, status, is_active, subjects(code, name)), academic_years(name), semesters(name), exam_schedule_classes(id, class_id, classes(name)), exam_participants(id, status)",
     )
     .is("deleted_at", null)
     .in("exam_package_id", packageIds)
@@ -284,6 +286,14 @@ export async function getExamSchedules(filters: ExamScheduleFilters) {
 
   if (filters.q) {
     query = query.ilike("title", `%${filters.q}%`);
+  }
+
+  if (filters.date_from) {
+    query = query.gte("start_at", `${filters.date_from}T00:00:00.000Z`);
+  }
+
+  if (filters.date_to) {
+    query = query.lte("start_at", `${filters.date_to}T23:59:59.999Z`);
   }
 
   const { data, error } = await query;

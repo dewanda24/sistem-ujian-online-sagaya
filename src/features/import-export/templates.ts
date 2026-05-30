@@ -1,4 +1,10 @@
-export type TemplateType = "students" | "teachers" | "questions" | "classes";
+export type TemplateType =
+  | "students"
+  | "teachers"
+  | "questions"
+  | "classes"
+  | "student-class-assignments"
+  | "teacher-subject-assignments";
 
 type TemplateColumn = {
   key: string;
@@ -73,6 +79,28 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
       { key: "academic_year", example: "2025/2026" },
       { key: "homeroom_teacher_email", example: "rina.guru@sagaya.test" },
       { key: "is_active", example: "true" },
+    ],
+  },
+  "student-class-assignments": {
+    filename: "template-assignment-siswa-kelas.csv",
+    title: "Template Assignment Siswa Kelas",
+    description: "Kolom staging assignment siswa ke kelas melalui class_members.",
+    columns: [
+      { key: "student_email", example: "budi.santoso@siswa.test" },
+      { key: "class_name", example: "VII A" },
+      { key: "academic_year", example: "2025/2026" },
+      { key: "joined_at", example: "2026-07-15" },
+    ],
+  },
+  "teacher-subject-assignments": {
+    filename: "template-assignment-guru-mapel-kelas.csv",
+    title: "Template Assignment Guru Mapel Kelas",
+    description: "Kolom staging assignment guru ke mapel, kelas, dan tahun ajaran.",
+    columns: [
+      { key: "teacher_email", example: "rina.guru@sagaya.test" },
+      { key: "subject_code", example: "MTK" },
+      { key: "class_name", example: "VII A" },
+      { key: "academic_year", example: "2025/2026" },
     ],
   },
 };

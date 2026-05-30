@@ -5,11 +5,12 @@ import {
   templateToCsv,
   type TemplateType,
 } from "@/features/import-export/templates";
+import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requireAuth } from "@/lib/auth/require-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ type: string }> },
 ) {
   const user = await requireAuth();
@@ -26,6 +27,20 @@ export async function GET(
   }
 
   const csv = templateToCsv(type as TemplateType);
+
+  await logAuditEvent({
+    userId: user.id,
+    action: "templates.download",
+    entityType: "import_templates",
+    entityId: type,
+    payload: {
+      template_type: type,
+      filename: template.filename,
+    },
+    ipAddress:
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    userAgent: request.headers.get("user-agent"),
+  });
 
   return new Response(csv, {
     headers: {

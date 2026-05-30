@@ -1,9 +1,10 @@
 import { getStudentExamSchedules } from "@/features/exam-room/queries";
-import { getMonitoringSchedules } from "@/features/monitoring/queries";
+import { getProctorOperationalSummary } from "@/features/monitoring/queries";
 import {
   getStudentSubmittedAttempts,
   getTeacherResultRecap,
 } from "@/features/results/queries";
+import { getReportSummary } from "@/features/reports/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
@@ -42,9 +43,176 @@ async function countUsersByRole(roleName: RoleName) {
   const { count } = await supabase
     .from("users")
     .select("id, roles!inner(name)", { count: "exact", head: true })
-    .eq("roles.name", roleName);
+    .eq("roles.name", roleName)
+    .eq("status", "active");
 
   return count ?? 0;
+}
+
+async function countSchedulesToday() {
+  const supabase = await createClient();
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  const { count } = await supabase
+    .from("exam_schedules")
+    .select("id", { count: "exact", head: true })
+    .is("deleted_at", null)
+    .gte("start_at", start.toISOString())
+    .lte("start_at", end.toISOString());
+
+  return count ?? 0;
+}
+
+async function countSchedulesWithoutParticipants() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("exam_schedules")
+    .select("id, exam_participants(id)")
+    .is("deleted_at", null)
+    .eq("is_active", true)
+    .in("status", ["scheduled", "active"]);
+
+  return (data ?? []).filter(
+    (schedule) => (schedule.exam_participants ?? []).length === 0,
+  ).length;
+}
+
+async function getClassReadinessCounts() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("classes")
+    .select("id, homeroom_teacher_id, class_members(id, left_at)")
+    .eq("is_active", true);
+
+  const classes = data ?? [];
+
+  return {
+    withoutStudents: classes.filter(
+      (classItem) =>
+        !(classItem.class_members ?? []).some(
+          (member: { left_at?: string | null }) => !member.left_at,
+        ),
+    ).length,
+    withoutHomeroom: classes.filter(
+      (classItem) => !classItem.homeroom_teacher_id,
+    ).length,
+  };
+}
+
+async function getTeacherOperationalStats(teacherId: string) {
+  const supabase = await createClient();
+  const { data: assignments } = await supabase
+    .from("teacher_subjects")
+    .select("subject_id, class_id")
+    .eq("teacher_id", teacherId);
+  const subjectIds = [
+    ...new Set(
+      (assignments ?? [])
+        .map((item) => item.subject_id as string | null)
+        .filter((subjectId): subjectId is string => Boolean(subjectId)),
+    ),
+  ];
+  const classCount = new Set(
+    (assignments ?? [])
+      .map((item) => item.class_id as string | null)
+      .filter(Boolean),
+  ).size;
+  const now = new Date().toISOString();
+
+  if (subjectIds.length === 0) {
+    return {
+      assignmentCount: 0,
+      subjectCount: 0,
+      classCount: 0,
+      draftQuestions: 0,
+      publishedQuestions: 0,
+      draftPackages: 0,
+      publishedPackages: 0,
+      upcomingSchedules: 0,
+      activeSchedules: 0,
+    };
+  }
+
+  const [
+    { count: draftQuestions },
+    { count: publishedQuestions },
+    { data: packages },
+  ] = await Promise.all([
+    supabase
+      .from("questions")
+      .select("id", { count: "exact", head: true })
+      .eq("created_by", teacherId)
+      .eq("status", "draft")
+      .is("deleted_at", null),
+    supabase
+      .from("questions")
+      .select("id", { count: "exact", head: true })
+      .eq("created_by", teacherId)
+      .eq("status", "published")
+      .is("deleted_at", null),
+    supabase
+      .from("exam_packages")
+      .select("id, status")
+      .in("subject_id", subjectIds)
+      .is("deleted_at", null),
+  ]);
+  const packageIds = (packages ?? []).map((item) => item.id as string);
+  const draftPackages = (packages ?? []).filter(
+    (item) => item.status === "draft",
+  ).length;
+  const publishedPackages = (packages ?? []).filter(
+    (item) => item.status === "published",
+  ).length;
+
+  if (packageIds.length === 0) {
+    return {
+      assignmentCount: assignments?.length ?? 0,
+      subjectCount: subjectIds.length,
+      classCount,
+      draftQuestions: draftQuestions ?? 0,
+      publishedQuestions: publishedQuestions ?? 0,
+      draftPackages,
+      publishedPackages,
+      upcomingSchedules: 0,
+      activeSchedules: 0,
+    };
+  }
+
+  const [{ count: upcomingSchedules }, { count: activeSchedules }] =
+    await Promise.all([
+      supabase
+        .from("exam_schedules")
+        .select("id", { count: "exact", head: true })
+        .in("exam_package_id", packageIds)
+        .in("status", ["scheduled", "active"])
+        .gt("start_at", now)
+        .is("deleted_at", null),
+      supabase
+        .from("exam_schedules")
+        .select("id", { count: "exact", head: true })
+        .in("exam_package_id", packageIds)
+        .eq("status", "active")
+        .lte("start_at", now)
+        .gte("end_at", now)
+        .is("deleted_at", null),
+    ]);
+
+  return {
+    assignmentCount: assignments?.length ?? 0,
+    subjectCount: subjectIds.length,
+    classCount,
+    draftQuestions: draftQuestions ?? 0,
+    publishedQuestions: publishedQuestions ?? 0,
+    draftPackages,
+    publishedPackages,
+    upcomingSchedules: upcomingSchedules ?? 0,
+    activeSchedules: activeSchedules ?? 0,
+  };
 }
 
 export async function getRoleDashboardStats(
@@ -52,10 +220,10 @@ export async function getRoleDashboardStats(
   user: CurrentUser,
 ): Promise<DashboardStat[]> {
   if (role === "super_admin") {
-    const [users, activeSchedules, pendingGrading] = await Promise.all([
+    const [users, activeSchedules, summary] = await Promise.all([
       countTable("users"),
-      countWhere("exam_schedules", "status", "published"),
-      countWhere("exam_attempts", "grading_status", "needs_manual_grading"),
+      countWhere("exam_schedules", "status", "active"),
+      getReportSummary(),
     ]);
 
     return [
@@ -66,25 +234,59 @@ export async function getRoleDashboardStats(
         href: "/dashboard/admin/users",
       },
       {
-        title: "Jadwal Published",
+        title: "Jadwal Active",
         value: String(activeSchedules),
-        description: "Jadwal ujian yang siap digunakan.",
+        description: "Jadwal ujian yang sedang aktif.",
         href: "/dashboard/exams/schedules",
       },
       {
         title: "Pending Grading",
-        value: String(pendingGrading),
+        value: String(summary.pending),
         description: "Attempt yang masih perlu koreksi essay.",
         href: "/dashboard/teacher/grading",
+      },
+      {
+        title: "Finalized",
+        value: String(summary.finalized),
+        description: "Attempt dengan nilai final.",
+        href: "/dashboard/reports",
+      },
+      {
+        title: "Absent",
+        value: String(summary.absent),
+        description: "Peserta yang ditandai tidak hadir.",
+        href: "/dashboard/reports/exams",
+      },
+      {
+        title: "Average Final",
+        value: `${summary.averagePercent.toFixed(2)}%`,
+        description: "Rata-rata dari nilai finalized.",
+        href: "/dashboard/reports",
       },
     ];
   }
 
   if (role === "admin") {
-    const [students, teachers, classes] = await Promise.all([
+    const [
+      students,
+      teachers,
+      classes,
+      subjects,
+      activeSchedules,
+      todaySchedules,
+      schedulesWithoutParticipants,
+      classReadiness,
+      summary,
+    ] = await Promise.all([
       countUsersByRole("student"),
       countUsersByRole("teacher"),
       countTable("classes"),
+      countTable("subjects"),
+      countWhere("exam_schedules", "status", "active"),
+      countSchedulesToday(),
+      countSchedulesWithoutParticipants(),
+      getClassReadinessCounts(),
+      getReportSummary(),
     ]);
 
     return [
@@ -106,36 +308,111 @@ export async function getRoleDashboardStats(
         description: "Total kelas pada master data.",
         href: "/dashboard/master-data/classes",
       },
+      {
+        title: "Mapel",
+        value: String(subjects),
+        description: "Total mata pelajaran pada master data.",
+        href: "/dashboard/master-data/subjects",
+      },
+      {
+        title: "Jadwal Hari Ini",
+        value: String(todaySchedules),
+        description: "Jadwal ujian yang mulai hari ini.",
+        href: "/dashboard/exams/schedules",
+      },
+      {
+        title: "Jadwal Active",
+        value: String(activeSchedules),
+        description: "Ujian yang sedang aktif.",
+        href: "/dashboard/exams/schedules?status=active",
+      },
+      {
+        title: "Tanpa Peserta",
+        value: String(schedulesWithoutParticipants),
+        description: "Scheduled/active tapi peserta belum tersinkron.",
+        href: "/dashboard/exams/schedules",
+      },
+      {
+        title: "Kelas Tanpa Siswa",
+        value: String(classReadiness.withoutStudents),
+        description: "Kelas aktif yang belum punya siswa aktif.",
+        href: "/dashboard/master-data/classes",
+      },
+      {
+        title: "Kelas Tanpa Wali",
+        value: String(classReadiness.withoutHomeroom),
+        description: "Kelas aktif tanpa homeroom teacher.",
+        href: "/dashboard/master-data/classes",
+      },
+      {
+        title: "Submitted",
+        value: String(summary.submitted),
+        description: "Attempt yang sudah dikumpulkan.",
+        href: "/dashboard/reports",
+      },
+      {
+        title: "Pending Grading",
+        value: String(summary.pending),
+        description: "Essay yang masih perlu koreksi.",
+        href: "/dashboard/teacher/grading",
+      },
+      {
+        title: "Average Final",
+        value: `${summary.averagePercent.toFixed(2)}%`,
+        description: "Rata-rata nilai finalized.",
+        href: "/dashboard/reports",
+      },
     ];
   }
 
   if (role === "teacher") {
-    const supabase = await createClient();
-    const [{ count: assignments }, { count: draftQuestions }, attempts] =
-      await Promise.all([
-        supabase
-          .from("teacher_subjects")
-          .select("id", { count: "exact", head: true })
-          .eq("teacher_id", user.id),
-        supabase
-          .from("questions")
-          .select("id", { count: "exact", head: true })
-          .eq("created_by", user.id)
-          .eq("status", "draft"),
-        getTeacherResultRecap({ grading_status: "needs_manual_grading" }),
-      ]);
+    const [teacherStats, attempts] = await Promise.all([
+      getTeacherOperationalStats(user.id),
+      getTeacherResultRecap({ grading_status: "needs_manual_grading" }),
+    ]);
 
     return [
       {
-        title: "Assignment",
-        value: String(assignments ?? 0),
-        description: "Mapel dan kelas yang ditugaskan.",
+        title: "Mapel / Kelas",
+        value: `${teacherStats.subjectCount}/${teacherStats.classCount}`,
+        description: `${teacherStats.assignmentCount} assignment mengajar.`,
+        href: "/dashboard/teacher/assignments",
       },
       {
         title: "Draft Soal",
-        value: String(draftQuestions ?? 0),
+        value: String(teacherStats.draftQuestions),
         description: "Soal draft yang dibuat guru.",
         href: "/dashboard/question-bank/questions?status=draft",
+      },
+      {
+        title: "Soal Published",
+        value: String(teacherStats.publishedQuestions),
+        description: "Soal siap dipakai pada paket ujian.",
+        href: "/dashboard/question-bank/questions?status=published",
+      },
+      {
+        title: "Paket Draft",
+        value: String(teacherStats.draftPackages),
+        description: "Paket ujian yang belum dipublish.",
+        href: "/dashboard/exams/packages?status=draft",
+      },
+      {
+        title: "Paket Published",
+        value: String(teacherStats.publishedPackages),
+        description: "Paket ujian siap dijadwalkan.",
+        href: "/dashboard/exams/packages?status=published",
+      },
+      {
+        title: "Jadwal Upcoming",
+        value: String(teacherStats.upcomingSchedules),
+        description: "Jadwal mendatang untuk mapel guru.",
+        href: "/dashboard/exams/schedules?status=scheduled",
+      },
+      {
+        title: "Jadwal Active",
+        value: String(teacherStats.activeSchedules),
+        description: "Ujian aktif yang terkait mapel guru.",
+        href: "/dashboard/teacher/monitoring",
       },
       {
         title: "Pending Grading",
@@ -174,24 +451,44 @@ export async function getRoleDashboardStats(
   }
 
   if (role === "proctor") {
-    const schedules = await getMonitoringSchedules();
+    const summary = await getProctorOperationalSummary();
 
     return [
       {
-        title: "Monitoring",
-        value: "Ready",
-        description: "Route monitoring proctor tersedia.",
+        title: "Jadwal Active",
+        value: String(summary.activeSchedules.length),
+        description: "Jadwal yang sedang perlu dipantau.",
         href: "/dashboard/proctor/monitoring",
       },
       {
-        title: "Jadwal Terpantau",
-        value: String(schedules.length),
-        description: "Jadwal yang tersedia untuk dipantau.",
+        title: "Jadwal Mendatang",
+        value: String(summary.upcomingSchedules.length),
+        description: "Jadwal scheduled yang akan mulai.",
+        href: "/dashboard/proctor/schedules",
       },
       {
-        title: "Access",
-        value: "Proctor",
-        description: "Route dikunci untuk role proctor.",
+        title: "Peserta",
+        value: String(summary.participants.length),
+        description: "Total peserta pada jadwal terpantau.",
+        href: "/dashboard/proctor/schedules",
+      },
+      {
+        title: "In Progress",
+        value: String(summary.inProgress),
+        description: "Attempt siswa yang sedang berjalan.",
+        href: "/dashboard/proctor/monitoring?status=in_progress",
+      },
+      {
+        title: "Submitted",
+        value: String(summary.submitted),
+        description: "Attempt yang sudah dikumpulkan.",
+        href: "/dashboard/proctor/monitoring?status=submitted",
+      },
+      {
+        title: "Event",
+        value: String(summary.events.length),
+        description: "Event ujian/anti-cheat yang tercatat.",
+        href: "/dashboard/proctor/monitoring",
       },
     ];
   }

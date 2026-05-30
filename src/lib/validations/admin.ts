@@ -37,3 +37,19 @@ export const adminUserSchema = z
   });
 
 export type AdminUserInput = z.infer<typeof adminUserSchema>;
+
+export const adminUserPasswordResetSchema = z.object({
+  id: z.string().uuid("User tidak valid"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
+});
+
+export type AdminUserPasswordResetInput = z.infer<
+  typeof adminUserPasswordResetSchema
+>;
+
+export const adminRoleLabelSchema = z.object({
+  id: z.string().uuid("Role tidak valid"),
+  label: z.string().min(2, "Label role wajib diisi"),
+});
+
+export type AdminRoleLabelInput = z.infer<typeof adminRoleLabelSchema>;

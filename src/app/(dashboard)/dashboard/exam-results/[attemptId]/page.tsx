@@ -48,6 +48,38 @@ export default async function ExamResultDetailPage({
   const canGrade = hasPermission(user, "grading.manage");
   const canFinalize = hasPermission(user, "exam_results.finalize");
   const hasPendingEssay = answers.some((answer) => answer.needs_manual_grading);
+  const isStudent = user.roles?.name === "student";
+  const resultVisibleForStudent =
+    Boolean(examPackage?.show_result) &&
+    attempt.grading_status !== "needs_manual_grading";
+  const canViewResultDetail = !isStudent || resultVisibleForStudent;
+
+  if (!canViewResultDetail) {
+    return (
+      <div className="space-y-6">
+        <ActionToast status={query.notice} message={query.message} />
+        <DashboardPageHeader
+          title="Exam Result"
+          description={`${schedule?.title ?? "Ujian"} | ${
+            subject?.code ?? "Mapel"
+          }`}
+        />
+        <div className="rounded-lg border bg-card p-6">
+          <StatusPill value={attempt.grading_status ?? attempt.status} />
+          <h2 className="mt-4 text-lg font-semibold">
+            {examPackage?.show_result
+              ? "Nilai sedang diproses"
+              : "Hasil belum dibuka"}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {examPackage?.show_result
+              ? "Jawaban essay masih menunggu koreksi atau finalisasi guru."
+              : "Guru/admin belum mengaktifkan tampilan hasil untuk paket ujian ini."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

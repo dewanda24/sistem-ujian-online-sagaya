@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { getStudentClassIds } from "@/features/exam-room/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 import { createClient } from "@/lib/supabase/server";
 import {
   saveAnswerSchema,
@@ -21,17 +22,11 @@ type ParticipantWithAttempts = {
   }> | null;
 };
 
-type ScoredQuestion = {
-  question_id: string;
-  point: number;
-  type: "multiple_choice" | "essay";
-  correct_option_id: string | null;
-};
-
 type AttemptTiming = {
   id: string;
   exam_participant_id: string;
   status: string;
+  locked_at?: string | null;
   exam_schedules?: {
     end_at?: string | null;
   } | Array<{
@@ -216,7 +211,7 @@ export async function saveAnswerAction(formData: FormData) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, exam_schedules(end_at)")
+    .select("id, exam_participant_id, status, locked_at, exam_schedules(end_at)")
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
     .eq("status", "in_progress")
@@ -227,6 +222,14 @@ export async function saveAnswerAction(formData: FormData) {
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
       "Attempt tidak aktif.",
+    );
+  }
+
+  if ((attempt as AttemptTiming).locked_at) {
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      "Attempt sedang dikunci oleh pengawas.",
     );
   }
 
@@ -285,7 +288,7 @@ export async function submitAttemptAction(formData: FormData) {
   const { data: attempt } = await supabase
     .from("exam_attempts")
     .select(
-      "id, exam_participant_id, exam_schedule_id, status, exam_schedules(exam_package_id, end_at)",
+      "id, exam_participant_id, exam_schedule_id, status, locked_at, exam_schedules(exam_package_id, end_at)",
     )
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
@@ -297,6 +300,14 @@ export async function submitAttemptAction(formData: FormData) {
       "/dashboard/student/active-exams",
       false,
       "Attempt tidak ditemukan atau sudah dikumpulkan.",
+    );
+  }
+
+  if ((attempt as AttemptTiming).locked_at) {
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      "Attempt sedang dikunci oleh pengawas.",
     );
   }
 
@@ -316,16 +327,18 @@ export async function submitAttemptAction(formData: FormData) {
   const packageId = Array.isArray(scheduleRelation)
     ? scheduleRelation[0]?.exam_package_id
     : scheduleRelation?.exam_package_id;
-  const scoring = packageId
-    ? await calculateAttemptScore(parsed.data.attempt_id, packageId)
-    : {
-        autoScore: 0,
-        maxScore: 0,
-        totalQuestions: 0,
-        answeredQuestions: 0,
-        correctAnswers: 0,
-        hasEssay: false,
-      };
+  const scoring = await calculateAndPersistAttemptScore(parsed.data.attempt_id, {
+    packageId,
+  });
+
+  if (!scoring.ok) {
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      scoring.message,
+    );
+  }
+
   const now = new Date().toISOString();
   await supabase
     .from("exam_attempts")
@@ -333,14 +346,14 @@ export async function submitAttemptAction(formData: FormData) {
       status: "submitted",
       submitted_at: now,
       last_saved_at: now,
-      score: scoring.hasEssay ? scoring.autoScore : scoring.autoScore,
+      score: scoring.autoScore + scoring.essayScore,
       auto_score: scoring.autoScore,
-      essay_score: null,
+      essay_score: scoring.hasEssay ? scoring.essayScore : null,
       max_score: scoring.maxScore,
       total_questions: scoring.totalQuestions,
       answered_questions: scoring.answeredQuestions,
       correct_answers: scoring.correctAnswers,
-      grading_status: scoring.hasEssay ? "needs_manual_grading" : "auto_scored",
+      grading_status: scoring.gradingStatus,
     })
     .eq("id", attempt.id);
 
@@ -394,102 +407,4 @@ async function expireAttempt(attemptId: string, participantId: string) {
       submitted_at: now,
     })
     .eq("id", participantId);
-}
-
-async function calculateAttemptScore(attemptId: string, packageId: string) {
-  const supabase = await createClient();
-  const { data: packageQuestions } = await supabase
-    .from("exam_package_questions")
-    .select(
-      "question_id, questions(id, type, point, question_options(id, is_correct))",
-    )
-    .eq("exam_package_id", packageId);
-
-  const questions: ScoredQuestion[] = (packageQuestions ?? [])
-    .map((item) => {
-      const question = Array.isArray(item.questions)
-        ? item.questions[0]
-        : item.questions;
-
-      if (!question?.id) {
-        return null;
-      }
-
-      const options = question.question_options ?? [];
-      const correctOption = options.find(
-        (option: { is_correct?: boolean }) => option.is_correct,
-      );
-
-      return {
-        question_id: question.id as string,
-        point: Number(question.point ?? 0),
-        type: question.type as "multiple_choice" | "essay",
-        correct_option_id: correctOption?.id ?? null,
-      };
-    })
-    .filter((question): question is ScoredQuestion => Boolean(question));
-
-  const { data: answers } = await supabase
-    .from("exam_answers")
-    .select("id, question_id, selected_option_id, essay_answer")
-    .eq("exam_attempt_id", attemptId);
-
-  const answerMap = new Map(
-    (answers ?? []).map((answer) => [answer.question_id as string, answer]),
-  );
-  let autoScore = 0;
-  let answeredQuestions = 0;
-  let correctAnswers = 0;
-  let hasEssay = false;
-
-  await Promise.all(
-    questions.map(async (question) => {
-      const answer = answerMap.get(question.question_id);
-      const isEssay = question.type === "essay";
-      const answered = Boolean(
-        answer?.selected_option_id || answer?.essay_answer?.trim(),
-      );
-      const isCorrect =
-        !isEssay &&
-        Boolean(answer?.selected_option_id) &&
-        answer?.selected_option_id === question.correct_option_id;
-      const awardedScore = isCorrect ? question.point : 0;
-
-      if (answered) {
-        answeredQuestions += 1;
-      }
-
-      if (isCorrect) {
-        correctAnswers += 1;
-        autoScore += awardedScore;
-      }
-
-      if (isEssay) {
-        hasEssay = true;
-      }
-
-      if (!answer?.id) {
-        return;
-      }
-
-      await supabase
-        .from("exam_answers")
-        .update({
-          is_correct: isEssay ? null : isCorrect,
-          max_score: question.point,
-          awarded_score: isEssay ? null : awardedScore,
-          needs_manual_grading: isEssay,
-        })
-        .eq("id", answer.id);
-    }),
-  );
-
-  return {
-    autoScore,
-    maxScore: questions.reduce((total, question) => total + question.point, 0),
-    totalQuestions: questions.length,
-    answeredQuestions,
-    correctAnswers,
-    hasEssay,
-  };
 }

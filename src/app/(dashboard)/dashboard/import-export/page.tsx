@@ -14,6 +14,8 @@ const templateTypes: TemplateType[] = [
   "students",
   "teachers",
   "classes",
+  "student-class-assignments",
+  "teacher-subject-assignments",
   "questions",
 ];
 

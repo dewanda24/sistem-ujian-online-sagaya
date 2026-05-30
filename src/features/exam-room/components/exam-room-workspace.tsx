@@ -46,6 +46,8 @@ type ExamRoomWorkspaceProps = {
     id: string;
     status: string;
     started_at: string;
+    locked_at?: string | null;
+    lock_reason?: string | null;
     exam_schedules?: {
       title?: string | null;
       end_at?: string | null;
@@ -67,6 +69,8 @@ type AnswerState = {
   selected_option_id?: string | null;
   essay_answer?: string | null;
 };
+
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 const seriousEventTypes: ExamEventType[] = [
   "tab_blur",
@@ -95,9 +99,13 @@ export function ExamRoomWorkspace({
     ),
   );
   const [saveStatus, setSaveStatus] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
+    Record<string, SaveState>
   >({});
   const [saveMessage, setSaveMessage] = useState("");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const [submitLocked, setSubmitLocked] = useState(false);
   const [warning, setWarning] = useState<{
     count: number;
@@ -109,12 +117,16 @@ export function ExamRoomWorkspace({
     getRemainingSeconds(attempt.exam_schedules?.end_at),
   );
   const debounceTimers = useRef<Record<string, number>>({});
+  const retryTimers = useRef<Record<string, number>>({});
+  const saveVersions = useRef<Record<string, number>>({});
   const submitFormRef = useRef<HTMLFormElement>(null);
   const examRoomRef = useRef<HTMLDivElement>(null);
   const autoSubmittingRef = useRef(false);
+  const timeExpiredSubmitRef = useRef(false);
   const violationCountRef = useRef(violationCount);
   const lastViolationAtRef = useRef(0);
-  const isReadOnly = attempt.status !== "in_progress";
+  const isLocked = Boolean(attempt.locked_at);
+  const isReadOnly = attempt.status !== "in_progress" || isLocked;
   const schedule = attempt.exam_schedules;
   const examPackage = schedule?.exam_packages;
   const currentItem = questions[activeIndex];
@@ -125,6 +137,11 @@ export function ExamRoomWorkspace({
         .length,
     [answers, questions],
   );
+  const saveStates = Object.values(saveStatus);
+  const pendingSaveCount = saveStates.filter((status) => status === "saving").length;
+  const failedSaveCount = saveStates.filter((status) => status === "error").length;
+  const canSubmitManually =
+    !isReadOnly && !submitLocked && pendingSaveCount === 0 && failedSaveCount === 0;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -138,6 +155,25 @@ export function ExamRoomWorkspace({
   }, [attempt.id]);
 
   useEffect(() => {
+    const onOnline = () => {
+      setIsOnline(true);
+      setSaveMessage("Koneksi kembali. Periksa jawaban yang belum tersimpan.");
+    };
+    const onOffline = () => {
+      setIsOnline(false);
+      setSaveMessage("Browser offline. Jawaban akan perlu disimpan ulang.");
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!schedule?.end_at) {
       return;
     }
@@ -148,6 +184,28 @@ export function ExamRoomWorkspace({
 
     return () => window.clearInterval(timer);
   }, [schedule?.end_at]);
+
+  useEffect(() => {
+    if (
+      isReadOnly ||
+      !schedule?.end_at ||
+      remainingSeconds > 0 ||
+      timeExpiredSubmitRef.current
+    ) {
+      return;
+    }
+
+    timeExpiredSubmitRef.current = true;
+    autoSubmittingRef.current = true;
+    setSubmitLocked(true);
+    setWarning({
+      count: violationCountRef.current,
+      title: "Waktu ujian habis",
+      message:
+        "Batas waktu ujian telah berakhir. Jawaban akan dikumpulkan otomatis.",
+    });
+    window.setTimeout(() => submitFormRef.current?.requestSubmit(), 800);
+  }, [isReadOnly, remainingSeconds, schedule?.end_at]);
 
   useEffect(() => {
     if (isReadOnly) {
@@ -336,17 +394,43 @@ export function ExamRoomWorkspace({
 
   useEffect(() => {
     const timers = debounceTimers.current;
+    const retries = retryTimers.current;
 
     return () => {
       Object.values(timers).forEach((timer) =>
         window.clearTimeout(timer),
       );
+      Object.values(retries).forEach((timer) =>
+        window.clearTimeout(timer),
+      );
     };
   }, []);
 
-  const saveAnswer = async (questionId: string, nextAnswer: AnswerState) => {
+  const saveAnswer = async (
+    questionId: string,
+    nextAnswer: AnswerState,
+    attemptNumber = 0,
+    version = (saveVersions.current[questionId] ?? 0) + 1,
+  ) => {
+    if (attemptNumber === 0) {
+      saveVersions.current[questionId] = version;
+    }
+
+    window.clearTimeout(retryTimers.current[questionId]);
+
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
+      setSaveMessage("Browser offline. Jawaban belum tersimpan.");
+      return;
+    }
+
     setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
-    setSaveMessage("Menyimpan jawaban...");
+    setSaveMessage(
+      attemptNumber > 0
+        ? `Mencoba simpan ulang jawaban (${attemptNumber + 1}/3)...`
+        : "Menyimpan jawaban...",
+    );
 
     const response = await fetch("/api/exam-answers", {
       method: "POST",
@@ -359,14 +443,28 @@ export function ExamRoomWorkspace({
       }),
     }).catch(() => null);
 
+    if (saveVersions.current[questionId] !== version) {
+      return;
+    }
+
     if (!response?.ok) {
       const body = response ? await response.json().catch(() => null) : null;
+
+      if (attemptNumber < 2 && navigator.onLine) {
+        setSaveMessage(body?.message ?? "Gagal menyimpan. Mencoba ulang...");
+        retryTimers.current[questionId] = window.setTimeout(() => {
+          void saveAnswer(questionId, nextAnswer, attemptNumber + 1, version);
+        }, 1200 * (attemptNumber + 1));
+        return;
+      }
+
       setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
       setSaveMessage(body?.message ?? "Jawaban gagal disimpan.");
       return;
     }
 
     setSaveStatus((current) => ({ ...current, [questionId]: "saved" }));
+    setLastSavedAt(new Date().toISOString());
     setSaveMessage("Jawaban tersimpan.");
   };
 
@@ -405,6 +503,17 @@ export function ExamRoomWorkspace({
 
   const requestFullscreen = () => {
     void (examRoomRef.current ?? document.documentElement).requestFullscreen?.();
+  };
+
+  const retryFailedAnswer = (questionId: string) => {
+    const answer = answers[questionId];
+
+    if (!answer) {
+      setSaveMessage("Belum ada jawaban untuk disimpan ulang.");
+      return;
+    }
+
+    void saveAnswer(questionId, answer);
   };
 
   const closeWarningAndRefocus = () => {
@@ -455,8 +564,49 @@ export function ExamRoomWorkspace({
           label="Soal Terjawab"
           value={`${answeredCount}/${questions.length}`}
         />
-        <InfoItem label="Pelanggaran" value={`${violationCount}/3`} />
+      <InfoItem label="Pelanggaran" value={`${violationCount}/3`} />
       </div>
+
+      <div
+        className={cn(
+          "grid gap-3 rounded-lg border p-3 text-sm md:grid-cols-4",
+          !isOnline || failedSaveCount > 0
+            ? "border-destructive/30 bg-destructive/10 text-destructive"
+            : pendingSaveCount > 0
+              ? "border-amber-200 bg-amber-50 text-amber-900"
+              : "bg-card text-muted-foreground",
+        )}
+      >
+        <InfoItem
+          label="Status Koneksi"
+          value={isOnline ? "Online" : "Offline"}
+        />
+        <InfoItem
+          label="Status Simpan"
+          value={
+            failedSaveCount > 0
+              ? `${failedSaveCount} gagal`
+              : pendingSaveCount > 0
+                ? `${pendingSaveCount} menyimpan`
+                : "Aman"
+          }
+        />
+        <InfoItem
+          label="Terakhir Tersimpan"
+          value={lastSavedAt ? formatDateTime(lastSavedAt) : "-"}
+        />
+        <InfoItem
+          label="Jawaban Lokal"
+          value={`${answeredCount}/${questions.length}`}
+        />
+      </div>
+
+      {isLocked ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          Attempt dikunci oleh pengawas.{" "}
+          {attempt.lock_reason ?? "Tunggu instruksi sebelum melanjutkan."}
+        </div>
+      ) : null}
 
       {!isReadOnly ? (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
@@ -510,6 +660,15 @@ export function ExamRoomWorkspace({
                         ? "Sudah dijawab"
                         : "Belum dijawab"}
               </span>
+              {saveStatus[currentQuestion.id] === "error" ? (
+                <button
+                  type="button"
+                  onClick={() => retryFailedAnswer(currentQuestion.id)}
+                  className="rounded-md border border-destructive/30 px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                >
+                  Retry simpan
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -571,6 +730,9 @@ export function ExamRoomWorkspace({
           <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="min-h-5 text-xs text-muted-foreground">
               {saveMessage}
+              {failedSaveCount > 0
+                ? " Jangan kumpulkan ujian sebelum jawaban gagal berhasil disimpan."
+                : ""}
             </p>
             <div className="flex gap-2">
               <button
@@ -644,6 +806,19 @@ export function ExamRoomWorkspace({
 
               if (
                 !autoSubmittingRef.current &&
+                (pendingSaveCount > 0 || failedSaveCount > 0)
+              ) {
+                event.preventDefault();
+                setSaveMessage(
+                  pendingSaveCount > 0
+                    ? "Tunggu proses simpan selesai sebelum submit."
+                    : "Ada jawaban gagal tersimpan. Retry dulu sebelum submit.",
+                );
+                return;
+              }
+
+              if (
+                !autoSubmittingRef.current &&
                 !window.confirm("Kumpulkan ujian sekarang? Jawaban akan dikunci.")
               ) {
                 event.preventDefault();
@@ -656,10 +831,16 @@ export function ExamRoomWorkspace({
             <input type="hidden" name="attempt_id" value={attempt.id} />
             <button
               type="submit"
-              disabled={isReadOnly || submitLocked}
+              disabled={!canSubmitManually}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitLocked ? "Mengumpulkan..." : "Kumpulkan Ujian"}
+              {submitLocked
+                ? "Mengumpulkan..."
+                : pendingSaveCount > 0
+                  ? "Menunggu simpan..."
+                  : failedSaveCount > 0
+                    ? "Retry jawaban dulu"
+                    : "Kumpulkan Ujian"}
             </button>
           </form>
         </aside>

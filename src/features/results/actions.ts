@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { firstRelation } from "@/features/results/queries";
+import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 import { createClient } from "@/lib/supabase/server";
 import {
   finalizeAttemptSchema,
@@ -67,7 +69,18 @@ export async function gradeEssayAnswerAction(formData: FormData) {
     redirectToResult(parsed.data.attempt_id, false, error.message);
   }
 
-  await recalculateAttemptScore(parsed.data.attempt_id, false);
+  await calculateAndPersistAttemptScore(parsed.data.attempt_id);
+  await logAuditEvent({
+    userId: user.id,
+    action: "exam_answers.grade_essay",
+    entityType: "exam_answers",
+    entityId: parsed.data.answer_id,
+    payload: {
+      attempt_id: parsed.data.attempt_id,
+      awarded_score: parsed.data.awarded_score,
+      max_score: parsed.data.max_score,
+    },
+  });
   revalidatePath(`/dashboard/exam-results/${parsed.data.attempt_id}`);
   revalidatePath("/dashboard/teacher/grading");
   redirectToResult(parsed.data.attempt_id, true, "Skor essay tersimpan.");
@@ -93,7 +106,9 @@ export async function finalizeAttemptAction(formData: FormData) {
     redirectToResult(parsed.data.attempt_id, false, "Akses finalize ditolak.");
   }
 
-  const result = await recalculateAttemptScore(parsed.data.attempt_id, true);
+  const result = await calculateAndPersistAttemptScore(parsed.data.attempt_id, {
+    finalize: true,
+  });
 
   if (!result.ok) {
     redirectToResult(parsed.data.attempt_id, false, result.message);
@@ -102,6 +117,17 @@ export async function finalizeAttemptAction(formData: FormData) {
   revalidatePath(`/dashboard/exam-results/${parsed.data.attempt_id}`);
   revalidatePath("/dashboard/teacher/grading");
   revalidatePath("/dashboard/student/history");
+  await logAuditEvent({
+    userId: user.id,
+    action: "exam_results.finalize",
+    entityType: "exam_attempts",
+    entityId: parsed.data.attempt_id,
+    payload: {
+      score: result.autoScore + result.essayScore,
+      max_score: result.maxScore,
+      grading_status: result.gradingStatus,
+    },
+  });
   redirectToResult(parsed.data.attempt_id, true, "Nilai ujian difinalisasi.");
 }
 
@@ -143,62 +169,4 @@ async function canManageAttempt(
     .maybeSingle();
 
   return Boolean(assignment?.id);
-}
-
-async function recalculateAttemptScore(attemptId: string, finalize: boolean) {
-  const supabase = await createClient();
-  const { data: answers, error } = await supabase
-    .from("exam_answers")
-    .select("awarded_score, max_score, needs_manual_grading, questions(type)")
-    .eq("exam_attempt_id", attemptId);
-
-  if (error || !answers) {
-    return {
-      ok: false,
-      message: error?.message ?? "Jawaban attempt tidak ditemukan.",
-    };
-  }
-
-  const pendingEssay = answers.some((answer) => answer.needs_manual_grading);
-
-  if (finalize && pendingEssay) {
-    return {
-      ok: false,
-      message: "Masih ada jawaban essay yang belum dikoreksi.",
-    };
-  }
-
-  const score = answers.reduce(
-    (total, answer) => total + Number(answer.awarded_score ?? 0),
-    0,
-  );
-  const maxScore = answers.reduce(
-    (total, answer) => total + Number(answer.max_score ?? 0),
-    0,
-  );
-  const essayScore = answers
-    .filter((answer) => firstRelation(answer.questions)?.type === "essay")
-    .reduce((total, answer) => total + Number(answer.awarded_score ?? 0), 0);
-  const autoScore = score - essayScore;
-  const gradingStatus = finalize
-    ? "finalized"
-    : pendingEssay
-      ? "needs_manual_grading"
-      : "auto_scored";
-
-  const { error: updateError } = await supabase
-    .from("exam_attempts")
-    .update({
-      score,
-      auto_score: autoScore,
-      essay_score: essayScore,
-      max_score: maxScore,
-      grading_status: gradingStatus,
-    })
-    .eq("id", attemptId);
-
-  return {
-    ok: !updateError,
-    message: updateError?.message ?? "Nilai attempt diperbarui.",
-  };
 }

@@ -47,6 +47,9 @@ export default async function ExamHistoryPage({ searchParams }: PageProps) {
           const schedule = firstRelation(attempt.exam_schedules);
           const examPackage = firstRelation(schedule?.exam_packages);
           const subject = firstRelation(examPackage?.subjects);
+          const canShowScore =
+            Boolean(examPackage?.show_result) &&
+            attempt.grading_status !== "needs_manual_grading";
 
           return (
             <tr key={attempt.id}>
@@ -68,7 +71,9 @@ export default async function ExamHistoryPage({ searchParams }: PageProps) {
                   : "-"}
               </td>
               <td className="px-4 py-3">
-                {scoreText(attempt.score, attempt.max_score)}
+                {canShowScore
+                  ? scoreText(attempt.score, attempt.max_score)
+                  : "Menunggu hasil"}
               </td>
               <td className="px-4 py-3">{attempt.grading_status}</td>
               <td className="px-4 py-3">

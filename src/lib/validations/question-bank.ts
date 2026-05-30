@@ -31,6 +31,7 @@ export const questionSchema = z
     school_id: uuidField,
     subject_id: uuidField,
     category_id: optionalUuidField,
+    stimulus_id: optionalUuidField,
     type: z.enum(["multiple_choice", "essay"]),
     difficulty: z.enum(["easy", "medium", "hard"]),
     content: z.string().min(3, "Konten soal wajib diisi"),
@@ -76,6 +77,28 @@ export const questionStatusSchema = z.object({
 export const questionActiveSchema = z.object({
   id: uuidField,
   is_active: z.boolean(),
+});
+
+export const questionStimulusSchema = z.object({
+  id: optionalUuidField,
+  school_id: uuidField,
+  subject_id: optionalUuidField,
+  title: z.string().min(2, "Judul stimulus wajib diisi"),
+  content: z.string().optional().default(""),
+  media_url: z.string().url("URL media stimulus tidak valid").or(z.literal("")).optional(),
+  media_type: z
+    .enum(["image", "audio", "video", "file", "link"])
+    .or(z.literal(""))
+    .optional(),
+  is_active: z.boolean().default(true),
+});
+
+export const questionAttachmentSchema = z.object({
+  media_type: z.enum(["image", "audio", "video", "file", "link"]),
+  url: z.string().url("URL media soal tidak valid"),
+  file_name: z.string().optional().default(""),
+  caption: z.string().optional().default(""),
+  order_number: z.coerce.number().int().min(1).default(1),
 });
 
 export type QuestionCategoryInput = z.infer<typeof questionCategorySchema>;

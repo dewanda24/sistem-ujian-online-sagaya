@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -8,6 +9,7 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  importStudentClassAssignmentsCsvAction,
   importStudentsCsvAction,
   saveClassMemberAction,
   saveStudentAction,
@@ -16,6 +18,7 @@ import {
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   getClassOptions,
+  getStudentActiveClassCounts,
   getStudentClassHistory,
   getUsersByRole,
 } from "@/lib/master-data/queries";
@@ -56,9 +59,23 @@ export default async function StudentsPage({ searchParams }: PageProps) {
     getUsersByRole("student", params.q),
     getClassOptions(),
   ]);
+  const activeClassCounts = await getStudentActiveClassCounts(
+    students.map((student) => student.id),
+  );
   const editable = students.find((student) => student.id === params.edit);
   const editableProfile = editable ? getProfile(editable) : null;
   const classHistory = editable ? await getStudentClassHistory(editable.id) : [];
+  const activeStudents = students.filter(
+    (student) => student.status === "active",
+  ).length;
+  const withoutActiveClass = students.filter(
+    (student) =>
+      student.status === "active" &&
+      (activeClassCounts.get(student.id) ?? 0) === 0,
+  ).length;
+  const multipleActiveClass = students.filter(
+    (student) => (activeClassCounts.get(student.id) ?? 0) > 1,
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -67,6 +84,29 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         title="Siswa"
         description="Kelola akun siswa dan riwayat kelas melalui class_members. Assignment kelas baru tidak menghapus riwayat lama."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Siswa"
+          value={String(students.length)}
+          description="Siswa sesuai filter saat ini."
+        />
+        <DashboardCard
+          title="Siswa Aktif"
+          value={String(activeStudents)}
+          description="Akun siswa dengan status active."
+        />
+        <DashboardCard
+          title="Tanpa Kelas Aktif"
+          value={String(withoutActiveClass)}
+          description="Siswa aktif belum punya class_members aktif."
+        />
+        <DashboardCard
+          title="Kelas Aktif Ganda"
+          value={String(multipleActiveClass)}
+          description="Siswa dengan lebih dari satu kelas aktif."
+        />
+      </section>
 
       <FormSection
         title="Import Siswa CSV"
@@ -88,6 +128,33 @@ export default async function StudentsPage({ searchParams }: PageProps) {
           </Link>
           <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Import Siswa
+          </button>
+        </form>
+      </FormSection>
+
+      <FormSection
+        title="Import Assignment Siswa-Kelas CSV"
+        description="Gunakan student_email, class_name, academic_year, dan joined_at. Riwayat kelas lama akan ditutup jika siswa pindah kelas."
+      >
+        <form
+          action={importStudentClassAssignmentsCsvAction}
+          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+        >
+          <input
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+            className="rounded-md border px-3 py-2 text-sm"
+          />
+          <Link
+            href="/api/templates/student-class-assignments"
+            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Download Template
+          </Link>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Import Assignment
           </button>
         </form>
       </FormSection>
@@ -236,7 +303,7 @@ export default async function StudentsPage({ searchParams }: PageProps) {
       </div>
 
       <DataTable
-        columns={["Nama", "NIS", "NISN", "Email", "Status", "Aksi"]}
+        columns={["Nama", "NIS", "NISN", "Email", "Kelas Aktif", "Status", "Aksi"]}
         isEmpty={students.length === 0}
         empty={
           <EmptyState
@@ -247,17 +314,37 @@ export default async function StudentsPage({ searchParams }: PageProps) {
       >
         {students.map((student) => {
           const profile = getProfile(student);
+          const activeClassCount = activeClassCounts.get(student.id) ?? 0;
+          const needsClass =
+            student.status === "active" && activeClassCount === 0;
+          const duplicatedClass = activeClassCount > 1;
 
           return (
             <tr key={student.id}>
-              <td className="px-4 py-3 font-medium">
-                {profile?.full_name ?? student.username}
+              <td className="px-4 py-3">
+                <div className="font-medium">
+                  {profile?.full_name ?? student.username}
+                </div>
+                {needsClass ? (
+                  <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                    Belum ada kelas aktif
+                  </span>
+                ) : duplicatedClass ? (
+                  <span className="mt-2 inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                    Kelas aktif ganda
+                  </span>
+                ) : (
+                  <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                    Ready
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3">{profile?.nis ?? "-"}</td>
               <td className="px-4 py-3">{profile?.nisn ?? "-"}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {student.email}
               </td>
+              <td className="px-4 py-3">{activeClassCount}</td>
               <td className="px-4 py-3">
                 <StatusBadge active={student.status === "active"} />
               </td>

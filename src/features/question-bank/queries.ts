@@ -140,6 +140,39 @@ export async function getQuestionCategoryOptions(subjectId?: string) {
     }));
 }
 
+export async function getQuestionStimulusOptions(subjectId?: string) {
+  const supabase = await createClient();
+  const subjectIds = await getScopedSubjectIds();
+
+  if (subjectIds.length === 0) {
+    return [];
+  }
+
+  let query = supabase
+    .from("question_stimuli")
+    .select("id, title, subject_id")
+    .is("deleted_at", null)
+    .eq("is_active", true)
+    .in("subject_id", subjectIds)
+    .order("title");
+
+  if (subjectId) {
+    query = query.eq("subject_id", subjectId);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((stimulus) => ({
+    value: stimulus.id,
+    label: stimulus.title,
+    subject_id: stimulus.subject_id,
+  }));
+}
+
 export async function getQuestions(filters: QuestionFilters) {
   const supabase = await createClient();
   const subjectIds = await getScopedSubjectIds();
@@ -151,7 +184,7 @@ export async function getQuestions(filters: QuestionFilters) {
   let query = supabase
     .from("questions")
     .select(
-      "*, subjects(id, code, name), question_categories(id, name), users(username), question_options(id, option_label, option_text, is_correct, order_number)",
+      "*, subjects(id, code, name), question_categories(id, name), question_stimuli(id, title, content, media_url, media_type), users(username), question_options(id, option_label, option_text, is_correct, order_number), question_attachments(id, media_type, url, file_name, caption, order_number)",
     )
     .is("deleted_at", null)
     .in("subject_id", subjectIds)

@@ -4,6 +4,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { DataTable } from "@/components/master-data/data-table";
 import {
   firstRelation,
+  getTeacherGradingFilters,
   getTeacherResultRecap,
 } from "@/features/results/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
@@ -12,15 +13,23 @@ type PageProps = {
   searchParams: Promise<{
     q?: string;
     grading_status?: string;
+    schedule_id?: string;
+    subject_id?: string;
   }>;
 };
 
 export default async function GradingPage({ searchParams }: PageProps) {
   await requirePermission("grading.view");
   const params = await searchParams;
-  const attempts = (await getTeacherResultRecap({
-    grading_status: params.grading_status,
-  })).filter((attempt) => {
+  const [rawAttempts, filters] = await Promise.all([
+    getTeacherResultRecap({
+      grading_status: params.grading_status,
+      schedule_id: params.schedule_id,
+      subject_id: params.subject_id,
+    }),
+    getTeacherGradingFilters(),
+  ]);
+  const attempts = rawAttempts.filter((attempt) => {
     const keyword = params.q?.toLowerCase().trim();
 
     if (!keyword) {
@@ -52,7 +61,7 @@ export default async function GradingPage({ searchParams }: PageProps) {
         title="Grading"
         description="Rekap hasil ujian yang sudah dikumpulkan. Essay ditandai perlu koreksi manual."
       />
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_220px_auto]">
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_220px_220px_220px_auto]">
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -68,6 +77,30 @@ export default async function GradingPage({ searchParams }: PageProps) {
           <option value="needs_manual_grading">Perlu koreksi essay</option>
           <option value="auto_scored">Auto scored</option>
           <option value="finalized">Finalized</option>
+        </select>
+        <select
+          name="subject_id"
+          defaultValue={params.subject_id ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+        >
+          <option value="">Semua mapel</option>
+          {filters.subjects.map((subject) => (
+            <option key={subject.value} value={subject.value}>
+              {subject.label}
+            </option>
+          ))}
+        </select>
+        <select
+          name="schedule_id"
+          defaultValue={params.schedule_id ?? ""}
+          className="rounded-md border px-3 py-2 text-sm"
+        >
+          <option value="">Semua ujian</option>
+          {filters.schedules.map((schedule) => (
+            <option key={schedule.value} value={schedule.value}>
+              {schedule.label}
+            </option>
+          ))}
         </select>
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
           Filter

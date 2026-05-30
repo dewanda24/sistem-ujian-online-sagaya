@@ -3,20 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 import {
   questionActiveSchema,
+  questionAttachmentSchema,
   questionCategorySchema,
   questionSchema,
+  questionStimulusSchema,
   questionStatusSchema,
 } from "@/lib/validations/question-bank";
+import type { CurrentUser } from "@/types/auth";
 
 type ActionResult = {
   ok: boolean;
   message: string;
 };
+
+const CATEGORY_PATH = "/dashboard/question-bank/categories";
+const QUESTION_PATH = "/dashboard/question-bank/questions";
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -26,6 +33,62 @@ function formBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+
+  return values;
+}
+
+function parseCsv(text: string) {
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+
+    return headers.reduce<Record<string, string>>((row, header, index) => {
+      row[header] = values[index] ?? "";
+      return row;
+    }, {});
+  });
+}
+
 function redirectTo(path: string, result: ActionResult): never {
   const params = new URLSearchParams({
     notice: result.ok ? "success" : "error",
@@ -33,6 +96,370 @@ function redirectTo(path: string, result: ActionResult): never {
   });
 
   redirect(`${path}?${params.toString()}`);
+}
+
+function bypassesSubjectScope(user: CurrentUser) {
+  return user.roles?.name !== "teacher";
+}
+
+async function getTeacherSubjectIds(userId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("teacher_subjects")
+    .select("subject_id")
+    .eq("teacher_id", userId);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data
+    .map((item) => item.subject_id as string | null)
+    .filter((subjectId): subjectId is string => Boolean(subjectId));
+}
+
+async function assertSubjectInScope(
+  user: CurrentUser,
+  subjectId: string,
+  redirectPath: string,
+) {
+  if (bypassesSubjectScope(user)) {
+    return;
+  }
+
+  const subjectIds = await getTeacherSubjectIds(user.id);
+
+  if (!subjectIds.includes(subjectId)) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Akses mapel ditolak. Guru hanya boleh mengelola mapel yang ditugaskan.",
+    });
+  }
+}
+
+async function getQuestionSubjectId(questionId: string, redirectPath: string) {
+  const supabase = await createClient();
+  const { data: question, error } = await supabase
+    .from("questions")
+    .select("id, subject_id")
+    .eq("id", questionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !question?.subject_id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Soal tidak ditemukan atau sudah diarsipkan.",
+    });
+  }
+
+  return question.subject_id as string;
+}
+
+async function assertQuestionInScope(
+  user: CurrentUser,
+  questionId: string,
+  redirectPath = QUESTION_PATH,
+) {
+  const subjectId = await getQuestionSubjectId(questionId, redirectPath);
+
+  await assertSubjectInScope(user, subjectId, redirectPath);
+}
+
+async function getCategorySubjectId(categoryId: string, redirectPath: string) {
+  const supabase = await createClient();
+  const { data: category, error } = await supabase
+    .from("question_categories")
+    .select("id, subject_id")
+    .eq("id", categoryId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !category?.subject_id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Kategori soal tidak ditemukan atau sudah diarsipkan.",
+    });
+  }
+
+  return category.subject_id as string;
+}
+
+async function assertCategoryInScope(
+  user: CurrentUser,
+  categoryId: string,
+  redirectPath = CATEGORY_PATH,
+) {
+  const subjectId = await getCategorySubjectId(categoryId, redirectPath);
+
+  await assertSubjectInScope(user, subjectId, redirectPath);
+
+  return subjectId;
+}
+
+async function assertCategoryMatchesSubject(
+  user: CurrentUser,
+  categoryId: string | null | undefined,
+  subjectId: string,
+  redirectPath: string,
+) {
+  if (!categoryId) {
+    return;
+  }
+
+  const categorySubjectId = await assertCategoryInScope(user, categoryId, redirectPath);
+
+  if (categorySubjectId !== subjectId) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Kategori soal harus berasal dari mapel yang sama dengan soal.",
+    });
+  }
+}
+
+async function assertQuestionPublishable(
+  user: CurrentUser,
+  questionId: string,
+) {
+  const supabase = await createClient();
+  const { data: question, error } = await supabase
+    .from("questions")
+    .select(
+      "id, school_id, subject_id, category_id, stimulus_id, type, difficulty, content, explanation, point, is_active, question_options(id, option_label, option_text, is_correct, order_number)",
+    )
+    .eq("id", questionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !question) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: "Soal tidak ditemukan atau sudah diarsipkan.",
+    });
+  }
+
+  await assertSubjectInScope(user, question.subject_id as string, QUESTION_PATH);
+  await assertCategoryMatchesSubject(
+    user,
+    question.category_id as string | null,
+    question.subject_id as string,
+    QUESTION_PATH,
+  );
+
+  if (!question.is_active) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: "Soal nonaktif tidak bisa dipublish.",
+    });
+  }
+
+  const parsed = questionSchema.safeParse({
+    id: question.id,
+    school_id: question.school_id,
+    subject_id: question.subject_id,
+    category_id: question.category_id ?? "",
+    stimulus_id: question.stimulus_id ?? "",
+    type: question.type,
+    difficulty: question.difficulty,
+    content: question.content,
+    explanation: question.explanation ?? "",
+    point: question.point,
+    status: "published",
+    is_active: Boolean(question.is_active),
+    options:
+      question.type === "multiple_choice"
+        ? (question.question_options ?? []).map((option) => ({
+            id: option.id,
+            option_label: option.option_label,
+            option_text: option.option_text,
+            is_correct: option.is_correct,
+            order_number: option.order_number,
+          }))
+        : [],
+  });
+
+  if (!parsed.success) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message:
+        parsed.error.issues[0]?.message ??
+        "Soal belum memenuhi syarat untuk dipublish.",
+    });
+  }
+}
+
+async function assertStimulusInScope(
+  user: CurrentUser,
+  stimulusId: string | null | undefined,
+  subjectId: string,
+  redirectPath: string,
+) {
+  if (!stimulusId) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const { data: stimulus, error } = await supabase
+    .from("question_stimuli")
+    .select("id, subject_id")
+    .eq("id", stimulusId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !stimulus) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Stimulus tidak ditemukan atau sudah diarsipkan.",
+    });
+  }
+
+  if (stimulus.subject_id && stimulus.subject_id !== subjectId) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Stimulus harus berasal dari mapel yang sama dengan soal.",
+    });
+  }
+
+  if (stimulus.subject_id) {
+    await assertSubjectInScope(user, stimulus.subject_id as string, redirectPath);
+  }
+}
+
+async function createInlineStimulus({
+  formData,
+  user,
+  schoolId,
+  subjectId,
+}: {
+  formData: FormData;
+  user: CurrentUser;
+  schoolId: string;
+  subjectId: string;
+}) {
+  const title = formString(formData, "new_stimulus_title").trim();
+  const content = formString(formData, "new_stimulus_content").trim();
+  const mediaUrl = formString(formData, "new_stimulus_media_url").trim();
+  const mediaType = formString(formData, "new_stimulus_media_type");
+
+  if (!title && !content && !mediaUrl) {
+    return null;
+  }
+
+  const parsed = questionStimulusSchema.safeParse({
+    school_id: schoolId,
+    subject_id: subjectId,
+    title: title || content.slice(0, 80) || "Stimulus soal",
+    content,
+    media_url: mediaUrl,
+    media_type: mediaType,
+    is_active: true,
+  });
+
+  if (!parsed.success) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Stimulus tidak valid.",
+    });
+  }
+
+  await assertSubjectInScope(user, subjectId, QUESTION_PATH);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("question_stimuli")
+    .insert({
+      school_id: parsed.data.school_id,
+      subject_id: parsed.data.subject_id,
+      title: parsed.data.title,
+      content: parsed.data.content || null,
+      media_url: parsed.data.media_url || null,
+      media_type: parsed.data.media_type || null,
+      is_active: parsed.data.is_active,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data?.id) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: error?.message ?? "Gagal membuat stimulus.",
+    });
+  }
+
+  return data.id as string;
+}
+
+async function snapshotQuestionVersion(questionId: string, userId: string) {
+  const supabase = await createClient();
+  const { data: question } = await supabase
+    .from("questions")
+    .select(
+      "*, question_options(id, option_label, option_text, is_correct, order_number), question_attachments(id, media_type, url, file_name, caption, order_number)",
+    )
+    .eq("id", questionId)
+    .maybeSingle();
+
+  if (!question) {
+    return 1;
+  }
+
+  await supabase.from("question_versions").insert({
+    question_id: questionId,
+    version_number: question.current_version ?? 1,
+    snapshot: question,
+    change_reason: "Snapshot before question update.",
+    created_by: userId,
+  });
+
+  return Number(question.current_version ?? 1);
+}
+
+async function replaceQuestionAttachment(
+  formData: FormData,
+  questionId: string,
+  userId: string,
+) {
+  const attachmentUrl = formString(formData, "attachment_url").trim();
+  const supabase = await createClient();
+
+  await supabase.from("question_attachments").delete().eq("question_id", questionId);
+
+  if (!attachmentUrl) {
+    return;
+  }
+
+  const parsed = questionAttachmentSchema.safeParse({
+    media_type: formString(formData, "attachment_media_type") || "image",
+    url: attachmentUrl,
+    file_name: formString(formData, "attachment_file_name"),
+    caption: formString(formData, "attachment_caption"),
+    order_number: 1,
+  });
+
+  if (!parsed.success) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Media soal tidak valid.",
+    });
+  }
+
+  const { error } = await supabase.from("question_attachments").insert({
+    question_id: questionId,
+    media_type: parsed.data.media_type,
+    url: parsed.data.url,
+    file_name: parsed.data.file_name || null,
+    caption: parsed.data.caption || null,
+    order_number: parsed.data.order_number,
+    created_by: userId,
+  });
+
+  if (error) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: error.message,
+    });
+  }
 }
 
 function getQuestionOptions(formData: FormData) {
@@ -45,6 +472,107 @@ function getQuestionOptions(formData: FormData) {
     is_correct: correctLabel === label,
     order_number: index + 1,
   }));
+}
+
+function getImportQuestionOptions(row: Record<string, string>) {
+  const labels = ["A", "B", "C", "D"];
+  const correctLabel = String(row.correct_option ?? "").trim().toUpperCase();
+
+  return labels.map((label, index) => ({
+    option_label: label,
+    option_text: row[`option_${label.toLowerCase()}`] ?? "",
+    is_correct: correctLabel === label,
+    order_number: index + 1,
+  }));
+}
+
+async function getImportSubjectMap(userId: string, roleName?: string) {
+  const supabase = await createClient();
+
+  if (roleName === "teacher") {
+    const { data } = await supabase
+      .from("teacher_subjects")
+      .select("subjects(id, code, name, school_id)")
+      .eq("teacher_id", userId);
+    const subjectMap = new Map<string, { id: string; school_id: string }>();
+
+    for (const assignment of data ?? []) {
+      const subject = Array.isArray(assignment.subjects)
+        ? assignment.subjects[0]
+        : assignment.subjects;
+
+      if (subject?.code && subject.id && subject.school_id) {
+        subjectMap.set(String(subject.code).toUpperCase(), {
+          id: subject.id as string,
+          school_id: subject.school_id as string,
+        });
+      }
+    }
+
+    return subjectMap;
+  }
+
+  const { data } = await supabase
+    .from("subjects")
+    .select("id, code, school_id")
+    .eq("is_active", true);
+  const subjectMap = new Map<string, { id: string; school_id: string }>();
+
+  for (const subject of data ?? []) {
+    if (subject.code && subject.id && subject.school_id) {
+      subjectMap.set(String(subject.code).toUpperCase(), {
+        id: subject.id as string,
+        school_id: subject.school_id as string,
+      });
+    }
+  }
+
+  return subjectMap;
+}
+
+async function getOrCreateImportCategory({
+  schoolId,
+  subjectId,
+  name,
+  userId,
+}: {
+  schoolId: string;
+  subjectId: string;
+  name: string;
+  userId: string;
+}) {
+  if (!name.trim()) {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("question_categories")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("subject_id", subjectId)
+    .ilike("name", name.trim())
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existing?.id) {
+    return existing.id as string;
+  }
+
+  const { data: category } = await supabase
+    .from("question_categories")
+    .insert({
+      school_id: schoolId,
+      subject_id: subjectId,
+      name: name.trim(),
+      description: "",
+      is_active: true,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  return category?.id ?? null;
 }
 
 export async function saveQuestionCategoryAction(formData: FormData) {
@@ -66,16 +594,42 @@ export async function saveQuestionCategoryAction(formData: FormData) {
     });
   }
 
+  if (parsed.data.id) {
+    await assertCategoryInScope(user, parsed.data.id);
+  }
+
+  await assertSubjectInScope(user, parsed.data.subject_id, CATEGORY_PATH);
+
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
-  const { error } = id
+  const { data: savedCategory, error } = id
     ? await supabase
         .from("question_categories")
         .update(payload)
         .eq("id", id)
+        .select("id")
+        .single()
     : await supabase
         .from("question_categories")
-        .insert({ ...payload, created_by: user.id });
+        .insert({ ...payload, created_by: user.id })
+        .select("id")
+        .single();
+
+  if (!error && savedCategory?.id) {
+    await logAuditEvent({
+      userId: user.id,
+      action: id
+        ? "question_categories.update"
+        : "question_categories.create",
+      entityType: "question_categories",
+      entityId: savedCategory.id,
+      payload: {
+        name: payload.name,
+        subject_id: payload.subject_id,
+        is_active: payload.is_active,
+      },
+    });
+  }
 
   revalidatePath("/dashboard/question-bank/categories");
   redirectTo("/dashboard/question-bank/categories", {
@@ -85,12 +639,27 @@ export async function saveQuestionCategoryAction(formData: FormData) {
 }
 
 export async function toggleQuestionCategoryAction(formData: FormData) {
-  await requirePermission("question_categories.manage");
+  const user = await requirePermission("question_categories.manage");
   const supabase = await createClient();
+  const id = formString(formData, "id");
+  const isActive = formBoolean(formData, "is_active");
+
+  await assertCategoryInScope(user, id);
+
   const { error } = await supabase
     .from("question_categories")
-    .update({ is_active: formBoolean(formData, "is_active") })
-    .eq("id", formString(formData, "id"));
+    .update({ is_active: isActive })
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "question_categories.active_update",
+      entityType: "question_categories",
+      entityId: id,
+      payload: { is_active: isActive },
+    });
+  }
 
   revalidatePath("/dashboard/question-bank/categories");
   redirectTo("/dashboard/question-bank/categories", {
@@ -100,15 +669,29 @@ export async function toggleQuestionCategoryAction(formData: FormData) {
 }
 
 export async function deleteQuestionCategoryAction(formData: FormData) {
-  await requirePermission("question_categories.manage");
+  const user = await requirePermission("question_categories.manage");
   const supabase = await createClient();
+  const id = formString(formData, "id");
+
+  await assertCategoryInScope(user, id);
+
   const { error } = await supabase
     .from("question_categories")
     .update({
       deleted_at: new Date().toISOString(),
       is_active: false,
     })
-    .eq("id", formString(formData, "id"));
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "question_categories.archive",
+      entityType: "question_categories",
+      entityId: id,
+      payload: { is_active: false },
+    });
+  }
 
   revalidatePath("/dashboard/question-bank/categories");
   redirectTo("/dashboard/question-bank/categories", {
@@ -118,14 +701,10 @@ export async function deleteQuestionCategoryAction(formData: FormData) {
 }
 
 export async function saveQuestionAction(formData: FormData) {
-  const currentUser = await requireAuth();
   const questionId = formString(formData, "id");
-
-  if (questionId) {
-    await requirePermission("questions.update");
-  } else {
-    await requirePermission("questions.create");
-  }
+  const currentUser = questionId
+    ? await requirePermission("questions.update")
+    : await requirePermission("questions.create");
 
   const type = formString(formData, "type");
   const parsed = questionSchema.safeParse({
@@ -133,6 +712,7 @@ export async function saveQuestionAction(formData: FormData) {
     school_id: formString(formData, "school_id"),
     subject_id: formString(formData, "subject_id"),
     category_id: formString(formData, "category_id"),
+    stimulus_id: formString(formData, "stimulus_id"),
     type,
     difficulty: formString(formData, "difficulty"),
     content: formString(formData, "content"),
@@ -153,11 +733,40 @@ export async function saveQuestionAction(formData: FormData) {
   const supabase = await createClient();
   const { id, options, ...payload } = parsed.data;
 
+  if (id) {
+    await assertQuestionInScope(currentUser, id);
+  }
+
+  await assertSubjectInScope(currentUser, payload.subject_id, QUESTION_PATH);
+  await assertCategoryMatchesSubject(
+    currentUser,
+    payload.category_id,
+    payload.subject_id,
+    QUESTION_PATH,
+  );
+  await assertStimulusInScope(
+    currentUser,
+    payload.stimulus_id,
+    payload.subject_id,
+    QUESTION_PATH,
+  );
+
+  const inlineStimulusId = await createInlineStimulus({
+    formData,
+    user: currentUser,
+    schoolId: payload.school_id,
+    subjectId: payload.subject_id,
+  });
+
+  const previousVersion = id
+    ? await snapshotQuestionVersion(id, currentUser.id)
+    : 0;
   const questionPayload = {
     ...payload,
     category_id: payload.category_id || null,
+    stimulus_id: inlineStimulusId ?? payload.stimulus_id ?? null,
     explanation: payload.explanation || null,
-    current_version: 1,
+    current_version: id ? previousVersion + 1 : 1,
   };
 
   const { data: savedQuestion, error: questionError } = id
@@ -208,6 +817,23 @@ export async function saveQuestionAction(formData: FormData) {
     }
   }
 
+  await replaceQuestionAttachment(formData, savedQuestion.id, currentUser.id);
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: id ? "questions.update" : "questions.create",
+    entityType: "questions",
+    entityId: savedQuestion.id,
+    payload: {
+      subject_id: payload.subject_id,
+      category_id: payload.category_id || null,
+      type: payload.type,
+      difficulty: payload.difficulty,
+      status: payload.status,
+      is_active: payload.is_active,
+    },
+  });
+
   revalidatePath("/dashboard/question-bank/questions");
   redirectTo("/dashboard/question-bank/questions", {
     ok: true,
@@ -217,13 +843,14 @@ export async function saveQuestionAction(formData: FormData) {
 
 export async function updateQuestionStatusAction(formData: FormData) {
   const status = formString(formData, "status");
+  let user: CurrentUser;
 
   if (status === "published") {
-    await requirePermission("questions.publish");
+    user = await requirePermission("questions.publish");
   } else if (status === "archived") {
-    await requirePermission("questions.archive");
+    user = await requirePermission("questions.archive");
   } else {
-    await requirePermission("questions.update");
+    user = await requirePermission("questions.update");
   }
 
   const parsed = questionStatusSchema.safeParse({
@@ -238,11 +865,27 @@ export async function updateQuestionStatusAction(formData: FormData) {
     });
   }
 
+  await assertQuestionInScope(user, parsed.data.id);
+
+  if (parsed.data.status === "published") {
+    await assertQuestionPublishable(user, parsed.data.id);
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("questions")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "questions.status_update",
+      entityType: "questions",
+      entityId: parsed.data.id,
+      payload: { status: parsed.data.status },
+    });
+  }
 
   revalidatePath("/dashboard/question-bank/questions");
   redirectTo("/dashboard/question-bank/questions", {
@@ -252,7 +895,7 @@ export async function updateQuestionStatusAction(formData: FormData) {
 }
 
 export async function toggleQuestionActiveAction(formData: FormData) {
-  await requirePermission("questions.update");
+  const user = await requirePermission("questions.update");
   const parsed = questionActiveSchema.safeParse({
     id: formString(formData, "id"),
     is_active: formBoolean(formData, "is_active"),
@@ -265,15 +908,169 @@ export async function toggleQuestionActiveAction(formData: FormData) {
     });
   }
 
+  await assertQuestionInScope(user, parsed.data.id);
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("questions")
     .update({ is_active: parsed.data.is_active })
     .eq("id", parsed.data.id);
 
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "questions.active_update",
+      entityType: "questions",
+      entityId: parsed.data.id,
+      payload: { is_active: parsed.data.is_active },
+    });
+  }
+
   revalidatePath("/dashboard/question-bank/questions");
   redirectTo("/dashboard/question-bank/questions", {
     ok: !error,
     message: error ? error.message : "Status aktif soal berhasil diperbarui.",
+  });
+}
+
+export async function importQuestionsCsvAction(formData: FormData) {
+  const user = await requireAuth();
+  await requirePermission("question_bank.manage");
+  await requirePermission("questions.create");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectTo("/dashboard/question-bank/questions", {
+      ok: false,
+      message: "File CSV bank soal wajib diunggah.",
+    });
+  }
+
+  const rows = parseCsv(await file.text());
+
+  if (rows.length === 0) {
+    redirectTo("/dashboard/question-bank/questions", {
+      ok: false,
+      message: "CSV kosong atau header tidak valid.",
+    });
+  }
+
+  const subjectMap = await getImportSubjectMap(user.id, user.roles?.name);
+
+  if (subjectMap.size === 0) {
+    redirectTo("/dashboard/question-bank/questions", {
+      ok: false,
+      message: "Tidak ada mapel yang dapat digunakan untuk import.",
+    });
+  }
+
+  const supabase = await createClient();
+  let success = 0;
+  const errors: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const subjectCode = String(row.subject_code ?? "").trim().toUpperCase();
+    const subject = subjectMap.get(subjectCode);
+
+    if (!subject) {
+      errors.push(`Baris ${rowNumber}: subject_code tidak ditemukan atau di luar scope`);
+      continue;
+    }
+
+    const type = row.type === "essay" ? "essay" : "multiple_choice";
+    const categoryId = await getOrCreateImportCategory({
+      schoolId: subject.school_id,
+      subjectId: subject.id,
+      name: row.category_name ?? "",
+      userId: user.id,
+    });
+    const parsed = questionSchema.safeParse({
+      school_id: subject.school_id,
+      subject_id: subject.id,
+      category_id: categoryId ?? "",
+      type,
+      difficulty: row.difficulty || "medium",
+      content: row.content ?? "",
+      explanation: row.explanation ?? "",
+      point: row.point || "1",
+      status: row.status === "published" ? "published" : "draft",
+      is_active: true,
+      options: type === "multiple_choice" ? getImportQuestionOptions(row) : [],
+    });
+
+    if (!parsed.success) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          parsed.error.issues[0]?.message ?? "data soal tidak valid"
+        }`,
+      );
+      continue;
+    }
+
+    const { options, ...payload } = parsed.data;
+    const { data: question, error: questionError } = await supabase
+      .from("questions")
+      .insert({
+        ...payload,
+        category_id: payload.category_id || null,
+        explanation: payload.explanation || null,
+        current_version: 1,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+
+    if (questionError || !question?.id) {
+      errors.push(
+        `Baris ${rowNumber}: ${questionError?.message ?? "gagal menyimpan soal"}`,
+      );
+      continue;
+    }
+
+    if (parsed.data.type === "multiple_choice") {
+      const filledOptions = options
+        .filter((option) => option.option_text.trim())
+        .map((option) => ({
+          question_id: question.id,
+          option_label: option.option_label,
+          option_text: option.option_text,
+          is_correct: option.is_correct,
+          order_number: option.order_number,
+        }));
+      const { error: optionError } = await supabase
+        .from("question_options")
+        .insert(filledOptions);
+
+      if (optionError) {
+        errors.push(`Baris ${rowNumber}: ${optionError.message}`);
+        continue;
+      }
+    }
+
+    success += 1;
+  }
+
+  await logAuditEvent({
+    userId: user.id,
+    action: "questions.import_csv",
+    entityType: "questions",
+    payload: {
+      total_rows: rows.length,
+      success_count: success,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
+  revalidatePath("/dashboard/question-bank/questions");
+  redirectTo("/dashboard/question-bank/questions", {
+    ok: errors.length === 0,
+    message:
+      errors.length > 0
+        ? `Import selesai: ${success} berhasil, ${errors.length} gagal. ${errors
+            .slice(0, 3)
+            .join("; ")}`
+        : `Import berhasil: ${success} soal ditambahkan.`,
   });
 }

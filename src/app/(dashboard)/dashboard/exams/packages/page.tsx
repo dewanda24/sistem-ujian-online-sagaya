@@ -1,3 +1,4 @@
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -40,6 +41,81 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
+type PackageQuestion = {
+  question_id?: string | null;
+  questions?: {
+    id?: string | null;
+    subject_id?: string | null;
+    type?: string | null;
+    difficulty?: string | null;
+    point?: number | string | null;
+    status?: string | null;
+    is_active?: boolean | null;
+    deleted_at?: string | null;
+  } | Array<{
+    id?: string | null;
+    subject_id?: string | null;
+    type?: string | null;
+    difficulty?: string | null;
+    point?: number | string | null;
+    status?: string | null;
+    is_active?: boolean | null;
+    deleted_at?: string | null;
+  }> | null;
+};
+
+type ExamPackageWithQuestions = {
+  subject_id?: string | null;
+  total_questions?: number | string | null;
+  total_points?: number | string | null;
+  exam_package_questions?: PackageQuestion[] | null;
+};
+
+function getPackageReadiness(examPackage: ExamPackageWithQuestions) {
+  const packageQuestions = examPackage.exam_package_questions ?? [];
+  const questions = packageQuestions
+    .map((item) => firstRelation(item.questions))
+    .filter(Boolean);
+  const multipleChoice = questions.filter(
+    (question) => question?.type === "multiple_choice",
+  ).length;
+  const essay = questions.filter((question) => question?.type === "essay").length;
+  const easy = questions.filter((question) => question?.difficulty === "easy").length;
+  const medium = questions.filter(
+    (question) => question?.difficulty === "medium",
+  ).length;
+  const hard = questions.filter((question) => question?.difficulty === "hard").length;
+  const invalidQuestions = questions.filter(
+    (question) =>
+      question?.status !== "published" ||
+      !question?.is_active ||
+      Boolean(question?.deleted_at) ||
+      question?.subject_id !== examPackage.subject_id ||
+      Number(question?.point ?? 0) <= 0,
+  ).length;
+  const missingRelations = packageQuestions.length - questions.length;
+  const totalQuestionMismatch =
+    Number(examPackage.total_questions ?? 0) !== packageQuestions.length;
+  const warnings = [
+    packageQuestions.length === 0 ? "Belum ada soal" : "",
+    missingRelations > 0 ? `${missingRelations} relasi soal invalid` : "",
+    invalidQuestions > 0 ? `${invalidQuestions} soal tidak siap` : "",
+    totalQuestionMismatch ? "Jumlah soal tidak sinkron" : "",
+    Number(examPackage.total_points ?? 0) <= 0 ? "Total poin belum valid" : "",
+  ].filter(Boolean);
+
+  return {
+    ready: warnings.length === 0,
+    warnings,
+    total: packageQuestions.length,
+    multipleChoice,
+    essay,
+    easy,
+    medium,
+    hard,
+  };
+}
+
 export default async function ExamPackagesPage({ searchParams }: PageProps) {
   await requirePermission("exam_packages.view");
   const params = await searchParams;
@@ -54,6 +130,17 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
     getExamPackages(filters),
   ]);
   const editable = packages.find((examPackage) => examPackage.id === params.edit);
+  const packageReadiness = packages.map((examPackage) =>
+    getPackageReadiness(examPackage),
+  );
+  const readyPackages = packageReadiness.filter((item) => item.ready).length;
+  const publishedPackages = packages.filter(
+    (examPackage) => examPackage.status === "published",
+  ).length;
+  const totalQuestionsInPackages = packageReadiness.reduce(
+    (total, item) => total + item.total,
+    0,
+  );
   const selectedSubjectId =
     editable?.subject_id ?? params.subject_id ?? subjects[0]?.value ?? "";
   const [questions, selectedQuestionIds] = await Promise.all([
@@ -69,6 +156,29 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
         title="Paket Ujian"
         description="Susun paket dari soal published. Guru hanya melihat mapel dan soal yang ditugaskan."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Paket"
+          value={String(packages.length)}
+          description="Paket sesuai filter saat ini."
+        />
+        <DashboardCard
+          title="Ready"
+          value={String(readyPackages)}
+          description="Paket yang lolos readiness dasar."
+        />
+        <DashboardCard
+          title="Published"
+          value={String(publishedPackages)}
+          description="Paket yang sudah bisa dipakai jadwal."
+        />
+        <DashboardCard
+          title="Total Soal"
+          value={String(totalQuestionsInPackages)}
+          description="Jumlah relasi soal dalam paket."
+        />
+      </section>
 
       <FormSection
         title={editable ? "Edit Paket Ujian" : "Tambah Paket Ujian"}
@@ -267,6 +377,30 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
               <div className="mt-1 text-xs text-muted-foreground">
                 {examPackage.description || "-"}
               </div>
+              {(() => {
+                const readiness = getPackageReadiness(examPackage);
+
+                return (
+                  <div className="mt-3 space-y-2">
+                    <span
+                      className={
+                        readiness.ready
+                          ? "rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700"
+                          : "rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700"
+                      }
+                    >
+                      {readiness.ready ? "Ready publish" : "Perlu dicek"}
+                    </span>
+                    {readiness.warnings.length > 0 ? (
+                      <ul className="space-y-1 text-xs text-amber-700">
+                        {readiness.warnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                );
+              })()}
             </td>
             <td className="px-4 py-3">
               {examPackage.subjects
@@ -276,7 +410,24 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
             <td className="px-4 py-3">
               {examPackage.duration_minutes} menit
             </td>
-            <td className="px-4 py-3">{examPackage.total_questions}</td>
+            <td className="px-4 py-3">
+              {(() => {
+                const readiness = getPackageReadiness(examPackage);
+
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-sm">{examPackage.total_questions}</div>
+                    <div className="text-muted-foreground">
+                      PG {readiness.multipleChoice} / Essay {readiness.essay}
+                    </div>
+                    <div className="text-muted-foreground">
+                      E {readiness.easy} / M {readiness.medium} / H{" "}
+                      {readiness.hard}
+                    </div>
+                  </div>
+                );
+              })()}
+            </td>
             <td className="px-4 py-3">{examPackage.total_points}</td>
             <td className="px-4 py-3">
               <StatusPill value={examPackage.status} />

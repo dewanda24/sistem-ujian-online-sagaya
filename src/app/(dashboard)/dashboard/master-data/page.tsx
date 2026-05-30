@@ -36,6 +36,16 @@ const modules = [
     description: "Data guru dan assignment mapel-kelas.",
   },
   {
+    title: "Admin Sekolah",
+    href: "/dashboard/master-data/admins",
+    description: "Akun admin operasional sekolah.",
+  },
+  {
+    title: "Proctor / Pengawas",
+    href: "/dashboard/master-data/proctors",
+    description: "Akun pengawas untuk monitoring pelaksanaan ujian.",
+  },
+  {
     title: "Siswa",
     href: "/dashboard/master-data/students",
     description: "Data siswa dan riwayat class_members.",

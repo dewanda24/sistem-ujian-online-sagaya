@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -6,6 +9,7 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  importClassesCsvAction,
   saveClassAction,
   toggleClassAction,
 } from "@/lib/actions/master-data-actions";
@@ -36,6 +40,31 @@ export default async function ClassesPage({ searchParams }: PageProps) {
     getTeacherOptions(),
   ]);
   const editable = classes.find((item) => item.id === params.edit);
+  const activeClasses = classes.filter((item) => item.is_active).length;
+  const withoutHomeroom = classes.filter(
+    (item) => item.is_active && !item.homeroom_teacher_id,
+  ).length;
+  const withoutActiveMembers = classes.filter((item) => {
+    const members = Array.isArray(item.class_members)
+      ? item.class_members
+      : [];
+
+    return (
+      item.is_active &&
+      !members.some((member: { left_at?: string | null }) => !member.left_at)
+    );
+  }).length;
+  const totalActiveMembers = classes.reduce((total, item) => {
+    const members = Array.isArray(item.class_members)
+      ? item.class_members
+      : [];
+
+    return (
+      total +
+      members.filter((member: { left_at?: string | null }) => !member.left_at)
+        .length
+    );
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -44,6 +73,56 @@ export default async function ClassesPage({ searchParams }: PageProps) {
         title="Kelas"
         description="Kelas terikat ke tahun ajaran. Riwayat siswa disimpan melalui class_members, bukan overwrite field kelas di user."
       />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Kelas"
+          value={String(classes.length)}
+          description="Kelas sesuai filter saat ini."
+        />
+        <DashboardCard
+          title="Kelas / Anggota Aktif"
+          value={`${activeClasses}/${totalActiveMembers}`}
+          description="Jumlah kelas aktif dan anggota aktif."
+        />
+        <DashboardCard
+          title="Tanpa Siswa"
+          value={String(withoutActiveMembers)}
+          description="Kelas aktif tanpa anggota aktif."
+        />
+        <DashboardCard
+          title="Tanpa Wali"
+          value={String(withoutHomeroom)}
+          description="Kelas aktif tanpa wali kelas."
+        />
+      </section>
+
+      <FormSection
+        title="Import Kelas CSV"
+        description="Gunakan academic_year sesuai nama tahun ajaran. Wali kelas dicari dari email user role teacher."
+      >
+        <form
+          action={importClassesCsvAction}
+          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+        >
+          <input
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            className="rounded-md border px-3 py-2 text-sm"
+            required
+          />
+          <Link
+            href="/api/templates/classes"
+            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
+          >
+            Download Template
+          </Link>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Import CSV
+          </button>
+        </form>
+      </FormSection>
 
       <FormSection
         title={editable ? "Edit Kelas" : "Tambah Kelas"}
@@ -148,10 +227,42 @@ export default async function ClassesPage({ searchParams }: PageProps) {
           const homeroomProfile = Array.isArray(classItem.users?.user_profiles)
             ? classItem.users?.user_profiles[0]
             : classItem.users?.user_profiles;
+          const members = Array.isArray(classItem.class_members)
+            ? classItem.class_members
+            : [];
+          const activeMembers = members.filter(
+            (member: { left_at?: string | null }) => !member.left_at,
+          );
+          const readinessWarnings = [
+            classItem.is_active && activeMembers.length === 0
+              ? "Belum ada siswa aktif"
+              : "",
+            classItem.is_active && !classItem.homeroom_teacher_id
+              ? "Wali kelas kosong"
+              : "",
+          ].filter(Boolean);
 
           return (
             <tr key={classItem.id}>
-              <td className="px-4 py-3 font-medium">{classItem.name}</td>
+              <td className="px-4 py-3">
+                <div className="font-medium">{classItem.name}</div>
+                {readinessWarnings.length > 0 ? (
+                  <div className="mt-2 space-y-1">
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                      Perlu dicek
+                    </span>
+                    <ul className="space-y-1 text-xs text-amber-700">
+                      {readinessWarnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                    Ready
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-3">{classItem.grade_level}</td>
               <td className="px-4 py-3">
                 {classItem.academic_years?.name ?? "-"}
@@ -160,9 +271,10 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                 {homeroomProfile?.full_name ?? classItem.users?.username ?? "-"}
               </td>
               <td className="px-4 py-3">
-                {Array.isArray(classItem.class_members)
-                  ? classItem.class_members.length
-                  : 0}
+                <div className="font-medium">{activeMembers.length} aktif</div>
+                <div className="text-xs text-muted-foreground">
+                  {members.length} total riwayat
+                </div>
               </td>
               <td className="px-4 py-3">
                 <StatusBadge active={Boolean(classItem.is_active)} />

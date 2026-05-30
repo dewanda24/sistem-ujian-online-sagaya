@@ -83,6 +83,13 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     permission: "audit_logs.view",
   },
   {
+    label: "Exam Monitoring",
+    href: "/dashboard/admin/monitoring",
+    icon: "list-checks",
+    roles: ["admin"],
+    permission: "exam_monitoring.view",
+  },
+  {
     label: "Master Data",
     href: "/dashboard/master-data",
     icon: "database",
@@ -132,6 +139,20 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
         permission: "teachers.view",
       },
       {
+        label: "Admin Sekolah",
+        href: "/dashboard/master-data/admins",
+        icon: "shield-check",
+        roles: ["super_admin", "admin"],
+        permission: "users.view",
+      },
+      {
+        label: "Proctor",
+        href: "/dashboard/master-data/proctors",
+        icon: "users",
+        roles: ["super_admin", "admin"],
+        permission: "users.view",
+      },
+      {
         label: "Siswa",
         href: "/dashboard/master-data/students",
         icon: "graduation-cap",
@@ -161,6 +182,18 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     roles: ["teacher"],
   },
   {
+    label: "Mapel & Kelas Saya",
+    href: "/dashboard/teacher/assignments",
+    icon: "book-open",
+    roles: ["teacher"],
+  },
+  {
+    label: "Kelas Binaan",
+    href: "/dashboard/teacher/homeroom",
+    icon: "graduation-cap",
+    roles: ["teacher"],
+  },
+  {
     label: "Reports",
     href: "/dashboard/reports",
     icon: "activity",
@@ -182,6 +215,13 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     permission: "exam_monitoring.view",
   },
   {
+    label: "Production Readiness",
+    href: "/dashboard/super-admin/readiness",
+    icon: "shield-check",
+    roles: ["super_admin"],
+    permission: "users.view",
+  },
+  {
     label: "Settings Sistem",
     href: "/dashboard/super-admin/settings",
     icon: "settings",
@@ -194,10 +234,32 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     roles: ["super_admin"],
   },
   {
+    label: "Jadwal Pengawasan",
+    href: "/dashboard/proctor/schedules",
+    icon: "calendar-days",
+    roles: ["proctor"],
+    permission: "exam_monitoring.view",
+  },
+  {
+    label: "Token Ujian",
+    href: "/dashboard/proctor/tokens",
+    icon: "lock-keyhole",
+    roles: ["proctor"],
+    permission: "exam_monitoring.view",
+  },
+  {
     label: "Exam Monitoring",
     href: "/dashboard/proctor/monitoring",
     icon: "list-checks",
     roles: ["proctor"],
+    permission: "exam_monitoring.view",
+  },
+  {
+    label: "Exam Monitoring",
+    href: "/dashboard/teacher/monitoring",
+    icon: "list-checks",
+    roles: ["teacher"],
+    permission: "exam_monitoring.view",
   },
   {
     label: "Active Exams",
