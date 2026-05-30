@@ -24,6 +24,7 @@ type ActionResult = {
 
 const CATEGORY_PATH = "/dashboard/question-bank/categories";
 const QUESTION_PATH = "/dashboard/question-bank/questions";
+const STIMULUS_PATH = "/dashboard/question-bank/stimuli";
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -325,6 +326,37 @@ async function assertStimulusInScope(
   }
 }
 
+async function getStimulusSubjectId(stimulusId: string, redirectPath: string) {
+  const supabase = await createClient();
+  const { data: stimulus, error } = await supabase
+    .from("question_stimuli")
+    .select("id, subject_id")
+    .eq("id", stimulusId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !stimulus?.subject_id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Stimulus tidak ditemukan atau sudah diarsipkan.",
+    });
+  }
+
+  return stimulus.subject_id as string;
+}
+
+async function assertStimulusRecordInScope(
+  user: CurrentUser,
+  stimulusId: string,
+  redirectPath = STIMULUS_PATH,
+) {
+  const subjectId = await getStimulusSubjectId(stimulusId, redirectPath);
+
+  await assertSubjectInScope(user, subjectId, redirectPath);
+
+  return subjectId;
+}
+
 async function createInlineStimulus({
   formData,
   user,
@@ -336,6 +368,12 @@ async function createInlineStimulus({
   schoolId: string;
   subjectId: string;
 }) {
+  const mode = formString(formData, "stimulus_mode");
+
+  if (mode && mode !== "new") {
+    return null;
+  }
+
   const title = formString(formData, "new_stimulus_title").trim();
   const content = formString(formData, "new_stimulus_content").trim();
   const mediaUrl = formString(formData, "new_stimulus_media_url").trim();
@@ -343,6 +381,14 @@ async function createInlineStimulus({
 
   if (!title && !content && !mediaUrl) {
     return null;
+  }
+
+  if (!title || (!content && !mediaUrl)) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message:
+        "Stimulus baru wajib memiliki judul dan isi bacaan atau URL media.",
+    });
   }
 
   const parsed = questionStimulusSchema.safeParse({
@@ -388,6 +434,164 @@ async function createInlineStimulus({
   }
 
   return data.id as string;
+}
+
+export async function saveQuestionStimulusAction(formData: FormData) {
+  const user = await requirePermission("question_bank.manage");
+  const content = formString(formData, "content").trim();
+  const mediaUrl = formString(formData, "media_url").trim();
+  const parsed = questionStimulusSchema.safeParse({
+    id: formString(formData, "id"),
+    school_id: formString(formData, "school_id"),
+    subject_id: formString(formData, "subject_id"),
+    title: formString(formData, "title"),
+    content,
+    media_url: mediaUrl,
+    media_type: formString(formData, "media_type"),
+    is_active: formBoolean(formData, "is_active"),
+  });
+
+  if (!parsed.success) {
+    redirectTo(STIMULUS_PATH, {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data stimulus tidak valid.",
+    });
+  }
+
+  if (!parsed.data.subject_id) {
+    redirectTo(STIMULUS_PATH, {
+      ok: false,
+      message: "Mapel stimulus wajib dipilih.",
+    });
+  }
+
+  if (!parsed.data.content.trim() && !parsed.data.media_url) {
+    redirectTo(STIMULUS_PATH, {
+      ok: false,
+      message: "Isi bacaan atau URL media stimulus wajib diisi.",
+    });
+  }
+
+  if (parsed.data.id) {
+    await assertStimulusRecordInScope(user, parsed.data.id);
+  }
+
+  await assertSubjectInScope(user, parsed.data.subject_id, STIMULUS_PATH);
+
+  const supabase = await createClient();
+  const { id, ...payload } = parsed.data;
+  const normalizedPayload = {
+    ...payload,
+    subject_id: payload.subject_id,
+    content: payload.content || null,
+    media_url: payload.media_url || null,
+    media_type: payload.media_type || null,
+  };
+  const { data: savedStimulus, error } = id
+    ? await supabase
+        .from("question_stimuli")
+        .update(normalizedPayload)
+        .eq("id", id)
+        .select("id")
+        .single()
+    : await supabase
+        .from("question_stimuli")
+        .insert({ ...normalizedPayload, created_by: user.id })
+        .select("id")
+        .single();
+
+  if (!error && savedStimulus?.id) {
+    await logAuditEvent({
+      userId: user.id,
+      action: id ? "question_stimuli.update" : "question_stimuli.create",
+      entityType: "question_stimuli",
+      entityId: savedStimulus.id,
+      payload: {
+        subject_id: payload.subject_id,
+        media_type: payload.media_type || null,
+        is_active: payload.is_active,
+      },
+    });
+  }
+
+  revalidatePath(STIMULUS_PATH);
+  revalidatePath(QUESTION_PATH);
+  redirectTo(STIMULUS_PATH, {
+    ok: !error,
+    message: error ? error.message : "Stimulus berhasil disimpan.",
+  });
+}
+
+export async function toggleQuestionStimulusAction(formData: FormData) {
+  const user = await requirePermission("question_bank.manage");
+  const parsed = questionActiveSchema.safeParse({
+    id: formString(formData, "id"),
+    is_active: formBoolean(formData, "is_active"),
+  });
+
+  if (!parsed.success) {
+    redirectTo(STIMULUS_PATH, {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Status stimulus tidak valid.",
+    });
+  }
+
+  await assertStimulusRecordInScope(user, parsed.data.id);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("question_stimuli")
+    .update({ is_active: parsed.data.is_active })
+    .eq("id", parsed.data.id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "question_stimuli.active_update",
+      entityType: "question_stimuli",
+      entityId: parsed.data.id,
+      payload: { is_active: parsed.data.is_active },
+    });
+  }
+
+  revalidatePath(STIMULUS_PATH);
+  redirectTo(STIMULUS_PATH, {
+    ok: !error,
+    message: error ? error.message : "Status stimulus berhasil diperbarui.",
+  });
+}
+
+export async function deleteQuestionStimulusAction(formData: FormData) {
+  const user = await requirePermission("question_bank.manage");
+  const id = formString(formData, "id");
+
+  await assertStimulusRecordInScope(user, id);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("question_stimuli")
+    .update({
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+    })
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "question_stimuli.archive",
+      entityType: "question_stimuli",
+      entityId: id,
+      payload: { is_active: false },
+    });
+  }
+
+  revalidatePath(STIMULUS_PATH);
+  revalidatePath(QUESTION_PATH);
+  redirectTo(STIMULUS_PATH, {
+    ok: !error,
+    message: error ? error.message : "Stimulus berhasil diarsipkan.",
+  });
 }
 
 async function snapshotQuestionVersion(questionId: string, userId: string) {
@@ -727,6 +931,13 @@ export async function saveQuestionAction(formData: FormData) {
     redirectTo("/dashboard/question-bank/questions", {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Data soal tidak valid.",
+    });
+  }
+
+  if (formString(formData, "stimulus_mode") === "existing" && !parsed.data.stimulus_id) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: "Pilih stimulus yang akan digunakan.",
     });
   }
 

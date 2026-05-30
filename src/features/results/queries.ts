@@ -53,7 +53,7 @@ export async function getResultDetail(attemptId: string) {
   const { data: answers } = await supabase
     .from("exam_answers")
     .select(
-      "*, questions(id, type, content, point), question_options(id, option_label, option_text)",
+      "*, questions(id, type, content, point, question_stimuli(id, title, content, media_url, media_type), question_attachments(id, media_type, url, file_name, caption, order_number)), question_options(id, option_label, option_text)",
     )
     .eq("exam_attempt_id", attemptId)
     .order("created_at");

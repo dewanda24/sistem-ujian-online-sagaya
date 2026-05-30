@@ -163,7 +163,7 @@ export async function getAttemptQuestions(attemptId: string) {
   const { data, error } = await supabase
     .from("exam_package_questions")
     .select(
-      "order_number, questions(id, type, content, point, explanation, question_options(id, option_label, option_text, order_number))",
+      "order_number, questions(id, type, content, point, explanation, question_stimuli(id, title, content, media_url, media_type), question_attachments(id, media_type, url, file_name, caption, order_number), question_options(id, option_label, option_text, order_number))",
     )
     .eq("exam_package_id", packageId)
     .order("order_number");

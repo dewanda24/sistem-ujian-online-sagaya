@@ -1,3 +1,6 @@
+import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
+import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
+
 type QuestionPreviewProps = {
   question: {
     content: string;
@@ -8,6 +11,7 @@ type QuestionPreviewProps = {
       media_url?: string | null;
       media_type?: string | null;
     } | null;
+    stimulus_question_count?: number | null;
     question_attachments?: Array<{
       id: string;
       media_type: string;
@@ -41,38 +45,34 @@ export function QuestionPreview({ question }: QuestionPreviewProps) {
         {question.question_stimuli ? (
           <div className="rounded-md border border-dashed p-3">
             <div className="font-medium">{question.question_stimuli.title}</div>
-            {question.question_stimuli.content ? (
-              <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
-                {question.question_stimuli.content}
+            <QuestionMathRenderer
+              content={question.question_stimuli.content}
+              className="mt-2 text-muted-foreground"
+            />
+            <QuestionMediaPreview
+              mediaType={question.question_stimuli.media_type}
+              url={question.question_stimuli.media_url}
+              title={question.question_stimuli.title}
+              className="mt-2"
+            />
+            {Number(question.stimulus_question_count ?? 0) > 1 ? (
+              <div className="mt-2 text-xs font-medium text-emerald-700">
+                Stimulus ini digunakan oleh beberapa soal.
               </div>
-            ) : null}
-            {question.question_stimuli.media_url ? (
-              <a
-                href={question.question_stimuli.media_url}
-                className="mt-2 inline-flex text-primary hover:underline"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Buka stimulus {question.question_stimuli.media_type ?? "media"}
-              </a>
             ) : null}
           </div>
         ) : null}
-        <div className="whitespace-pre-wrap leading-6">{question.content}</div>
+        <QuestionMathRenderer content={question.content} className="leading-6" />
         {attachments.length ? (
           <div className="grid gap-2">
             {attachments.map((attachment) => (
-              <a
+              <QuestionMediaPreview
                 key={attachment.id}
-                href={attachment.url}
-                className="rounded-md border px-3 py-2 text-primary hover:bg-muted"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {attachment.caption ||
-                  attachment.file_name ||
-                  `Buka ${attachment.media_type}`}
-              </a>
+                mediaType={attachment.media_type}
+                url={attachment.url}
+                title={attachment.file_name}
+                caption={attachment.caption}
+              />
             ))}
           </div>
         ) : null}
@@ -84,7 +84,9 @@ export function QuestionPreview({ question }: QuestionPreviewProps) {
                 className="flex gap-2 rounded-md border px-3 py-2"
               >
                 <span className="font-semibold">{option.option_label}.</span>
-                <span className="flex-1">{option.option_text}</span>
+                <span className="flex-1">
+                  <QuestionMathRenderer content={option.option_text} />
+                </span>
                 {option.is_correct ? (
                   <span className="text-xs font-medium text-emerald-700">
                     Benar
@@ -96,7 +98,7 @@ export function QuestionPreview({ question }: QuestionPreviewProps) {
         ) : null}
         {question.explanation ? (
           <div className="rounded-md bg-muted p-3 text-muted-foreground">
-            {question.explanation}
+            <QuestionMathRenderer content={question.explanation} />
           </div>
         ) : null}
       </div>

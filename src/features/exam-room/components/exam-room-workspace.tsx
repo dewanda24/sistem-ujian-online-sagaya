@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { submitAttemptAction } from "@/features/exam-room/actions";
+import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
+import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import { cn } from "@/lib/utils";
 
 type ExamEventType =
@@ -31,6 +33,30 @@ type ExamQuestion = {
     content: string;
     point?: number | null;
     explanation?: string | null;
+    question_stimuli?:
+      | {
+      id: string;
+      title?: string | null;
+      content?: string | null;
+      media_url?: string | null;
+      media_type?: string | null;
+        }
+      | Array<{
+          id: string;
+          title?: string | null;
+          content?: string | null;
+          media_url?: string | null;
+          media_type?: string | null;
+        }>
+      | null;
+    question_attachments?: Array<{
+      id: string;
+      media_type: string;
+      url: string;
+      file_name?: string | null;
+      caption?: string | null;
+      order_number: number;
+    }> | null;
     question_options?: QuestionOption[] | null;
   };
 };
@@ -672,7 +698,9 @@ export function ExamRoomWorkspace({
             </div>
           </div>
 
+          <QuestionStimulus stimulus={firstRelation(currentQuestion.question_stimuli)} />
           <QuestionContent content={currentQuestion.content} />
+          <QuestionAttachments attachments={currentQuestion.question_attachments} />
 
           <div className="mt-6 space-y-3">
             {currentQuestion.type === "multiple_choice" ? (
@@ -709,7 +737,9 @@ export function ExamRoomWorkspace({
                         <span className="font-semibold">
                           {option.option_label}
                         </span>
-                        <span className="leading-6">{option.option_text}</span>
+                        <span className="leading-6">
+                          <QuestionMathRenderer content={option.option_text} />
+                        </span>
                       </span>
                     </label>
                   );
@@ -886,6 +916,76 @@ function InfoItem({
   );
 }
 
+function QuestionStimulus({
+  stimulus,
+}: {
+  stimulus?: {
+    title?: string | null;
+    content?: string | null;
+    media_url?: string | null;
+    media_type?: string | null;
+  } | null;
+}) {
+  if (!stimulus) {
+    return null;
+  }
+
+  return (
+    <div className="mb-5 rounded-lg border border-dashed bg-background p-4">
+      <div className="text-sm font-semibold">{stimulus.title}</div>
+      <QuestionMathRenderer
+        content={stimulus.content}
+        className="mt-2 text-sm leading-7 text-muted-foreground"
+      />
+      <QuestionMediaPreview
+        mediaType={stimulus.media_type}
+        url={stimulus.media_url}
+        title={stimulus.title}
+        className="mt-3"
+      />
+    </div>
+  );
+}
+
+function QuestionAttachments({
+  attachments,
+}: {
+  attachments?: Array<{
+    id: string;
+    media_type: string;
+    url: string;
+    file_name?: string | null;
+    caption?: string | null;
+    order_number: number;
+  }> | null;
+}) {
+  const sortedAttachments = [...(attachments ?? [])].sort(
+    (a, b) => a.order_number - b.order_number,
+  );
+
+  if (sortedAttachments.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 grid gap-3">
+      {sortedAttachments.map((attachment) => (
+        <QuestionMediaPreview
+          key={attachment.id}
+          mediaType={attachment.media_type}
+          url={attachment.url}
+          title={attachment.file_name}
+          caption={attachment.caption}
+        />
+      ))}
+    </div>
+  );
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
 function QuestionContent({ content }: { content: string }) {
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
 
@@ -918,9 +1018,10 @@ function QuestionContent({ content }: { content: string }) {
         }
 
         return (
-          <p key={`${trimmed}-${index}`} className="whitespace-pre-wrap">
-            {line}
-          </p>
+          <QuestionMathRenderer
+            key={`${trimmed}-${index}`}
+            content={line}
+          />
         );
       })}
     </div>

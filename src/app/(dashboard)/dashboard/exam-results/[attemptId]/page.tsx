@@ -10,6 +10,8 @@ import {
   finalizeAttemptAction,
   gradeEssayAnswerAction,
 } from "@/features/results/actions";
+import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
+import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import {
   firstRelation,
   getResultDetail,
@@ -162,19 +164,68 @@ export default async function ExamResultDetailPage({
           return (
             <tr key={answer.id} className="align-top">
               <td className="max-w-md px-4 py-3">
-                <div className="line-clamp-3 whitespace-pre-wrap font-medium">
-                  {question?.content ?? "-"}
-                </div>
+                {question?.content ? (
+                  <div className="space-y-3">
+                    {question.question_stimuli ? (
+                      <div className="rounded-md border border-dashed p-3">
+                        <div className="text-sm font-medium">
+                          {question.question_stimuli.title}
+                        </div>
+                        <QuestionMathRenderer
+                          content={question.question_stimuli.content}
+                          className="mt-2 text-sm text-muted-foreground"
+                        />
+                        <QuestionMediaPreview
+                          mediaType={question.question_stimuli.media_type}
+                          url={question.question_stimuli.media_url}
+                          title={question.question_stimuli.title}
+                          className="mt-2"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="line-clamp-3 font-medium">
+                      <QuestionMathRenderer content={question.content} />
+                    </div>
+                    {question.question_attachments?.length ? (
+                      <div className="grid gap-2">
+                        {[...question.question_attachments]
+                          .sort((a, b) => a.order_number - b.order_number)
+                          .map((attachment) => (
+                            <QuestionMediaPreview
+                              key={attachment.id}
+                              mediaType={attachment.media_type}
+                              url={attachment.url}
+                              title={attachment.file_name}
+                              caption={attachment.caption}
+                            />
+                          ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  "-"
+                )}
                 <div className="mt-1 text-xs text-muted-foreground">
                   {question?.type ?? "-"}
                 </div>
               </td>
               <td className="px-4 py-3">
-                {question?.type === "essay"
-                  ? answer.essay_answer || "-"
-                  : selectedOption
-                    ? `${selectedOption.option_label}. ${selectedOption.option_text}`
-                    : "-"}
+                {question?.type === "essay" ? (
+                  answer.essay_answer ? (
+                    <QuestionMathRenderer content={answer.essay_answer} />
+                  ) : (
+                    "-"
+                  )
+                ) : selectedOption ? (
+                  <div className="flex gap-2">
+                    <span className="font-semibold">
+                      {selectedOption.option_label}.
+                    </span>
+                    <QuestionMathRenderer content={selectedOption.option_text} />
+                  </div>
+                ) : (
+                  "-"
+                )}
               </td>
               <td className="px-4 py-3">
                 {answer.awarded_score ?? "-"} / {answer.max_score ?? "-"}

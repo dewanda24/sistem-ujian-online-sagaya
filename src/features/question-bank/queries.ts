@@ -11,6 +11,11 @@ export type QuestionFilters = {
   status?: string;
 };
 
+export type StimulusFilters = {
+  q?: string;
+  subject_id?: string;
+};
+
 export async function getDefaultSchoolId() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -150,7 +155,7 @@ export async function getQuestionStimulusOptions(subjectId?: string) {
 
   let query = supabase
     .from("question_stimuli")
-    .select("id, title, subject_id")
+    .select("id, title, content, media_url, media_type, subject_id")
     .is("deleted_at", null)
     .eq("is_active", true)
     .in("subject_id", subjectIds)
@@ -169,7 +174,66 @@ export async function getQuestionStimulusOptions(subjectId?: string) {
   return data.map((stimulus) => ({
     value: stimulus.id,
     label: stimulus.title,
+    content: stimulus.content,
+    media_url: stimulus.media_url,
+    media_type: stimulus.media_type,
     subject_id: stimulus.subject_id,
+  }));
+}
+
+export async function getQuestionStimuli(filters: StimulusFilters) {
+  const supabase = await createClient();
+  const subjectIds = await getScopedSubjectIds();
+
+  if (subjectIds.length === 0) {
+    return [];
+  }
+
+  let query = supabase
+    .from("question_stimuli")
+    .select("*, subjects(id, code, name), schools(name), users(username)")
+    .is("deleted_at", null)
+    .in("subject_id", subjectIds)
+    .order("created_at", { ascending: false });
+
+  if (filters.subject_id) {
+    query = query.eq("subject_id", filters.subject_id);
+  }
+
+  if (filters.q) {
+    query = query.or(`title.ilike.%${filters.q}%,content.ilike.%${filters.q}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    return [];
+  }
+
+  const stimulusIds = data.map((stimulus) => stimulus.id as string);
+
+  if (stimulusIds.length === 0) {
+    return data.map((stimulus) => ({ ...stimulus, question_count: 0 }));
+  }
+
+  const { data: questionRows } = await supabase
+    .from("questions")
+    .select("stimulus_id")
+    .in("stimulus_id", stimulusIds)
+    .is("deleted_at", null);
+  const countMap = new Map<string, number>();
+
+  for (const row of questionRows ?? []) {
+    const stimulusId = row.stimulus_id as string | null;
+
+    if (stimulusId) {
+      countMap.set(stimulusId, (countMap.get(stimulusId) ?? 0) + 1);
+    }
+  }
+
+  return data.map((stimulus) => ({
+    ...stimulus,
+    question_count: countMap.get(stimulus.id as string) ?? 0,
   }));
 }
 
@@ -220,7 +284,40 @@ export async function getQuestions(filters: QuestionFilters) {
     return [];
   }
 
-  return data ?? [];
+  const questions = data ?? [];
+  const stimulusIds = [
+    ...new Set(
+      questions
+        .map((question) => question.stimulus_id as string | null)
+        .filter((stimulusId): stimulusId is string => Boolean(stimulusId)),
+    ),
+  ];
+
+  if (stimulusIds.length === 0) {
+    return questions;
+  }
+
+  const { data: questionRows } = await supabase
+    .from("questions")
+    .select("stimulus_id")
+    .in("stimulus_id", stimulusIds)
+    .is("deleted_at", null);
+  const countMap = new Map<string, number>();
+
+  for (const row of questionRows ?? []) {
+    const stimulusId = row.stimulus_id as string | null;
+
+    if (stimulusId) {
+      countMap.set(stimulusId, (countMap.get(stimulusId) ?? 0) + 1);
+    }
+  }
+
+  return questions.map((question) => ({
+    ...question,
+    stimulus_question_count: question.stimulus_id
+      ? (countMap.get(question.stimulus_id as string) ?? 0)
+      : 0,
+  }));
 }
 
 export async function getQuestionById(id: string) {

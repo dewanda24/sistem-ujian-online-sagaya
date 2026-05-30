@@ -17,6 +17,24 @@ const modules = [
     description:
       "Kelola kategori soal per mata pelajaran untuk membantu penyusunan paket ujian.",
   },
+  {
+    title: "Stimulus / Bacaan",
+    href: "/dashboard/question-bank/stimuli",
+    description:
+      "Kelola bacaan, gambar, audio, video, atau pengantar yang bisa dipakai oleh banyak soal.",
+  },
+  {
+    title: "Import Word",
+    href: "/dashboard/question-bank/import-word",
+    description:
+      "Import soal dari template Word resmi, preview hasil parsing, lalu simpan sebagai draft.",
+  },
+  {
+    title: "Import Excel/CSV",
+    href: "/dashboard/question-bank/import-excel",
+    description:
+      "Import soal dari Excel atau CSV dengan preview validasi per baris sebelum disimpan.",
+  },
 ];
 
 export default async function QuestionBankPage() {
@@ -28,7 +46,7 @@ export default async function QuestionBankPage() {
         title="Question Bank"
         description="Fondasi bank soal CBT untuk guru dan admin. Target kelas akan ditangani pada sprint paket ujian dan jadwal ujian."
       />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {modules.map((module) => (
           <Link key={module.href} href={module.href}>
             <DashboardCard
