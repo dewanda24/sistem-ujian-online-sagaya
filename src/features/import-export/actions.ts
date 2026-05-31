@@ -56,26 +56,14 @@ async function getAcademicYearIdByName(name: string, schoolId: string) {
 
 async function getStudentIdByEmail(email: string) {
   const supabase = await createClient();
-  // Try direct user query first (more efficient)
-  const { data: userData } = await supabase
+  const { data } = await supabase
     .from("users")
-    .select("id")
+    .select("id, roles!inner(name)")
     .eq("email", email.trim())
+    .eq("roles.name", "student")
     .maybeSingle();
 
-  if (!userData?.id) {
-    return null;
-  }
-
-  // Verify the user has student role
-  const { data: userRole } = await supabase
-    .from("user_roles")
-    .select("id")
-    .eq("user_id", userData.id)
-    .eq("role_name", "student")
-    .maybeSingle();
-
-  return userRole ? (userData.id as string) : null;
+  return data?.id ? (data.id as string) : null;
 }
 
 async function getClassIdByNameAndAcademicYear({
@@ -106,6 +94,40 @@ async function getClassIdByNameAndAcademicYear({
     .maybeSingle();
 
   return data?.id ? (data.id as string) : null;
+}
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+
+  return values;
 }
 
 export async function commitStudentClassAssignmentImportAction(
@@ -154,8 +176,7 @@ export async function commitStudentClassAssignmentImportAction(
     const rowNumber = index + 1;
     const line = lines[index];
 
-    // Simple CSV parsing for this action - we're trusting client-side validation
-    const parts = line.split(",").map((p) => p.trim());
+    const parts = parseCsvLine(line);
     if (parts.length < 3) {
       errors.push({
         row_number: rowNumber,
@@ -164,10 +185,10 @@ export async function commitStudentClassAssignmentImportAction(
       continue;
     }
 
-    const studentEmail = parts[0]?.replace(/^"(.+)"$/, "$1") ?? "";
-    const className = parts[1]?.replace(/^"(.+)"$/, "$1") ?? "";
-    const academicYear = parts[2]?.replace(/^"(.+)"$/, "$1") ?? "";
-    const joinedAt = parts[3]?.replace(/^"(.+)"$/, "$1") ?? "";
+    const studentEmail = parts[0] ?? "";
+    const className = parts[1] ?? "";
+    const academicYear = parts[2] ?? "";
+    const joinedAt = parts[3] ?? "";
 
     const rowErrors: string[] = [];
 
@@ -291,7 +312,7 @@ export async function commitStudentClassAssignmentImportAction(
   return {
     ok: isSuccess,
     message: isSuccess
-      ? `✓ Import berhasil! ${success} assignment siswa-kelas telah diproses.`
+      ? `Import berhasil! ${success} assignment siswa-kelas telah diproses.`
       : `Import selesai dengan ${errors.length} error dari ${lines.length - 1} baris.`,
     summary: {
       total: lines.length - 1,
@@ -301,3 +322,4 @@ export async function commitStudentClassAssignmentImportAction(
     },
   };
 }
+
