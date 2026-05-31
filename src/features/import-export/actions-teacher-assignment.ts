@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { teacherAssignmentSchema } from "@/lib/validations/master-data";
 
@@ -54,13 +55,13 @@ async function getAcademicYearIdByName(name: string, schoolId: string) {
   return data?.id ? (data.id as string) : null;
 }
 
-async function getTeacherIdByEmail(email: string) {
+async function getTeacherIdByEmail(email: string, teacherRoleId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("users")
-    .select("id, roles!inner(name)")
+    .select("id")
     .eq("email", email.trim())
-    .eq("roles.name", "teacher")
+    .eq("role_id", teacherRoleId)
     .maybeSingle();
 
   return data?.id ? (data.id as string) : null;
@@ -180,6 +181,15 @@ export async function commitTeacherSubjectAssignmentImportAction(
   }
 
   const supabase = await createClient();
+  const teacherRoleId = await getRoleId("teacher");
+
+  if (!teacherRoleId) {
+    return {
+      ok: false,
+      message: "Role teacher tidak ditemukan.",
+    };
+  }
+
   const errors: Array<{ row_number: number; errors: string[] }> = [];
   let success = 0;
   let skipped = 0;
@@ -224,7 +234,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
     }
 
     // Lookup IDs
-    const teacherId = await getTeacherIdByEmail(teacherEmail);
+    const teacherId = await getTeacherIdByEmail(teacherEmail, teacherRoleId);
     const subjectId = await getSubjectIdByCode(subjectCode, schoolId);
     const classId = await getClassIdByNameAndAcademicYear({
       className,
