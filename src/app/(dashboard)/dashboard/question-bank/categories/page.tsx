@@ -1,3 +1,4 @@
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -150,15 +151,23 @@ export default async function QuestionCategoriesPage({
                     name="is_active"
                     value={category.is_active ? "false" : "true"}
                   />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`${
+                      category.is_active ? "Nonaktifkan" : "Aktifkan"
+                    } kategori ${category.name}?`}
+                  >
                     {category.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
                 <form action={deleteQuestionCategoryAction}>
                   <input type="hidden" name="id" value={category.id} />
-                  <button className="rounded-md border px-3 py-1.5 text-xs text-destructive hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`Arsipkan kategori ${category.name}?`}
+                    confirmationText="HAPUS"
+                    variant="danger"
+                  >
                     Arsipkan
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </td>

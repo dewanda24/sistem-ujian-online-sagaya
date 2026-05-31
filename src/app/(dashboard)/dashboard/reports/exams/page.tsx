@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
@@ -14,16 +16,6 @@ type PageProps = {
     semester_id?: string;
   }>;
 };
-
-function buildExportParams(params: Awaited<PageProps["searchParams"]>) {
-  const exportParams = new URLSearchParams({ type: "exams" });
-
-  for (const key of ["q", "schedule_id", "class_id", "subject_id", "academic_year_id", "semester_id"] as const) {
-    if (params[key]) exportParams.set(key, params[key]);
-  }
-
-  return exportParams.toString();
-}
 
 function buildStudentReportHref(
   params: Awaited<PageProps["searchParams"]>,
@@ -60,12 +52,12 @@ export default async function ExamReportsPage({ searchParams }: PageProps) {
         description="Agregasi hasil berdasarkan jadwal ujian."
       />
       <div className="flex justify-end">
-        <a
-          href={`/api/reports/export?${buildExportParams(params)}`}
+        <Link
+          href="/dashboard/import-export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export CSV
-        </a>
+          Buka Import/Export
+        </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-7">
         <input

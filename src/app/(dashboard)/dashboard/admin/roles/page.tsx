@@ -1,4 +1,5 @@
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -81,12 +82,14 @@ export default async function RolesPage({ searchParams }: PageProps) {
                   disabled={!canManage}
                   className="min-w-40 rounded-md border px-3 py-1.5 text-sm disabled:opacity-70"
                 />
-                <button
+                <ConfirmSubmitButton
                   disabled={!canManage}
+                  confirmMessage={`Simpan perubahan label role ${role.name}?`}
+                  confirmTitle="Konfirmasi Role"
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Simpan
-                </button>
+                </ConfirmSubmitButton>
               </form>
             </td>
             <td className="px-4 py-3">{role.userCount}</td>

@@ -208,6 +208,20 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     permission: "import_export.view",
   },
   {
+    label: "Import / Export",
+    href: "/dashboard/import-export",
+    icon: "download",
+    roles: ["teacher"],
+    permission: "question_bank.manage",
+  },
+  {
+    label: "Import / Export",
+    href: "/dashboard/import-export",
+    icon: "download",
+    roles: ["proctor"],
+    permission: "exam_monitoring.view",
+  },
+  {
     label: "Monitoring Ujian",
     href: "/dashboard/super-admin/monitoring",
     icon: "list-checks",

@@ -1,4 +1,5 @@
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -134,8 +135,9 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
                         name="enabled"
                         value={enabled ? "false" : "true"}
                       />
-                      <button
-                        type="submit"
+                      <ConfirmSubmitButton
+                        confirmMessage={`${enabled ? "Cabut" : "Berikan"} permission ${permission.code} untuk role ${role.label}?`}
+                        confirmTitle="Konfirmasi Permission"
                         className={
                           enabled
                             ? "rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700"
@@ -143,7 +145,7 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
                         }
                       >
                         {enabled ? "On" : "Off"}
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   )}
                 </td>

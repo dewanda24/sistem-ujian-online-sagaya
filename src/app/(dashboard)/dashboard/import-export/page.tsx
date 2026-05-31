@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { ConfirmLinkButton } from "@/components/dashboard/confirm-link-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import {
   importTemplates,
@@ -9,7 +10,14 @@ import {
 import { ImportPreviewForm } from "@/features/import-export/components/import-preview-form";
 import { StudentAssignmentImportForm } from "@/features/import-export/components/student-assignment-import-form";
 import { TeacherAssignmentImportForm } from "@/features/import-export/components/teacher-assignment-import-form";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { ExcelImportForm } from "@/features/question-bank/components/excel-import-form";
+import { WordImportForm } from "@/features/question-bank/components/word-import-form";
+import {
+  getQuestionCategoryOptions,
+  getScopedSubjectOptions,
+} from "@/features/question-bank/queries";
+import { hasPermission } from "@/lib/auth/has-permission";
+import { requireAuth } from "@/lib/auth/require-auth";
 import { getEnvStatus } from "@/lib/env";
 
 const templateTypes: TemplateType[] = [
@@ -21,8 +29,29 @@ const templateTypes: TemplateType[] = [
   "questions",
 ];
 
-export default async function ImportExportPage() {
-  await requirePermission("import_export.view");
+type PageProps = {
+  searchParams: Promise<{
+    notice?: string;
+    message?: string;
+  }>;
+};
+
+export default async function ImportExportPage({ searchParams }: PageProps) {
+  const user = await requireAuth();
+  const canUseAdminCenter = hasPermission(user, "import_export.view");
+  const canManageQuestions = hasPermission(user, "question_bank.manage");
+  const canExportReports = hasPermission(user, "reports.export");
+  const canExportMonitoring = hasPermission(user, "exam_monitoring.view");
+
+  if (!canUseAdminCenter && !canManageQuestions && !canExportMonitoring) {
+    return null;
+  }
+
+  const [params, subjects, categories] = await Promise.all([
+    searchParams,
+    canManageQuestions ? getScopedSubjectOptions() : Promise.resolve([]),
+    canManageQuestions ? getQuestionCategoryOptions() : Promise.resolve([]),
+  ]);
   const envStatus = getEnvStatus();
 
   return (
@@ -55,17 +84,33 @@ export default async function ImportExportPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <DashboardCard
-          title="Export Nilai"
-          description="Unduh rekap nilai peserta dari modul reports dalam format CSV."
-        >
-          <Link
-            href="/api/reports/export"
-            className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+        {canExportReports ? (
+          <DashboardCard
+            title="Export Nilai"
+            description="Unduh rekap nilai peserta dari modul reports dalam format CSV."
           >
-            Export CSV
-          </Link>
-        </DashboardCard>
+            <ConfirmLinkButton
+              href="/api/reports/export"
+              confirmMessage="Export rekap nilai ke CSV sekarang?"
+            >
+              Export CSV
+            </ConfirmLinkButton>
+          </DashboardCard>
+        ) : null}
+
+        {canExportMonitoring ? (
+          <DashboardCard
+            title="Export Monitoring"
+            description="Unduh data monitoring ujian dalam format CSV."
+          >
+            <ConfirmLinkButton
+              href="/api/monitoring/export"
+              confirmMessage="Export data monitoring ujian ke CSV sekarang?"
+            >
+              Export CSV
+            </ConfirmLinkButton>
+          </DashboardCard>
+        ) : null}
 
         <DashboardCard
           title="Environment"
@@ -93,16 +138,33 @@ export default async function ImportExportPage() {
         </DashboardCard>
       </section>
 
-      <ImportPreviewForm />
+      {canManageQuestions ? (
+        <>
+          <WordImportForm
+            subjects={subjects}
+            categories={categories}
+            notice={params.notice}
+            message={params.message}
+          />
 
-      <StudentAssignmentImportForm />
+          <ExcelImportForm notice={params.notice} message={params.message} />
+        </>
+      ) : null}
 
-      <TeacherAssignmentImportForm />
+      {canUseAdminCenter ? (
+        <>
+          <ImportPreviewForm />
 
-      <DashboardCard
-        title="Catatan Import"
-        description="Sprint ini menyiapkan template dan staging readiness. Eksekusi import otomatis tetap dipisahkan agar validasi data akademik bisa dibuat aman di sprint berikutnya."
-      />
+          <StudentAssignmentImportForm />
+
+          <TeacherAssignmentImportForm />
+
+          <DashboardCard
+            title="Catatan Import"
+            description="Preview staging tidak menyimpan data. Form assignment dan import soal memakai validasi sebelum commit."
+          />
+        </>
+      ) : null}
     </div>
   );
 }

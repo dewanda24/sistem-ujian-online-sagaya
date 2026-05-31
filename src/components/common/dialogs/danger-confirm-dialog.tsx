@@ -32,7 +32,6 @@ export function DangerConfirmDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setInputValue("");
       dialogRef.current?.showModal();
     } else {
       dialogRef.current?.close();
@@ -43,14 +42,20 @@ export function DangerConfirmDialog({
 
   const handleConfirm = async () => {
     if (isLoading || !isConfirmed) return;
+    setInputValue("");
     await onConfirm();
+  };
+
+  const handleCancel = () => {
+    setInputValue("");
+    onCancel();
   };
 
   return (
     <dialog
       ref={dialogRef}
       className="rounded-lg border bg-background p-6 shadow-lg backdrop:bg-black/50"
-      onCancel={onCancel}
+      onCancel={handleCancel}
     >
       <div className="max-w-md space-y-4">
         <div>
@@ -60,8 +65,8 @@ export function DangerConfirmDialog({
 
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
           <p className="text-xs font-medium text-destructive">
-            Aksi ini tidak dapat dibatalkan. Ketik "{confirmationText}" di bawah
-            untuk melanjutkan.
+            Aksi ini tidak dapat dibatalkan. Ketik &quot;{confirmationText}
+            &quot; di bawah untuk melanjutkan.
           </p>
         </div>
 
@@ -82,7 +87,7 @@ export function DangerConfirmDialog({
 
         <div className="flex justify-end gap-3">
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isLoading}
             className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >

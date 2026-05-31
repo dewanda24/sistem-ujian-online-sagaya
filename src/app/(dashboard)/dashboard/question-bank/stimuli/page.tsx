@@ -201,14 +201,19 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
                     name="is_active"
                     value={stimulus.is_active ? "false" : "true"}
                   />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`${
+                      stimulus.is_active ? "Nonaktifkan" : "Aktifkan"
+                    } stimulus ${stimulus.title}?`}
+                  >
                     {stimulus.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
                 <form action={deleteQuestionStimulusAction}>
                   <input type="hidden" name="id" value={stimulus.id} />
                   <ConfirmSubmitButton
                     confirmMessage="Arsipkan stimulus ini? Soal lama yang masih memakai stimulus ini tetap menyimpan relasinya, tetapi stimulus tidak akan muncul sebagai pilihan aktif."
+                    confirmationText="HAPUS"
                     variant="danger"
                   >
                     Arsipkan

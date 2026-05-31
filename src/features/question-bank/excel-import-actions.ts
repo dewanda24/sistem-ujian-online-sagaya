@@ -20,7 +20,7 @@ export type ExcelImportPreviewState = {
   rows: ExcelImportRow[];
 };
 
-const IMPORT_EXCEL_PATH = "/dashboard/question-bank/import-excel";
+const IMPORT_EXCEL_PATH = "/dashboard/import-export";
 const optionLabels = ["A", "B", "C", "D"] as const;
 
 function formString(formData: FormData, key: string) {
@@ -90,12 +90,20 @@ export async function saveExcelImportAction(formData: FormData) {
 
     // Collect validation errors
     const errors = [...validation.errors];
-    if (!subject && row.subject_code) {
+    if (!subject) {
       errors.push(`Mapel dengan kode "${row.subject_code}" tidak ditemukan`);
     }
 
     if (errors.length > 0) {
       failedRows.push({ row_number: rowNumber, errors });
+      continue;
+    }
+
+    if (!subject) {
+      failedRows.push({
+        row_number: rowNumber,
+        errors: [`Mapel dengan kode "${row.subject_code}" tidak ditemukan`],
+      });
       continue;
     }
 

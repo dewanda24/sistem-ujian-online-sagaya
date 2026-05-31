@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { submitAttemptAction } from "@/features/exam-room/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
@@ -133,6 +134,7 @@ export function ExamRoomWorkspace({
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
   const [submitLocked, setSubmitLocked] = useState(false);
+  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
   const [warning, setWarning] = useState<{
     count: number;
     title: string;
@@ -146,6 +148,7 @@ export function ExamRoomWorkspace({
   const retryTimers = useRef<Record<string, number>>({});
   const saveVersions = useRef<Record<string, number>>({});
   const submitFormRef = useRef<HTMLFormElement>(null);
+  const submitConfirmedRef = useRef(false);
   const examRoomRef = useRef<HTMLDivElement>(null);
   const autoSubmittingRef = useRef(false);
   const timeExpiredSubmitRef = useRef(false);
@@ -847,14 +850,13 @@ export function ExamRoomWorkspace({
                 return;
               }
 
-              if (
-                !autoSubmittingRef.current &&
-                !window.confirm("Kumpulkan ujian sekarang? Jawaban akan dikunci.")
-              ) {
+              if (!autoSubmittingRef.current && !submitConfirmedRef.current) {
                 event.preventDefault();
+                setIsSubmitConfirmOpen(true);
                 return;
               }
 
+              submitConfirmedRef.current = false;
               setSubmitLocked(true);
             }}
           >
@@ -873,6 +875,19 @@ export function ExamRoomWorkspace({
                     : "Kumpulkan Ujian"}
             </button>
           </form>
+          <ConfirmDialog
+            isOpen={isSubmitConfirmOpen}
+            title="Kumpulkan Ujian"
+            description="Kumpulkan ujian sekarang? Jawaban akan dikunci dan tidak bisa diubah lagi."
+            confirmLabel="Kumpulkan"
+            isLoading={submitLocked}
+            onCancel={() => setIsSubmitConfirmOpen(false)}
+            onConfirm={() => {
+              submitConfirmedRef.current = true;
+              setIsSubmitConfirmOpen(false);
+              submitFormRef.current?.requestSubmit();
+            }}
+          />
         </aside>
       </div>
 

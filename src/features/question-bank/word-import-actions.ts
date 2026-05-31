@@ -25,7 +25,7 @@ export type WordImportPreviewState = {
   };
 };
 
-const IMPORT_WORD_PATH = "/dashboard/question-bank/import-word";
+const IMPORT_WORD_PATH = "/dashboard/import-export";
 const optionLabels = ["A", "B", "C", "D"] as const;
 
 function formString(formData: FormData, key: string) {

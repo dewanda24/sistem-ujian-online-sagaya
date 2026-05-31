@@ -1,3 +1,4 @@
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -128,9 +129,18 @@ export async function OperationalRoleUsersPage({
             <option value="inactive">Inactive</option>
           </select>
           <div className="flex justify-end md:col-span-2">
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            <ConfirmSubmitButton
+              confirmMessage={
+                editable
+                  ? "Simpan perubahan akun operasional, termasuk role/status bila diubah?"
+                  : "Tambah akun operasional baru?"
+              }
+              confirmTitle="Konfirmasi User"
+              variant="default"
+              className="px-4 py-2 text-sm"
+            >
               {editable ? "Update" : "Tambah"}
-            </button>
+            </ConfirmSubmitButton>
           </div>
         </form>
       </FormSection>
@@ -204,9 +214,13 @@ export async function OperationalRoleUsersPage({
                     name="status"
                     value={item.status === "active" ? "inactive" : "active"}
                   />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`${
+                      item.status === "active" ? "Nonaktifkan" : "Aktifkan"
+                    } akun ${item.profile?.full_name ?? item.username}?`}
+                  >
                     {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
                 <form action={resetAdminUserPasswordAction} className="flex gap-2">
                   <input type="hidden" name="redirect_path" value={redirectPath} />
@@ -218,9 +232,13 @@ export async function OperationalRoleUsersPage({
                     className="w-36 rounded-md border px-2 py-1 text-xs"
                     required
                   />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`Reset password untuk ${item.profile?.full_name ?? item.username}?`}
+                    confirmationText="RESET"
+                    variant="danger"
+                  >
                     Reset
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </td>

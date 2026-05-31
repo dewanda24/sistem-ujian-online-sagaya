@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
 import { commitStudentClassAssignmentImportAction } from "@/features/import-export/actions";
 import { LoadingButton } from "@/components/common/loading-button";
 import { ImportResultSummary } from "@/components/common/import-result-summary";
@@ -92,7 +94,7 @@ function parseCsv(text: string) {
     );
   }
 
-  return lines.slice(1).map((line, index) => {
+  return lines.slice(1).map((line) => {
     const values = parseCsvLine(line);
     const row: Record<string, string> = {};
 
@@ -108,15 +110,25 @@ export function StudentAssignmentImportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<ValidationResult[]>([]);
   const [parseError, setParseError] = useState<string>("");
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
-    commitStudentClassAssignmentImportAction,
+    (_previousState, formData) =>
+      commitStudentClassAssignmentImportAction(formData),
     {
       ok: false,
       message: "",
     },
   );
+
+  useEffect(() => {
+    if (!state.message) return;
+    if (state.ok) {
+      toast.success(state.message);
+      return;
+    }
+    toast.error(state.message);
+  }, [state]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -175,7 +187,6 @@ export function StudentAssignmentImportForm() {
       });
 
       setPreviewRows(validated);
-      setIsPreviewOpen(true);
     } catch (error) {
       setParseError(
         error instanceof Error ? error.message : "Gagal membaca file CSV",
@@ -203,7 +214,7 @@ export function StudentAssignmentImportForm() {
     const formData = new FormData();
     formData.append("file", file);
 
-    formAction(formData);
+    setPendingFormData(formData);
   };
 
   return (
@@ -355,7 +366,6 @@ export function StudentAssignmentImportForm() {
               setFile(null);
               setPreviewRows([]);
               setParseError("");
-              setIsPreviewOpen(false);
             }}
             disabled={isPending}
             className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
@@ -372,6 +382,20 @@ export function StudentAssignmentImportForm() {
           </LoadingButton>
         </div>
       </form>
+      <ConfirmDialog
+        isOpen={Boolean(pendingFormData)}
+        title="Konfirmasi Import"
+        description={`Import ${validCount} assignment siswa-kelas yang valid?`}
+        confirmLabel="Import"
+        isLoading={isPending}
+        onCancel={() => setPendingFormData(null)}
+        onConfirm={() => {
+          if (!pendingFormData || isPending) return;
+          formAction(pendingFormData);
+          setPendingFormData(null);
+          toast.info("Import assignment siswa-kelas sedang diproses.");
+        }}
+      />
     </div>
   );
 }

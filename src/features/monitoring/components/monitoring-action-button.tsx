@@ -1,7 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
+
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+
 type MonitoringActionButtonProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   confirmMessage: string;
   disabled?: boolean;
@@ -15,24 +19,15 @@ export function MonitoringActionButton({
   disabled,
   variant = "default",
 }: MonitoringActionButtonProps) {
-  const baseClass =
-    "rounded-md border px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50";
-  const variantClass =
-    variant === "danger"
-      ? "border-destructive/40 text-destructive hover:bg-destructive/10"
-      : "hover:bg-muted";
-
   return (
-    <button
+    <ConfirmSubmitButton
+      className={className}
+      confirmMessage={confirmMessage}
+      confirmationText={variant === "danger" ? "RESET" : undefined}
       disabled={disabled}
-      onClick={(event) => {
-        if (!window.confirm(confirmMessage)) {
-          event.preventDefault();
-        }
-      }}
-      className={`${baseClass} ${variantClass} ${className ?? ""}`}
+      variant={variant === "danger" ? "danger" : "outline"}
     >
       {children}
-    </button>
+    </ConfirmSubmitButton>
   );
 }

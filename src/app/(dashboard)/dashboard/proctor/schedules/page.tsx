@@ -66,10 +66,10 @@ export default async function ProctorSchedulesPage() {
 
       <div className="flex flex-wrap justify-end gap-2">
         <Link
-          href="/api/monitoring/export"
+          href="/dashboard/import-export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export Semua Progress
+          Buka Import/Export
         </Link>
       </div>
 
@@ -184,10 +184,10 @@ export default async function ProctorSchedulesPage() {
                     Monitoring
                   </Link>
                   <Link
-                    href={`/api/monitoring/export?schedule_id=${schedule.id}`}
+                    href="/dashboard/import-export"
                     className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                   >
-                    Export
+                    Import/Export
                   </Link>
                 </div>
               </td>

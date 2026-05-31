@@ -24,16 +24,10 @@ const modules = [
       "Kelola bacaan, gambar, audio, video, atau pengantar yang bisa dipakai oleh banyak soal.",
   },
   {
-    title: "Import Word",
-    href: "/dashboard/question-bank/import-word",
+    title: "Import / Export",
+    href: "/dashboard/import-export",
     description:
-      "Import soal dari template Word resmi, preview hasil parsing, lalu simpan sebagai draft.",
-  },
-  {
-    title: "Import Excel/CSV",
-    href: "/dashboard/question-bank/import-excel",
-    description:
-      "Import soal dari Excel atau CSV dengan preview validasi per baris sebelum disimpan.",
+      "Pusat import soal Word, Excel/CSV, template, dan export terkait.",
   },
 ];
 

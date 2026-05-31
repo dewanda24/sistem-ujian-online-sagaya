@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
   previewExcelImportAction,
   saveExcelImportAction,
@@ -198,12 +199,16 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
               name="rows_json"
               value={JSON.stringify(validatedRows)}
             />
-            <button
+            <ConfirmSubmitButton
               disabled={validCount === 0}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              confirmMessage={`Import ${validCount} baris valid ke bank soal sebagai draft?`}
+              confirmTitle="Konfirmasi Import"
+              loadingText="Sedang import..."
+              variant="default"
+              className="px-4 py-2 text-sm"
             >
               Import Baris Valid
-            </button>
+            </ConfirmSubmitButton>
           </form>
         </section>
       ) : null}

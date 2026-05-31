@@ -54,7 +54,6 @@ export default async function MonitoringPage({
   const user = await requirePermission("exam_monitoring.view");
   const params = await searchParams;
   const returnTo = buildReturnTo(basePath, params);
-  const exportHref = buildExportHref(params);
   const [schedules, subjectOptions] = await Promise.all([
     getMonitoringSchedules({
       scope,
@@ -214,10 +213,10 @@ export default async function MonitoringPage({
 
       <div className="flex flex-wrap justify-end gap-2">
         <a
-          href={exportHref}
+          href="/dashboard/import-export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export Progress CSV
+          Buka Import/Export
         </a>
       </div>
 
@@ -399,18 +398,6 @@ export default async function MonitoringPage({
       </DataTable>
     </div>
   );
-}
-
-function buildExportHref(params: Awaited<PageProps["searchParams"]>) {
-  const query = new URLSearchParams();
-
-  for (const key of ["schedule_id", "class_id", "subject_id", "status"] as const) {
-    if (params[key]) {
-      query.set(key, params[key]);
-    }
-  }
-
-  return `/api/monitoring/export${query.size ? `?${query.toString()}` : ""}`;
 }
 
 function buildReturnTo(

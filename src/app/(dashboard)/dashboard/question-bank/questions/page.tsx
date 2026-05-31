@@ -49,13 +49,14 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
     difficulty: params.difficulty,
     status: params.status,
   };
-  const [subjects, schoolId, categories, stimuli, questions] = await Promise.all([
-    getScopedSubjectOptions(),
-    getDefaultSchoolId(),
-    getQuestionCategoryOptions(params.subject_id),
-    getQuestionStimulusOptions(params.subject_id),
-    getQuestions(filters),
-  ]);
+  const [subjects, schoolId, categories, stimuli, questions] =
+    await Promise.all([
+      getScopedSubjectOptions(),
+      getDefaultSchoolId(),
+      getQuestionCategoryOptions(params.subject_id),
+      getQuestionStimulusOptions(params.subject_id),
+      getQuestions(filters),
+    ]);
   const editable = questions.find((question) => question.id === params.edit);
 
   return (
@@ -78,21 +79,10 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
             >
               Dashboard Import/Export
             </Link>
-            <Link
-              href="/dashboard/question-bank/import-word"
-              className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
-            >
-              Import Word
-            </Link>
-            <Link
-              href="/dashboard/question-bank/import-excel"
-              className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
-            >
-              Import Excel/CSV
-            </Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            Gunakan Dashboard Import/Export untuk template dan koordinasi dengan fitur import lainnya.
+            Gunakan Dashboard Import/Export untuk template dan koordinasi dengan
+            fitur import lainnya.
           </p>
         </div>
       </FormSection>
@@ -103,15 +93,12 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
       >
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/dashboard/question-bank/import-word"
-            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
+            href="/dashboard/import-export"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
-            Import Excel
+            Dashboard Import/Export
           </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import CSV
-          </button>
-        </form>
+        </div>
       </FormSection>
 
       <FormSection
@@ -216,9 +203,9 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
                 <form action={updateQuestionStatusAction}>
                   <input type="hidden" name="id" value={question.id} />
                   <input type="hidden" name="status" value="draft" />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton confirmMessage="Ubah status soal ini menjadi draft?">
                     Draft
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
                 <form action={updateQuestionStatusAction}>
                   <input type="hidden" name="id" value={question.id} />
@@ -242,9 +229,9 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
                       Nonaktifkan
                     </ConfirmSubmitButton>
                   ) : (
-                    <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                    <ConfirmSubmitButton confirmMessage="Aktifkan soal ini kembali?">
                       Aktifkan
-                    </button>
+                    </ConfirmSubmitButton>
                   )}
                 </form>
               </div>

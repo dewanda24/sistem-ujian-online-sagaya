@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -9,7 +10,6 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  importStudentsCsvAction,
   saveClassMemberAction,
   saveStudentAction,
   toggleUserStatusAction,
@@ -345,9 +345,13 @@ export default async function StudentsPage({ searchParams }: PageProps) {
                         student.status === "active" ? "inactive" : "active"
                       }
                     />
-                    <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                    <ConfirmSubmitButton
+                      confirmMessage={`${
+                        student.status === "active" ? "Nonaktifkan" : "Aktifkan"
+                      } akun ${profile?.full_name ?? student.username}?`}
+                    >
                       {student.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </td>

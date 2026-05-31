@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
   previewWordImportAction,
   saveWordImportAction,
@@ -419,12 +420,16 @@ export function WordImportForm({
               name="questions_json"
               value={JSON.stringify(validQuestions)}
             />
-            <button
+            <ConfirmSubmitButton
               disabled={validCount === 0}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              confirmMessage={`Simpan ${validCount} soal valid ke bank soal sebagai draft?`}
+              confirmTitle="Konfirmasi Import"
+              loadingText="Sedang import..."
+              variant="default"
+              className="px-4 py-2 text-sm"
             >
               Simpan {validCount} Soal Valid ke Bank Soal
-            </button>
+            </ConfirmSubmitButton>
           </form>
         </section>
       ) : null}

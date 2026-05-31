@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
@@ -25,21 +27,6 @@ type PageProps = {
 export default async function StudentReportsPage({ searchParams }: PageProps) {
   await requirePermission("reports.view");
   const params = await searchParams;
-  const exportParams = new URLSearchParams();
-
-  if (params.q) exportParams.set("q", params.q);
-  if (params.status) exportParams.set("status", params.status);
-  if (params.grading_status) {
-    exportParams.set("grading_status", params.grading_status);
-  }
-  if (params.schedule_id) exportParams.set("schedule_id", params.schedule_id);
-  if (params.class_id) exportParams.set("class_id", params.class_id);
-  if (params.subject_id) exportParams.set("subject_id", params.subject_id);
-  if (params.academic_year_id) {
-    exportParams.set("academic_year_id", params.academic_year_id);
-  }
-  if (params.semester_id) exportParams.set("semester_id", params.semester_id);
-
   const [allRows, options] = await Promise.all([
     getReportsByStudent(params),
     getReportFilterOptions(),
@@ -53,14 +40,12 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
           title="Report Per Siswa"
           description="Daftar nilai individual peserta dan status grading."
         />
-        <a
-          href={`/api/reports/export${
-            exportParams.size ? `?${exportParams.toString()}` : ""
-          }`}
+        <Link
+          href="/dashboard/import-export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export CSV
-        </a>
+          Buka Import/Export
+        </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-8">
         <input

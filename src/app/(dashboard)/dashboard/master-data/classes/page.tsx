@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -9,7 +10,6 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  importClassesCsvAction,
   saveClassAction,
   toggleClassAction,
 } from "@/lib/actions/master-data-actions";
@@ -98,30 +98,15 @@ export default async function ClassesPage({ searchParams }: PageProps) {
       </section>
 
       <FormSection
-        title="Import Kelas CSV"
-        description="Gunakan academic_year sesuai nama tahun ajaran. Wali kelas dicari dari email user role teacher."
+        title="Import / Export"
+        description="Template dan proses import kelas dipusatkan di dashboard Import/Export."
       >
-        <form
-          action={importClassesCsvAction}
-          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+        <Link
+          href="/dashboard/import-export"
+          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
         >
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <Link
-            href="/api/templates/classes"
-            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import CSV
-          </button>
-        </form>
+          Buka Dashboard Import/Export
+        </Link>
       </FormSection>
 
       <FormSection
@@ -294,9 +279,13 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                       name="is_active"
                       value={classItem.is_active ? "false" : "true"}
                     />
-                    <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                    <ConfirmSubmitButton
+                      confirmMessage={`${
+                        classItem.is_active ? "Nonaktifkan" : "Aktifkan"
+                      } kelas ${classItem.name}?`}
+                    >
                       {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </td>
