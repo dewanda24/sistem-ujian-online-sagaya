@@ -31,8 +31,7 @@ export const semesterSchema = z.object({
   id: optionalUuidField,
   academic_year_id: uuidField,
   name: z.string().min(2, "Nama semester wajib diisi"),
-  starts_at: z.string().optional().default(""),
-  ends_at: z.string().optional().default(""),
+  code: z.string().min(2, "Kode semester wajib diisi"),
   is_active: z.boolean().default(false),
 });
 

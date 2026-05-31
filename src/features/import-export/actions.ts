@@ -19,42 +19,6 @@ type ClassMemberImportResult = {
   };
 };
 
-async function getDefaultSchoolId() {
-  const supabase = await createClient();
-  const { data: activeSchool } = await supabase
-    .from("schools")
-    .select("id")
-    .eq("is_active", true)
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
-
-  if (activeSchool?.id) {
-    return activeSchool.id as string;
-  }
-
-  const { data: fallbackSchool } = await supabase
-    .from("schools")
-    .select("id")
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
-
-  return fallbackSchool?.id ? (fallbackSchool.id as string) : null;
-}
-
-async function getAcademicYearIdByName(name: string, schoolId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("academic_years")
-    .select("id")
-    .eq("school_id", schoolId)
-    .eq("name", name)
-    .maybeSingle();
-
-  return data?.id ? (data.id as string) : null;
-}
-
 async function getStudentIdByEmail(email: string, studentRoleId: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -67,34 +31,49 @@ async function getStudentIdByEmail(email: string, studentRoleId: string) {
   return data?.id ? (data.id as string) : null;
 }
 
-async function getClassIdByNameAndAcademicYear({
+type ClassLookupResult =
+  | {
+      ok: true;
+      classId: string;
+      schoolId: string;
+      academicYearId: string;
+    }
+  | {
+      ok: false;
+      reason: "not_found" | "ambiguous";
+    };
+
+async function getClassByNameAndAcademicYear({
   className,
   academicYearName,
-  schoolId,
 }: {
   className: string;
   academicYearName: string;
-  schoolId: string;
-}) {
-  const academicYearId = await getAcademicYearIdByName(
-    academicYearName,
-    schoolId,
-  );
+}): Promise<ClassLookupResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, school_id, academic_year_id, academic_years!inner(name)")
+    .ilike("name", className.trim())
+    .eq("academic_years.name", academicYearName.trim())
+    .eq("is_active", true);
 
-  if (!academicYearId) {
-    return null;
+  if (error || !data || data.length === 0) {
+    return { ok: false, reason: "not_found" };
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("classes")
-    .select("id")
-    .eq("school_id", schoolId)
-    .eq("academic_year_id", academicYearId)
-    .ilike("name", className.trim())
-    .maybeSingle();
+  if (data.length > 1) {
+    return { ok: false, reason: "ambiguous" };
+  }
 
-  return data?.id ? (data.id as string) : null;
+  const classRow = data[0];
+
+  return {
+    ok: true,
+    classId: classRow.id as string,
+    schoolId: classRow.school_id as string,
+    academicYearId: classRow.academic_year_id as string,
+  };
 }
 
 function parseCsvLine(line: string) {
@@ -159,15 +138,6 @@ export async function commitStudentClassAssignmentImportAction(
     };
   }
 
-  const schoolId = await getDefaultSchoolId();
-
-  if (!schoolId) {
-    return {
-      ok: false,
-      message: "Sekolah aktif/default tidak ditemukan.",
-    };
-  }
-
   const supabase = await createClient();
   const studentRoleId = await getRoleId("student");
 
@@ -219,10 +189,9 @@ export async function commitStudentClassAssignmentImportAction(
 
     // Lookup student and class
     const studentId = await getStudentIdByEmail(studentEmail, studentRoleId);
-    const classId = await getClassIdByNameAndAcademicYear({
+    const classLookup = await getClassByNameAndAcademicYear({
       className,
       academicYearName: academicYear,
-      schoolId,
     });
 
     if (!studentId) {
@@ -233,11 +202,13 @@ export async function commitStudentClassAssignmentImportAction(
       continue;
     }
 
-    if (!classId) {
+    if (!classLookup.ok) {
       errors.push({
         row_number: rowNumber,
         errors: [
-          `Kelas "${className}" di tahun ajaran "${academicYear}" tidak ditemukan`,
+          classLookup.reason === "ambiguous"
+            ? `Kelas "${className}" di tahun ajaran "${academicYear}" ditemukan di lebih dari satu sekolah aktif`
+            : `Kelas "${className}" di tahun ajaran "${academicYear}" tidak ditemukan`,
         ],
       });
       continue;
@@ -246,7 +217,7 @@ export async function commitStudentClassAssignmentImportAction(
     // Validate with schema
     const parsed = classMemberSchema.safeParse({
       student_id: studentId,
-      class_id: classId,
+      class_id: classLookup.classId,
       joined_at: joinedAt || "",
     });
 

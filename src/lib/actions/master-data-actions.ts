@@ -297,8 +297,7 @@ export async function saveSemesterAction(formData: FormData) {
     id: formString(formData, "id"),
     academic_year_id: formString(formData, "academic_year_id"),
     name: formString(formData, "name"),
-    starts_at: formString(formData, "starts_at"),
-    ends_at: formString(formData, "ends_at"),
+    code: formString(formData, "code"),
     is_active: formBoolean(formData, "is_active"),
   });
 
@@ -310,7 +309,7 @@ export async function saveSemesterAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { id, is_active, starts_at, ends_at, ...rest } = parsed.data;
+  const { id, is_active, ...rest } = parsed.data;
 
   if (is_active) {
     await supabase
@@ -321,8 +320,6 @@ export async function saveSemesterAction(formData: FormData) {
 
   const payload = {
     ...rest,
-    starts_at: nullableDate(starts_at),
-    ends_at: nullableDate(ends_at),
     is_active,
   };
 

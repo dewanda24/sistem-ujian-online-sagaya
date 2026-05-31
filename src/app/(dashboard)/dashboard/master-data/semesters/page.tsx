@@ -69,16 +69,11 @@ export default async function SemestersPage({ searchParams }: PageProps) {
             required
           />
           <input
-            name="starts_at"
-            type="date"
-            defaultValue={editable?.starts_at ?? ""}
+            name="code"
+            defaultValue={editable?.code ?? ""}
+            placeholder="odd"
             className="rounded-md border px-3 py-2 text-sm"
-          />
-          <input
-            name="ends_at"
-            type="date"
-            defaultValue={editable?.ends_at ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
+            required
           />
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -102,7 +97,7 @@ export default async function SemestersPage({ searchParams }: PageProps) {
       </div>
 
       <DataTable
-        columns={["Semester", "Tahun Ajaran", "Periode", "Status", "Aksi"]}
+        columns={["Semester", "Kode", "Tahun Ajaran", "Status", "Aksi"]}
         isEmpty={semesters.length === 0}
         empty={
           <EmptyState
@@ -114,11 +109,11 @@ export default async function SemestersPage({ searchParams }: PageProps) {
         {semesters.map((semester) => (
           <tr key={semester.id}>
             <td className="px-4 py-3 font-medium">{semester.name}</td>
+            <td className="px-4 py-3 text-muted-foreground">
+              {semester.code ?? "-"}
+            </td>
             <td className="px-4 py-3">
               {semester.academic_years?.name ?? "-"}
-            </td>
-            <td className="px-4 py-3 text-muted-foreground">
-              {semester.starts_at || "-"} - {semester.ends_at || "-"}
             </td>
             <td className="px-4 py-3">
               <StatusBadge active={Boolean(semester.is_active)} />
