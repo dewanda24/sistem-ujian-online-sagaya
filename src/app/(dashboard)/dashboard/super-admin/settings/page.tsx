@@ -1,5 +1,6 @@
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { OperationalResetCard } from "@/features/operational-reset/components/operational-reset-card";
 import { getEnvStatus } from "@/lib/env";
 import { requireRole } from "@/lib/auth/require-role";
 
@@ -114,6 +115,18 @@ export default async function SystemSettingsPage() {
             </p>
           </div>
         </DashboardCard>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-base font-semibold text-destructive">
+            Danger Zone
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Operasi berisiko tinggi untuk maintenance data sistem.
+          </p>
+        </div>
+        <OperationalResetCard />
       </section>
     </div>
   );

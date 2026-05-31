@@ -69,13 +69,13 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
           <input
             name="starts_at"
             type="date"
-            defaultValue={editable?.starts_at ?? ""}
+            defaultValue={editable?.start_date ?? ""}
             className="rounded-md border px-3 py-2 text-sm"
           />
           <input
             name="ends_at"
             type="date"
-            defaultValue={editable?.ends_at ?? ""}
+            defaultValue={editable?.end_date ?? ""}
             className="rounded-md border px-3 py-2 text-sm"
           />
           <label className="flex items-center gap-2 text-sm">
@@ -114,7 +114,7 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
             <td className="px-4 py-3 font-medium">{academicYear.name}</td>
             <td className="px-4 py-3">{academicYear.schools?.name ?? "-"}</td>
             <td className="px-4 py-3 text-muted-foreground">
-              {academicYear.starts_at || "-"} - {academicYear.ends_at || "-"}
+              {academicYear.start_date || "-"} - {academicYear.end_date || "-"}
             </td>
             <td className="px-4 py-3">
               <StatusBadge active={Boolean(academicYear.is_active)} />

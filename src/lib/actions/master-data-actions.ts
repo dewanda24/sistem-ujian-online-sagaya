@@ -220,8 +220,8 @@ export async function saveAcademicYearAction(formData: FormData) {
 
   const payload = {
     ...rest,
-    starts_at: nullableDate(starts_at),
-    ends_at: nullableDate(ends_at),
+    start_date: nullableDate(starts_at),
+    end_date: nullableDate(ends_at),
     is_active,
   };
 
