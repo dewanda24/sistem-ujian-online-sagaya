@@ -140,12 +140,13 @@ export async function saveWordImportAction(formData: FormData) {
 
   const supabase = await createClient();
   let success = 0;
-  let failed = 0;
+  const failedRows: Array<{ row_number: number; errors: string[] }> = [];
 
   for (const [index, question] of questions.entries()) {
+    const questionNumber = question.number || index + 1;
     const validation = validateWordImportQuestion({
       local_id: question.local_id || `word-${index + 1}`,
-      number: question.number || index + 1,
+      number: questionNumber,
       type: question.type === "essay" ? "essay" : "multiple_choice",
       content: question.content ?? "",
       options: {
@@ -159,7 +160,7 @@ export async function saveWordImportAction(formData: FormData) {
     });
 
     if (validation.errors.length > 0) {
-      failed += 1;
+      failedRows.push({ row_number: questionNumber, errors: validation.errors });
       continue;
     }
 
@@ -183,7 +184,10 @@ export async function saveWordImportAction(formData: FormData) {
       .single();
 
     if (questionError || !savedQuestion?.id) {
-      failed += 1;
+      failedRows.push({
+        row_number: questionNumber,
+        errors: [questionError?.message ?? "Gagal menyimpan soal"],
+      });
       continue;
     }
 
@@ -202,13 +206,28 @@ export async function saveWordImportAction(formData: FormData) {
         );
 
       if (optionError) {
-        failed += 1;
+        failedRows.push({
+          row_number: questionNumber,
+          errors: [optionError.message ?? "Gagal menyimpan pilihan jawaban"],
+        });
         continue;
       }
     }
 
     success += 1;
   }
+
+  const failed = failedRows.length;
+  const failedDetails =
+    failedRows.length > 0
+      ? "\n\nSoal gagal: " +
+        failedRows
+          .map(
+            (item) =>
+              `Soal ${item.row_number}: ${item.errors.join("; ")}`,
+          )
+          .join("\n")
+      : "";
 
   await logAuditEvent({
     userId: user.id,
@@ -221,13 +240,14 @@ export async function saveWordImportAction(formData: FormData) {
       success_count: success,
       failed_count: failed,
       total_rows: questions.length,
+      failed_rows: failedRows,
     },
   });
 
   revalidatePath("/dashboard/question-bank/questions");
   redirectWithMessage(
     failed === 0,
-    `Import Word selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.`,
+    `Import Word selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.${failedDetails}`,
   );
 }
 

@@ -81,14 +81,21 @@ export async function saveExcelImportAction(formData: FormData) {
 
   const supabase = await createClient();
   let success = 0;
-  let failed = 0;
+  const failedRows: Array<{ row_number: number; errors: string[] }> = [];
 
   for (const row of rows) {
     const validation = validateExcelImportRow(row, new Set(subjectMap.keys()));
     const subject = subjectMap.get(row.subject_code);
+    const rowNumber = row.row_number || rows.indexOf(row) + 2; // +2 because row 1 is header
 
-    if (validation.errors.length > 0 || !subject) {
-      failed += 1;
+    // Collect validation errors
+    const errors = [...validation.errors];
+    if (!subject && row.subject_code) {
+      errors.push(`Mapel dengan kode "${row.subject_code}" tidak ditemukan`);
+    }
+
+    if (errors.length > 0) {
+      failedRows.push({ row_number: rowNumber, errors });
       continue;
     }
 
@@ -100,7 +107,10 @@ export async function saveExcelImportAction(formData: FormData) {
     });
 
     if (!categoryId) {
-      failed += 1;
+      failedRows.push({
+        row_number: rowNumber,
+        errors: ["Gagal membuat/memilih kategori"],
+      });
       continue;
     }
 
@@ -132,7 +142,10 @@ export async function saveExcelImportAction(formData: FormData) {
       .single();
 
     if (questionError || !question?.id) {
-      failed += 1;
+      failedRows.push({
+        row_number: rowNumber,
+        errors: [questionError?.message ?? "Gagal menyimpan soal"],
+      });
       continue;
     }
 
@@ -156,13 +169,28 @@ export async function saveExcelImportAction(formData: FormData) {
         );
 
       if (optionError) {
-        failed += 1;
+        failedRows.push({
+          row_number: rowNumber,
+          errors: [optionError.message ?? "Gagal menyimpan pilihan jawaban"],
+        });
         continue;
       }
     }
 
     success += 1;
   }
+
+  const failed = failedRows.length;
+  const failedDetails =
+    failedRows.length > 0
+      ? "\n\nBaris gagal: " +
+        failedRows
+          .map(
+            (item) =>
+              `Baris ${item.row_number}: ${item.errors.join("; ")}`,
+          )
+          .join("\n")
+      : "";
 
   await logAuditEvent({
     userId: user.id,
@@ -172,13 +200,14 @@ export async function saveExcelImportAction(formData: FormData) {
       success_count: success,
       failed_count: failed,
       total_rows: rows.length,
+      failed_rows: failedRows,
     },
   });
 
   revalidatePath("/dashboard/question-bank/questions");
   redirectWithMessage(
     failed === 0,
-    `Import Excel selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.`,
+    `Import Excel selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.${failedDetails}`,
   );
 }
 
