@@ -185,10 +185,7 @@ export async function saveExcelImportAction(formData: FormData) {
     failedRows.length > 0
       ? "\n\nBaris gagal: " +
         failedRows
-          .map(
-            (item) =>
-              `Baris ${item.row_number}: ${item.errors.join("; ")}`,
-          )
+          .map((item) => `Baris ${item.row_number}: ${item.errors.join("; ")}`)
           .join("\n")
       : "";
 

@@ -42,7 +42,11 @@ export async function previewWordImportAction(
   const categoryId = formString(formData, "category_id");
   const difficulty = formString(formData, "difficulty") || "medium";
   const file = formData.get("file");
-  const emptyMeta = { subject_id: subjectId, category_id: categoryId, difficulty };
+  const emptyMeta = {
+    subject_id: subjectId,
+    category_id: categoryId,
+    difficulty,
+  };
 
   if (!subjectId) {
     return {
@@ -58,14 +62,18 @@ export async function previewWordImportAction(
   if (!scope) {
     return {
       ok: false,
-      message: "Akses mapel ditolak. Guru hanya boleh import ke mapel yang ditugaskan.",
+      message:
+        "Akses mapel ditolak. Guru hanya boleh import ke mapel yang ditugaskan.",
       questions: [],
       meta: emptyMeta,
     };
   }
 
   if (categoryId) {
-    const categoryOk = await assertCategoryMatchesSubject(categoryId, subjectId);
+    const categoryOk = await assertCategoryMatchesSubject(
+      categoryId,
+      subjectId,
+    );
 
     if (!categoryOk) {
       return {
@@ -123,10 +131,16 @@ export async function saveWordImportAction(formData: FormData) {
   }
 
   if (categoryId) {
-    const categoryOk = await assertCategoryMatchesSubject(categoryId, subjectId);
+    const categoryOk = await assertCategoryMatchesSubject(
+      categoryId,
+      subjectId,
+    );
 
     if (!categoryOk) {
-      redirectWithMessage(false, "Kategori harus berasal dari mapel yang sama.");
+      redirectWithMessage(
+        false,
+        "Kategori harus berasal dari mapel yang sama.",
+      );
     }
   }
 
@@ -160,7 +174,10 @@ export async function saveWordImportAction(formData: FormData) {
     });
 
     if (validation.errors.length > 0) {
-      failedRows.push({ row_number: questionNumber, errors: validation.errors });
+      failedRows.push({
+        row_number: questionNumber,
+        errors: validation.errors,
+      });
       continue;
     }
 
@@ -222,10 +239,7 @@ export async function saveWordImportAction(formData: FormData) {
     failedRows.length > 0
       ? "\n\nSoal gagal: " +
         failedRows
-          .map(
-            (item) =>
-              `Soal ${item.row_number}: ${item.errors.join("; ")}`,
-          )
+          .map((item) => `Soal ${item.row_number}: ${item.errors.join("; ")}`)
           .join("\n")
       : "";
 
@@ -273,7 +287,9 @@ async function getScopedSubject(
       ? data?.subjects[0]
       : data?.subjects;
 
-    return subject?.id ? { id: subject.id as string, school_id: subject.school_id as string } : null;
+    return subject?.id
+      ? { id: subject.id as string, school_id: subject.school_id as string }
+      : null;
   }
 
   const { data } = await supabase
@@ -282,10 +298,15 @@ async function getScopedSubject(
     .eq("id", subjectId)
     .maybeSingle();
 
-  return data?.id ? { id: data.id as string, school_id: data.school_id as string } : null;
+  return data?.id
+    ? { id: data.id as string, school_id: data.school_id as string }
+    : null;
 }
 
-async function assertCategoryMatchesSubject(categoryId: string, subjectId: string) {
+async function assertCategoryMatchesSubject(
+  categoryId: string,
+  subjectId: string,
+) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("question_categories")

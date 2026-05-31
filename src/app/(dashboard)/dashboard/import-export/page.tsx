@@ -7,6 +7,8 @@ import {
   type TemplateType,
 } from "@/features/import-export/templates";
 import { ImportPreviewForm } from "@/features/import-export/components/import-preview-form";
+import { StudentAssignmentImportForm } from "@/features/import-export/components/student-assignment-import-form";
+import { TeacherAssignmentImportForm } from "@/features/import-export/components/teacher-assignment-import-form";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getEnvStatus } from "@/lib/env";
 
@@ -92,6 +94,10 @@ export default async function ImportExportPage() {
       </section>
 
       <ImportPreviewForm />
+
+      <StudentAssignmentImportForm />
+
+      <TeacherAssignmentImportForm />
 
       <DashboardCard
         title="Catatan Import"

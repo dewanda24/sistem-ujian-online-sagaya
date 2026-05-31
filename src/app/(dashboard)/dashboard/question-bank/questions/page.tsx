@@ -8,7 +8,6 @@ import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  importQuestionsCsvAction,
   toggleQuestionActiveAction,
   updateQuestionStatusAction,
 } from "@/features/question-bank/actions";
@@ -68,34 +67,43 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
       />
 
       <FormSection
-        title="Import Bank Soal CSV"
-        description="Gunakan subject_code sesuai mapel. Guru hanya dapat import ke mapel yang ditugaskan."
+        title="Import Bank Soal"
+        description="Kelola import bank soal dalam berbagai format"
       >
-        <form
-          action={importQuestionsCsvAction}
-          className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto_auto]"
-        >
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <Link
-            href="/api/templates/questions"
-            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/import-export"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              Dashboard Import/Export
+            </Link>
+            <Link
+              href="/dashboard/question-bank/import-word"
+              className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
+            >
+              Import Word
+            </Link>
+            <Link
+              href="/dashboard/question-bank/import-excel"
+              className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
+            >
+              Import Excel/CSV
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Gunakan Dashboard Import/Export untuk template dan koordinasi dengan fitur import lainnya.
+          </p>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Quick Links"
+        description="Akses cepat ke fitur terkait bank soal"
+      >
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/dashboard/question-bank/import-word"
-            className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
-          >
-            Import Word
-          </Link>
-          <Link
-            href="/dashboard/question-bank/import-excel"
             className="rounded-md border px-4 py-2 text-center text-sm hover:bg-muted"
           >
             Import Excel

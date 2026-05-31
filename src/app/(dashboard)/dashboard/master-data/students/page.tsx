@@ -9,7 +9,6 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  importStudentClassAssignmentsCsvAction,
   importStudentsCsvAction,
   saveClassMemberAction,
   saveStudentAction,
@@ -64,7 +63,9 @@ export default async function StudentsPage({ searchParams }: PageProps) {
   );
   const editable = students.find((student) => student.id === params.edit);
   const editableProfile = editable ? getProfile(editable) : null;
-  const classHistory = editable ? await getStudentClassHistory(editable.id) : [];
+  const classHistory = editable
+    ? await getStudentClassHistory(editable.id)
+    : [];
   const activeStudents = students.filter(
     (student) => student.status === "active",
   ).length;
@@ -108,56 +109,21 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         />
       </section>
 
-      <FormSection
-        title="Import Siswa CSV"
-        description="Gunakan template siswa. Import hanya membuat user dengan role student."
-      >
-        <form action={importStudentsCsvAction} className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="rounded-md border px-3 py-2 text-sm"
-          />
-          <Link
-            href="/api/templates/students"
-            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import Siswa
-          </button>
-        </form>
-      </FormSection>
-
-      <FormSection
-        title="Import Assignment Siswa-Kelas CSV"
-        description="Gunakan student_email, class_name, academic_year, dan joined_at. Riwayat kelas lama akan ditutup jika siswa pindah kelas."
-      >
-        <form
-          action={importStudentClassAssignmentsCsvAction}
-          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+      <div className="rounded-lg border bg-card p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Import & Export</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Semua fitur import dan export data telah dipindahkan ke dashboard
+            khusus untuk manajemen yang lebih terpusat dan terstruktur.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/import-export"
+          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
         >
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="rounded-md border px-3 py-2 text-sm"
-          />
-          <Link
-            href="/api/templates/student-class-assignments"
-            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import Assignment
-          </button>
-        </form>
-      </FormSection>
+          Buka Dashboard Import/Export
+        </Link>
+      </div>
 
       <FormSection
         title={editable ? "Edit Siswa" : "Tambah Siswa"}
@@ -207,7 +173,9 @@ export default async function StudentsPage({ searchParams }: PageProps) {
           <input
             name="password"
             type="password"
-            placeholder={editable ? "Kosongkan jika tidak diubah" : "Password awal"}
+            placeholder={
+              editable ? "Kosongkan jika tidak diubah" : "Password awal"
+            }
             className="rounded-md border px-3 py-2 text-sm"
           />
           <select
@@ -230,7 +198,10 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         title="Assign Siswa ke Kelas"
         description="Jika siswa masih punya kelas aktif, sistem akan mengisi left_at sebelum membuat record class_members baru."
       >
-        <form action={saveClassMemberAction} className="grid gap-4 md:grid-cols-3">
+        <form
+          action={saveClassMemberAction}
+          className="grid gap-4 md:grid-cols-3"
+        >
           <select
             name="student_id"
             defaultValue={editable?.id ?? students[0]?.id ?? ""}
@@ -303,7 +274,15 @@ export default async function StudentsPage({ searchParams }: PageProps) {
       </div>
 
       <DataTable
-        columns={["Nama", "NIS", "NISN", "Email", "Kelas Aktif", "Status", "Aksi"]}
+        columns={[
+          "Nama",
+          "NIS",
+          "NISN",
+          "Email",
+          "Kelas Aktif",
+          "Status",
+          "Aksi",
+        ]}
         isEmpty={students.length === 0}
         empty={
           <EmptyState
@@ -362,7 +341,9 @@ export default async function StudentsPage({ searchParams }: PageProps) {
                     <input
                       type="hidden"
                       name="status"
-                      value={student.status === "active" ? "inactive" : "active"}
+                      value={
+                        student.status === "active" ? "inactive" : "active"
+                      }
                     />
                     <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
                       {student.status === "active" ? "Nonaktifkan" : "Aktifkan"}

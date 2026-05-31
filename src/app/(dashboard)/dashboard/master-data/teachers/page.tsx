@@ -9,8 +9,6 @@ import { FormSection } from "@/components/master-data/form-section";
 import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  importTeacherSubjectAssignmentsCsvAction,
-  importTeachersCsvAction,
   saveTeacherAction,
   saveTeacherAssignmentAction,
   toggleUserStatusAction,
@@ -72,7 +70,8 @@ export default async function TeachersPage({ searchParams }: PageProps) {
   ).length;
   const withoutAssignments = teachers.filter(
     (teacher) =>
-      teacher.status === "active" && (assignmentCounts.get(teacher.id) ?? 0) === 0,
+      teacher.status === "active" &&
+      (assignmentCounts.get(teacher.id) ?? 0) === 0,
   ).length;
   const totalAssignments = Array.from(assignmentCounts.values()).reduce(
     (total, count) => total + count,
@@ -110,56 +109,21 @@ export default async function TeachersPage({ searchParams }: PageProps) {
         />
       </section>
 
-      <FormSection
-        title="Import Guru CSV"
-        description="Gunakan template guru. Import hanya membuat user dengan role teacher."
-      >
-        <form action={importTeachersCsvAction} className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="rounded-md border px-3 py-2 text-sm"
-          />
-          <Link
-            href="/api/templates/teachers"
-            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import Guru
-          </button>
-        </form>
-      </FormSection>
-
-      <FormSection
-        title="Import Assignment Guru-Mapel-Kelas CSV"
-        description="Gunakan teacher_email, subject_code, class_name, dan academic_year. Duplikat assignment akan dilewati."
-      >
-        <form
-          action={importTeacherSubjectAssignmentsCsvAction}
-          className="grid gap-3 md:grid-cols-[1fr_auto_auto]"
+      <div className="rounded-lg border bg-card p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Import & Export</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Semua fitur import dan export data telah dipindahkan ke dashboard
+            khusus untuk manajemen yang lebih terpusat dan terstruktur.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/import-export"
+          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
         >
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="rounded-md border px-3 py-2 text-sm"
-          />
-          <Link
-            href="/api/templates/teacher-subject-assignments"
-            className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm hover:bg-muted"
-          >
-            Download Template
-          </Link>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Import Assignment
-          </button>
-        </form>
-      </FormSection>
+          Buka Dashboard Import/Export
+        </Link>
+      </div>
 
       <FormSection
         title={editable ? "Edit Guru" : "Tambah Guru"}
@@ -203,7 +167,9 @@ export default async function TeachersPage({ searchParams }: PageProps) {
           <input
             name="password"
             type="password"
-            placeholder={editable ? "Kosongkan jika tidak diubah" : "Password awal"}
+            placeholder={
+              editable ? "Kosongkan jika tidak diubah" : "Password awal"
+            }
             className="rounded-md border px-3 py-2 text-sm"
           />
           <select
@@ -373,7 +339,9 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                     <input
                       type="hidden"
                       name="status"
-                      value={teacher.status === "active" ? "inactive" : "active"}
+                      value={
+                        teacher.status === "active" ? "inactive" : "active"
+                      }
                     />
                     <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
                       {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
