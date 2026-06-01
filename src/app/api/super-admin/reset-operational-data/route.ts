@@ -2,7 +2,11 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { resetOperationalData } from "@/features/operational-reset/reset-operational-data";
-import { OPERATIONAL_RESET_CONFIRMATION } from "@/features/operational-reset/reset-plan";
+import {
+  OPERATIONAL_RESET_CONFIRMATION,
+  operationalResetScopes,
+  type OperationalResetScope,
+} from "@/features/operational-reset/reset-plan";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 
 export async function POST(request: Request) {
@@ -16,6 +20,16 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
+  const allowedScopes = new Set<OperationalResetScope>(
+    operationalResetScopes.map((scope) => scope.id),
+  );
+  const scopes = Array.isArray(body?.scopes)
+    ? body.scopes.filter(
+        (scope: unknown): scope is OperationalResetScope =>
+          typeof scope === "string" &&
+          allowedScopes.has(scope as OperationalResetScope),
+      )
+    : [];
 
   if (body?.confirmation !== OPERATIONAL_RESET_CONFIRMATION) {
     return NextResponse.json(
@@ -27,11 +41,19 @@ export async function POST(request: Request) {
     );
   }
 
+  if (scopes.length === 0) {
+    return NextResponse.json(
+      { ok: false, message: "Pilih minimal satu kategori data untuk reset." },
+      { status: 400 },
+    );
+  }
+
   try {
-    const summary = await resetOperationalData(user);
+    const summary = await resetOperationalData(user, scopes);
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/super-admin");
+    revalidatePath("/dashboard/super-admin/settings");
 
     return NextResponse.json({
       ok: true,

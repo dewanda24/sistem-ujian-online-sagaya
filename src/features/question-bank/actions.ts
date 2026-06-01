@@ -22,6 +22,28 @@ type ActionResult = {
   message: string;
 };
 
+type PublishableQuestion = {
+  id: string;
+  school_id: string;
+  subject_id: string;
+  category_id: string | null;
+  stimulus_id: string | null;
+  type: string;
+  difficulty: string;
+  content: string;
+  explanation: string | null;
+  point: number | string;
+  is_active: boolean;
+  question_categories?: { subject_id?: string | null } | { subject_id?: string | null }[] | null;
+  question_options?: Array<{
+    id: string;
+    option_label: string;
+    option_text: string;
+    is_correct: boolean;
+    order_number: number;
+  }> | null;
+};
+
 const CATEGORY_PATH = "/dashboard/question-bank/categories";
 const QUESTION_PATH = "/dashboard/question-bank/questions";
 const STIMULUS_PATH = "/dashboard/question-bank/stimuli";
@@ -287,6 +309,60 @@ async function assertQuestionPublishable(
         "Soal belum memenuhi syarat untuk dipublish.",
     });
   }
+}
+
+function firstRelated<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getQuestionPublishIssue(question: PublishableQuestion) {
+  if (!question.is_active) {
+    return "soal nonaktif";
+  }
+
+  const category = firstRelated(question.question_categories);
+
+  if (question.category_id && !category) {
+    return "kategori soal tidak ditemukan";
+  }
+
+  if (
+    question.category_id &&
+    category?.subject_id &&
+    category.subject_id !== question.subject_id
+  ) {
+    return "kategori soal berbeda mapel";
+  }
+
+  const parsed = questionSchema.safeParse({
+    id: question.id,
+    school_id: question.school_id,
+    subject_id: question.subject_id,
+    category_id: question.category_id ?? "",
+    stimulus_id: question.stimulus_id ?? "",
+    type: question.type,
+    difficulty: question.difficulty,
+    content: question.content,
+    explanation: question.explanation ?? "",
+    point: question.point,
+    status: "published",
+    is_active: Boolean(question.is_active),
+    options:
+      question.type === "multiple_choice"
+        ? (question.question_options ?? []).map((option) => ({
+            id: option.id,
+            option_label: option.option_label,
+            option_text: option.option_text,
+            is_correct: option.is_correct,
+            order_number: option.order_number,
+          }))
+        : [],
+  });
+
+  return parsed.success
+    ? null
+    : (parsed.error.issues[0]?.message ??
+        "soal belum memenuhi syarat publish");
 }
 
 async function assertStimulusInScope(
@@ -1102,6 +1178,110 @@ export async function updateQuestionStatusAction(formData: FormData) {
   redirectTo("/dashboard/question-bank/questions", {
     ok: !error,
     message: error ? error.message : "Status soal berhasil diperbarui.",
+  });
+}
+
+export async function publishAllQuestionsAction() {
+  const user = await requirePermission("questions.publish");
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("questions")
+    .select(
+      "id, school_id, subject_id, category_id, stimulus_id, type, difficulty, content, explanation, point, is_active, question_categories(subject_id), question_options(id, option_label, option_text, is_correct, order_number)",
+    )
+    .eq("status", "draft")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (!bypassesSubjectScope(user)) {
+    const subjectIds = await getTeacherSubjectIds(user.id);
+
+    if (subjectIds.length === 0) {
+      redirectTo(QUESTION_PATH, {
+        ok: false,
+        message: "Tidak ada mapel yang dapat dipublish untuk akun ini.",
+      });
+    }
+
+    query = query.in("subject_id", subjectIds);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: error.message,
+    });
+  }
+
+  const questions = (data ?? []) as PublishableQuestion[];
+
+  if (questions.length === 0) {
+    redirectTo(QUESTION_PATH, {
+      ok: true,
+      message: "Tidak ada soal draft yang perlu dipublish.",
+    });
+  }
+
+  const publishableIds: string[] = [];
+  const skipped: string[] = [];
+
+  for (const question of questions) {
+    const issue = getQuestionPublishIssue(question);
+
+    if (issue) {
+      skipped.push(`${question.id}: ${issue}`);
+      continue;
+    }
+
+    publishableIds.push(question.id);
+  }
+
+  let updateError: { message: string } | null = null;
+
+  if (publishableIds.length > 0) {
+    const { error: statusError } = await supabase
+      .from("questions")
+      .update({ status: "published" })
+      .in("id", publishableIds);
+
+    updateError = statusError;
+  }
+
+  await logAuditEvent({
+    userId: user.id,
+    action: "questions.publish_all",
+    entityType: "questions",
+    payload: {
+      total_draft: questions.length,
+      published_count: updateError ? 0 : publishableIds.length,
+      skipped_count: skipped.length,
+      sample_skipped: skipped.slice(0, 5),
+    },
+  });
+
+  revalidatePath(QUESTION_PATH);
+
+  if (updateError) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: updateError.message,
+    });
+  }
+
+  const skippedMessage =
+    skipped.length > 0
+      ? ` ${skipped.length} soal dilewati karena belum valid atau nonaktif.`
+      : "";
+
+  redirectTo(QUESTION_PATH, {
+    ok: publishableIds.length > 0,
+    message:
+      publishableIds.length > 0
+        ? `Publish massal selesai: ${publishableIds.length} soal berhasil dipublish.${skippedMessage}`
+        : `Tidak ada soal yang bisa dipublish. ${skipped.length} soal draft belum valid atau nonaktif.`,
   });
 }
 

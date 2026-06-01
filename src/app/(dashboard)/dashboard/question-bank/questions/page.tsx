@@ -8,6 +8,7 @@ import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  publishAllQuestionsAction,
   toggleQuestionActiveAction,
   updateQuestionStatusAction,
 } from "@/features/question-bank/actions";
@@ -122,6 +123,21 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
         defaults={filters}
         includeQuestionFilters
       />
+
+      <FormSection
+        title="Aksi Massal"
+        description="Publish semua soal draft yang sudah valid dan aktif sesuai akses mapel akun ini."
+      >
+        <form action={publishAllQuestionsAction}>
+          <ConfirmSubmitButton
+            confirmMessage="Publish semua soal draft yang valid dan aktif? Soal yang belum lengkap atau nonaktif akan dilewati."
+            loadingText="Mem-publish..."
+            variant="default"
+          >
+            Publish Semua Draft
+          </ConfirmSubmitButton>
+        </form>
+      </FormSection>
 
       <DataTable
         columns={[

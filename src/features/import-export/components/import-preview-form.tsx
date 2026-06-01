@@ -2,10 +2,15 @@
 
 import { useMemo, useState } from "react";
 
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
   importTemplates,
   type TemplateType,
 } from "@/features/import-export/templates";
+import {
+  importStudentsCsvAction,
+  importTeachersCsvAction,
+} from "@/lib/actions/master-data-actions";
 
 type PreviewRow = Record<string, string>;
 
@@ -75,10 +80,17 @@ function parseCsv(text: string) {
 
 export function ImportPreviewForm() {
   const [templateType, setTemplateType] = useState<TemplateType>("students");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [error, setError] = useState("");
   const template = importTemplates[templateType];
+  const importAction =
+    templateType === "students"
+      ? importStudentsCsvAction
+      : templateType === "teachers"
+        ? importTeachersCsvAction
+        : null;
   const requiredHeaders = useMemo(
     () => template.columns.map((column) => column.key),
     [template],
@@ -97,6 +109,7 @@ export function ImportPreviewForm() {
     setError("");
     setHeaders([]);
     setRows([]);
+    setSelectedFile(file ?? null);
 
     if (!file) {
       return;
@@ -117,16 +130,18 @@ export function ImportPreviewForm() {
       <div className="mb-4">
         <h2 className="text-base font-semibold">Import Staging Preview</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Validasi struktur CSV sebelum import otomatis diaktifkan. Data tidak
-          disimpan ke database.
+          Validasi struktur CSV sebelum import. Untuk template siswa dan guru,
+          tombol import akan muncul setelah preview valid.
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[220px_1fr]">
+      <form action={importAction ?? undefined} className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-[220px_1fr]">
         <select
           value={templateType}
           onChange={(event) => {
             setTemplateType(event.target.value as TemplateType);
+            setSelectedFile(null);
             setHeaders([]);
             setRows([]);
             setError("");
@@ -140,12 +155,38 @@ export function ImportPreviewForm() {
           ))}
         </select>
         <input
+          key={templateType}
+          name="file"
           type="file"
           accept=".csv,text/csv"
           onChange={(event) => handleFile(event.target.files?.[0])}
           className="rounded-md border bg-background px-3 py-2 text-sm"
         />
-      </div>
+        </div>
+
+        {importAction ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+            <p className="text-sm text-muted-foreground">
+              Preview valid akan membuat tombol import aktif. Import siswa/guru
+              juga membuat akun auth sesuai kolom email dan password.
+            </p>
+            <ConfirmSubmitButton
+              confirmMessage={`Import ${rows.length} baris ${templateType === "students" ? "siswa" : "guru"} sekarang? Pastikan password awal dan email sudah benar.`}
+              confirmTitle="Konfirmasi Import"
+              loadingText="Mengimport..."
+              variant="default"
+              disabled={!selectedFile || !isValid}
+            >
+              Import Sekarang
+            </ConfirmSubmitButton>
+          </div>
+        ) : (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Template ini hanya divalidasi di staging preview. Gunakan form import
+            khusus di bawah untuk menyimpan data.
+          </div>
+        )}
+      </form>
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <div className="rounded-md border p-3 text-sm">

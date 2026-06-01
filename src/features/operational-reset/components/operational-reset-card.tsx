@@ -8,8 +8,9 @@ import { DangerConfirmDialog } from "@/components/common/dialogs/danger-confirm-
 import { Button } from "@/components/ui/button";
 import {
   OPERATIONAL_RESET_CONFIRMATION,
-  operationalResetDeletedTables,
+  operationalResetScopes,
   operationalResetRetainedTables,
+  type OperationalResetScope,
   type OperationalResetSummary,
 } from "@/features/operational-reset/reset-plan";
 
@@ -23,9 +24,19 @@ export function OperationalResetCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [summary, setSummary] = useState<OperationalResetSummary | null>(null);
+  const [selectedScopes, setSelectedScopes] = useState<OperationalResetScope[]>([
+    "exams",
+    "assignments",
+  ]);
+
+  const selectedScopeSet = new Set(selectedScopes);
+  const selectedDefinitions = operationalResetScopes.filter((scope) =>
+    selectedScopeSet.has(scope.id),
+  );
+  const selectedTables = selectedDefinitions.flatMap((scope) => scope.tables);
 
   async function handleReset() {
-    if (isSubmitting) return;
+    if (isSubmitting || selectedScopes.length === 0) return;
 
     setIsSubmitting(true);
     try {
@@ -36,6 +47,7 @@ export function OperationalResetCard() {
         },
         body: JSON.stringify({
           confirmation: OPERATIONAL_RESET_CONFIRMATION,
+          scopes: selectedScopes,
         }),
       });
       const result = (await response.json().catch(() => ({
@@ -62,6 +74,22 @@ export function OperationalResetCard() {
     }
   }
 
+  function toggleScope(scope: OperationalResetScope) {
+    setSelectedScopes((current) =>
+      current.includes(scope)
+        ? current.filter((item) => item !== scope)
+        : [...current, scope],
+    );
+  }
+
+  function selectAllScopes() {
+    setSelectedScopes(operationalResetScopes.map((scope) => scope.id));
+  }
+
+  function clearScopes() {
+    setSelectedScopes([]);
+  }
+
   return (
     <section className="rounded-lg border border-destructive/40 bg-card p-5 text-card-foreground shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -71,17 +99,68 @@ export function OperationalResetCard() {
             <h2 className="text-base font-semibold">Reset Data Operasional</h2>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">
-            Kosongkan data operasional ujian, assignment, kelas, tahun ajaran,
-            dan akun non-Super Admin. Bank Soal, role, permission, konfigurasi,
-            dan akun Super Admin tetap dipertahankan.
+            Pilih kategori data yang ingin dikosongkan. Akun Super Admin, role,
+            permission, konfigurasi, dan template tetap dipertahankan.
           </p>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {operationalResetScopes.map((scope) => (
+              <label
+                key={scope.id}
+                className="flex cursor-pointer gap-3 rounded-md border p-3 text-sm transition hover:bg-muted/50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedScopeSet.has(scope.id)}
+                  disabled={isSubmitting}
+                  onChange={() => toggleScope(scope.id)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="flex items-center gap-2 font-medium">
+                    {scope.label}
+                    {scope.dangerous ? (
+                      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                        Bahaya
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {scope.description}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={selectAllScopes}
+              className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+            >
+              Pilih semua
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={clearScopes}
+              className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+            >
+              Kosongkan pilihan
+            </button>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-md border p-3">
               <p className="text-xs font-semibold uppercase text-destructive">
-                Akan dikosongkan
+                Akan dikosongkan sesuai pilihan
               </p>
               <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
-                {operationalResetDeletedTables.slice(0, 8).map((item) => (
+                {(selectedTables.length ? selectedTables : ["Belum ada kategori dipilih"])
+                  .slice(0, 10)
+                  .map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -103,7 +182,7 @@ export function OperationalResetCard() {
           type="button"
           variant="destructive"
           className="self-start"
-          disabled={isSubmitting}
+          disabled={isSubmitting || selectedScopes.length === 0}
           onClick={() => setIsOpen(true)}
         >
           <Trash2 aria-hidden="true" />
@@ -141,11 +220,13 @@ export function OperationalResetCard() {
 
       <DangerConfirmDialog
         isOpen={isOpen}
-        title="Reset Data Operasional"
-        description="Aksi ini akan menghapus data sekolah operasional, akun admin sekolah/guru/siswa/proctor/principal, assignment, ujian, jadwal, peserta, jawaban, hasil, dan token ujian. Akun Super Admin, Bank Soal, Permission, Role, konfigurasi sistem, dan template import/export tetap aman."
+        title="Reset Data Terpilih"
+        description={`Aksi ini akan menghapus kategori: ${selectedDefinitions
+          .map((scope) => scope.label)
+          .join(", ")}. Jika Master sekolah & akademik atau Bank Soal dipilih, data yang bergantung seperti ujian/assignment ikut dibersihkan agar relasi database tetap aman. Akun Super Admin, Role, Permission, konfigurasi sistem, dan template tetap aman.`}
         confirmationText={OPERATIONAL_RESET_CONFIRMATION}
         confirmationHint={`Ketik "${OPERATIONAL_RESET_CONFIRMATION}" untuk menjalankan reset`}
-        confirmLabel="Reset Data Operasional"
+        confirmLabel="Reset Data Terpilih"
         isLoading={isSubmitting}
         onCancel={() => {
           if (!isSubmitting) {
