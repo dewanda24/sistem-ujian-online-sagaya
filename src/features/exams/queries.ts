@@ -21,6 +21,40 @@ export type ExamScheduleFilters = {
   date_to?: string;
 };
 
+export type ExamAdmissionCardFilters = {
+  schedule_id?: string;
+  class_id?: string;
+  status?: string;
+  q?: string;
+};
+
+export type ExamAdmissionCard = {
+  id: string;
+  status: string;
+  assigned_at: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  student_username: string;
+  nis: string;
+  nisn: string;
+  class_id: string;
+  class_name: string;
+  academic_year: string;
+  schedule_id: string;
+  schedule_title: string;
+  schedule_status: string;
+  start_at: string;
+  end_at: string;
+  token_required: boolean;
+  access_token: string;
+  package_title: string;
+  subject_code: string;
+  subject_name: string;
+  duration_minutes: number;
+  semester: string;
+};
+
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) {
     return value[0] ?? null;
@@ -321,4 +355,106 @@ export async function getExamScheduleClassIds(scheduleId?: string) {
   }
 
   return data.map((item) => item.class_id as string);
+}
+
+export async function getExamAdmissionCards(
+  filters: ExamAdmissionCardFilters,
+): Promise<ExamAdmissionCard[]> {
+  const supabase = await createClient();
+  const schedules = await getExamSchedules({});
+  const scopedScheduleIds = schedules.map((schedule) => schedule.id as string);
+
+  if (scopedScheduleIds.length === 0) {
+    return [];
+  }
+
+  const scheduleIds =
+    filters.schedule_id && scopedScheduleIds.includes(filters.schedule_id)
+      ? [filters.schedule_id]
+      : scopedScheduleIds;
+
+  let query = supabase
+    .from("exam_participants")
+    .select(
+      "id, status, assigned_at, student_id, class_id, users(id, username, email, user_profiles(full_name, nis, nisn)), classes(id, name, academic_years(name)), exam_schedules(id, title, status, start_at, end_at, token_required, access_token, academic_years(name), semesters(name), exam_packages(id, title, duration_minutes, subjects(code, name)))",
+    )
+    .in("exam_schedule_id", scheduleIds)
+    .order("assigned_at", { ascending: false });
+
+  if (filters.class_id) {
+    query = query.eq("class_id", filters.class_id);
+  }
+
+  if (filters.status) {
+    query = query.eq("status", filters.status);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    return [];
+  }
+
+  const normalizedQuery = filters.q?.trim().toLowerCase();
+
+  return data
+    .map((participant) => {
+      const user = firstRelation(participant.users);
+      const profile = firstRelation(user?.user_profiles);
+      const classItem = firstRelation(participant.classes);
+      const classAcademicYear = firstRelation(classItem?.academic_years);
+      const schedule = firstRelation(participant.exam_schedules);
+      const scheduleAcademicYear = firstRelation(schedule?.academic_years);
+      const semester = firstRelation(schedule?.semesters);
+      const examPackage = firstRelation(schedule?.exam_packages);
+      const subject = firstRelation(examPackage?.subjects);
+
+      return {
+        id: participant.id as string,
+        status: participant.status as string,
+        assigned_at: participant.assigned_at as string,
+        student_id: participant.student_id as string,
+        student_name: profile?.full_name || user?.username || "Siswa",
+        student_email: user?.email ?? "",
+        student_username: user?.username ?? "",
+        nis: profile?.nis ?? "",
+        nisn: profile?.nisn ?? "",
+        class_id: participant.class_id ?? "",
+        class_name: classItem?.name ?? "Tanpa kelas",
+        academic_year:
+          classAcademicYear?.name ?? scheduleAcademicYear?.name ?? "",
+        schedule_id: schedule?.id ?? "",
+        schedule_title: schedule?.title ?? "Jadwal ujian",
+        schedule_status: schedule?.status ?? "",
+        start_at: schedule?.start_at ?? "",
+        end_at: schedule?.end_at ?? "",
+        token_required: Boolean(schedule?.token_required),
+        access_token: schedule?.access_token ?? "",
+        package_title: examPackage?.title ?? "Paket ujian",
+        subject_code: subject?.code ?? "",
+        subject_name: subject?.name ?? "",
+        duration_minutes: Number(examPackage?.duration_minutes ?? 0),
+        semester: semester?.name ?? "",
+      };
+    })
+    .filter((card) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return [
+        card.student_name,
+        card.student_email,
+        card.student_username,
+        card.nis,
+        card.nisn,
+        card.class_name,
+        card.schedule_title,
+        card.subject_code,
+        card.subject_name,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
 }

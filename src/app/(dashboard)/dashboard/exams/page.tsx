@@ -17,6 +17,12 @@ const modules = [
     description:
       "Atur jadwal ujian, tahun ajaran, semester, dan target kelas peserta.",
   },
+  {
+    title: "Kartu Ujian",
+    href: "/dashboard/exams/cards",
+    description:
+      "Preview, filter, dan cetak kartu ujian peserta dari dashboard khusus.",
+  },
 ];
 
 export default async function ExamsPage() {
@@ -28,7 +34,7 @@ export default async function ExamsPage() {
         title="Exams"
         description="Fondasi paket dan jadwal ujian. Token, ruang ujian, autosave, scoring, dan monitoring masuk sprint berikutnya."
       />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {modules.map((module) => (
           <Link key={module.href} href={module.href}>
             <DashboardCard

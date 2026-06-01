@@ -174,6 +174,29 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     icon: "file-text",
     roles: ["super_admin", "admin", "teacher"],
     permission: "exams.view",
+    children: [
+      {
+        label: "Paket Ujian",
+        href: "/dashboard/exams/packages",
+        icon: "book-open",
+        roles: ["super_admin", "admin", "teacher"],
+        permission: "exam_packages.view",
+      },
+      {
+        label: "Jadwal Ujian",
+        href: "/dashboard/exams/schedules",
+        icon: "calendar-days",
+        roles: ["super_admin", "admin", "teacher"],
+        permission: "exam_schedules.view",
+      },
+      {
+        label: "Kartu Ujian",
+        href: "/dashboard/exams/cards",
+        icon: "file-text",
+        roles: ["super_admin", "admin", "teacher"],
+        permission: "exam_schedules.view",
+      },
+    ],
   },
   {
     label: "Grading",

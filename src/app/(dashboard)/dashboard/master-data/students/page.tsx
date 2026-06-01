@@ -123,6 +123,12 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         >
           Buka Dashboard Import/Export
         </Link>
+        <Link
+          href="/dashboard/master-data/students/login-cards"
+          className="ml-2 inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+        >
+          Cetak Kartu Login
+        </Link>
       </div>
 
       <FormSection

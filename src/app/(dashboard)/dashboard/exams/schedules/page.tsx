@@ -543,6 +543,12 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                 >
                   Edit
                 </a>
+                <a
+                  href={`/dashboard/exams/cards?schedule_id=${schedule.id}`}
+                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                >
+                  Kartu
+                </a>
                 {[
                   "draft",
                   "scheduled",
