@@ -6,6 +6,12 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { requireRole } from "@/lib/auth/require-role";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -116,7 +122,9 @@ function serviceRoleClient() {
 }
 
 export async function saveSchoolAction(formData: FormData) {
+  await requireRole("super_admin");
   const currentUser = await requirePermission("schools.manage");
+  const scope = await requireSchoolScope();
   const parsed = schoolSchema.safeParse({
     id: formString(formData, "id"),
     name: formString(formData, "name"),
@@ -136,6 +144,11 @@ export async function saveSchoolAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
+
+  if (!scope.isSuperAdmin) {
+    assertSameSchool(scope, id);
+  }
+
   const { data: savedSchool, error } = id
     ? await supabase
         .from("schools")
@@ -163,9 +176,12 @@ export async function saveSchoolAction(formData: FormData) {
 }
 
 export async function toggleSchoolAction(formData: FormData) {
+  await requireRole("super_admin");
   const currentUser = await requirePermission("schools.manage");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
+  assertSameSchool(scope, id);
   const isActive = formBoolean(formData, "is_active");
   const { error } = await supabase
     .from("schools")
@@ -191,6 +207,7 @@ export async function toggleSchoolAction(formData: FormData) {
 
 export async function saveAcademicYearAction(formData: FormData) {
   const currentUser = await requirePermission("academic_years.manage");
+  const scope = await requireSchoolScope();
   const parsed = academicYearSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -210,6 +227,7 @@ export async function saveAcademicYearAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, is_active, starts_at, ends_at, ...rest } = parsed.data;
+  assertSameSchool(scope, rest.school_id);
 
   if (is_active) {
     await supabase
@@ -257,9 +275,11 @@ export async function saveAcademicYearAction(formData: FormData) {
 
 export async function toggleAcademicYearAction(formData: FormData) {
   const currentUser = await requirePermission("academic_years.manage");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
   const schoolId = formString(formData, "school_id");
+  assertSameSchool(scope, schoolId);
   const isActive = formBoolean(formData, "is_active");
 
   if (isActive) {
@@ -387,6 +407,7 @@ export async function toggleSemesterAction(formData: FormData) {
 
 export async function saveClassAction(formData: FormData) {
   const currentUser = await requirePermission("classes.manage");
+  const scope = await requireSchoolScope();
   const parsed = classSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -406,6 +427,7 @@ export async function saveClassAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
+  assertSameSchool(scope, payload.school_id);
   const { data: savedClass, error } = id
     ? await supabase
         .from("classes")
@@ -434,8 +456,17 @@ export async function saveClassAction(formData: FormData) {
 
 export async function toggleClassAction(formData: FormData) {
   const currentUser = await requirePermission("classes.manage");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
+  const { data: classItem } = await supabase
+    .from("classes")
+    .select("school_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  assertSameSchool(scope, classItem?.school_id);
+
   const isActive = formBoolean(formData, "is_active");
   const { error } = await supabase
     .from("classes")
@@ -461,6 +492,7 @@ export async function toggleClassAction(formData: FormData) {
 
 export async function saveSubjectAction(formData: FormData) {
   const currentUser = await requirePermission("subjects.manage");
+  const scope = await requireSchoolScope();
   const parsed = subjectSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
@@ -479,6 +511,7 @@ export async function saveSubjectAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
+  assertSameSchool(scope, payload.school_id);
   const { data: savedSubject, error } = id
     ? await supabase
         .from("subjects")
@@ -507,8 +540,17 @@ export async function saveSubjectAction(formData: FormData) {
 
 export async function toggleSubjectAction(formData: FormData) {
   const currentUser = await requirePermission("subjects.manage");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
+  const { data: subject } = await supabase
+    .from("subjects")
+    .select("school_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  assertSameSchool(scope, subject?.school_id);
+
   const isActive = formBoolean(formData, "is_active");
   const { error } = await supabase
     .from("subjects")
@@ -556,6 +598,12 @@ async function createAuthUser(email: string, password?: string) {
 }
 
 async function getDefaultSchoolId() {
+  const scope = await requireSchoolScope();
+
+  if (!scope.isSuperAdmin) {
+    return requireScopedSchoolId(scope);
+  }
+
   const supabase = await createClient();
   const { data: activeSchool } = await supabase
     .from("schools")
@@ -591,30 +639,40 @@ async function getAcademicYearIdByName(name: string, schoolId: string) {
   return data?.id ? (data.id as string) : null;
 }
 
-async function getTeacherIdByEmail(email: string) {
+async function getTeacherIdByEmail(email: string, schoolId?: string | null) {
   if (!email.trim()) {
     return "";
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("users")
     .select("id, roles!inner(name)")
     .eq("email", email.trim())
-    .eq("roles.name", "teacher")
-    .maybeSingle();
+    .eq("roles.name", "teacher");
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query.maybeSingle();
 
   return data?.id ? (data.id as string) : "";
 }
 
-async function getStudentIdByEmail(email: string) {
+async function getStudentIdByEmail(email: string, schoolId?: string | null) {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("users")
     .select("id, roles!inner(name)")
     .eq("email", email.trim())
-    .eq("roles.name", "student")
-    .maybeSingle();
+    .eq("roles.name", "student");
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query.maybeSingle();
 
   return data?.id ? (data.id as string) : null;
 }
@@ -712,6 +770,7 @@ export async function importClassesCsvAction(formData: FormData) {
 
     const homeroomTeacherId = await getTeacherIdByEmail(
       row.homeroom_teacher_email ?? "",
+      schoolId,
     );
     const parsed = classSchema.safeParse({
       school_id: schoolId,
@@ -829,7 +888,7 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
 
   for (const [index, row] of rows.entries()) {
     const rowNumber = index + 2;
-    const studentId = await getStudentIdByEmail(row.student_email ?? "");
+    const studentId = await getStudentIdByEmail(row.student_email ?? "", schoolId);
     const classId = await getClassIdByNameAndAcademicYear({
       className: row.class_name ?? "",
       academicYearName: row.academic_year ?? "",
@@ -954,7 +1013,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
 
   for (const [index, row] of rows.entries()) {
     const rowNumber = index + 2;
-    const teacherId = await getTeacherIdByEmail(row.teacher_email ?? "");
+    const teacherId = await getTeacherIdByEmail(row.teacher_email ?? "", schoolId);
     const subjectId = await getSubjectIdByCode(row.subject_code ?? "", schoolId);
     const academicYearId = await getAcademicYearIdByName(
       row.academic_year ?? "",
@@ -1064,6 +1123,7 @@ async function importRoleUsers({
   redirectPath: string;
 }) {
   const currentUser = await requirePermission(permission);
+  const scope = await requireSchoolScope();
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -1177,6 +1237,7 @@ async function importRoleUsers({
         username: row.username,
         role_id: roleId,
         status,
+        school_id: scope.schoolId,
       })
       .select("id")
       .single();
@@ -1261,6 +1322,7 @@ export async function importStudentsCsvAction(formData: FormData) {
 
 export async function saveTeacherAction(formData: FormData) {
   const currentUser = await requirePermission("teachers.manage");
+  const scope = await requireSchoolScope();
   const parsed = teacherSchema.safeParse({
     id: formString(formData, "id"),
     email: formString(formData, "email"),
@@ -1291,6 +1353,7 @@ export async function saveTeacherAction(formData: FormData) {
 
   const { id, full_name, nip, phone, password, ...userPayload } = parsed.data;
   let authUserId: string | null = null;
+  let targetSchoolId: string | null = null;
 
   if (!id) {
     const createdAuthUser = await createAuthUser(userPayload.email, password);
@@ -1303,18 +1366,33 @@ export async function saveTeacherAction(formData: FormData) {
     }
 
     authUserId = createdAuthUser.userId;
+  } else {
+    const { data: targetUser } = await supabase
+      .from("users")
+      .select("school_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    assertSameSchool(scope, targetUser?.school_id);
+    targetSchoolId = targetUser?.school_id ?? null;
   }
 
+  const userSchoolId = scope.isSuperAdmin ? targetSchoolId : scope.schoolId;
   const { data: savedUser, error: userError } = id
     ? await supabase
         .from("users")
-        .update({ ...userPayload, role_id: roleId })
+        .update({ ...userPayload, role_id: roleId, school_id: userSchoolId })
         .eq("id", id)
         .select("id")
         .single()
     : await supabase
         .from("users")
-        .insert({ ...userPayload, role_id: roleId, auth_user_id: authUserId })
+        .insert({
+          ...userPayload,
+          role_id: roleId,
+          auth_user_id: authUserId,
+          school_id: userSchoolId,
+        })
         .select("id")
         .single();
 
@@ -1360,6 +1438,7 @@ export async function saveTeacherAction(formData: FormData) {
 
 export async function saveTeacherAssignmentAction(formData: FormData) {
   const currentUser = await requirePermission("teachers.manage");
+  const scope = await requireSchoolScope();
   const parsed = teacherAssignmentSchema.safeParse({
     teacher_id: formString(formData, "teacher_id"),
     subject_id: formString(formData, "subject_id"),
@@ -1375,6 +1454,40 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const [
+    { data: teacher },
+    { data: subject },
+    { data: classItem },
+    { data: academicYear },
+  ] =
+    await Promise.all([
+      supabase
+        .from("users")
+        .select("school_id")
+        .eq("id", parsed.data.teacher_id)
+        .maybeSingle(),
+      supabase
+        .from("subjects")
+        .select("school_id")
+        .eq("id", parsed.data.subject_id)
+        .maybeSingle(),
+      supabase
+        .from("classes")
+        .select("school_id")
+        .eq("id", parsed.data.class_id)
+        .maybeSingle(),
+      supabase
+        .from("academic_years")
+        .select("school_id")
+        .eq("id", parsed.data.academic_year_id)
+        .maybeSingle(),
+    ]);
+
+  assertSameSchool(scope, teacher?.school_id);
+  assertSameSchool(scope, subject?.school_id);
+  assertSameSchool(scope, classItem?.school_id);
+  assertSameSchool(scope, academicYear?.school_id);
+
   const { data: assignment, error } = await supabase
     .from("teacher_subjects")
     .insert(parsed.data)
@@ -1403,9 +1516,18 @@ export async function toggleUserStatusAction(formData: FormData) {
   const currentUser = await requirePermission(
     target === "teachers" ? "teachers.manage" : "students.manage",
   );
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const status = formString(formData, "status") === "active" ? "active" : "inactive";
   const id = formString(formData, "id");
+  const { data: targetUser } = await supabase
+    .from("users")
+    .select("school_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  assertSameSchool(scope, targetUser?.school_id);
+
   const { error } = await supabase
     .from("users")
     .update({ status })
@@ -1430,6 +1552,7 @@ export async function toggleUserStatusAction(formData: FormData) {
 
 export async function saveStudentAction(formData: FormData) {
   const currentUser = await requirePermission("students.manage");
+  const scope = await requireSchoolScope();
   const parsed = studentSchema.safeParse({
     id: formString(formData, "id"),
     email: formString(formData, "email"),
@@ -1462,6 +1585,7 @@ export async function saveStudentAction(formData: FormData) {
   const { id, full_name, nis, nisn, phone, password, ...userPayload } =
     parsed.data;
   let authUserId: string | null = null;
+  let targetSchoolId: string | null = null;
 
   if (!id) {
     const createdAuthUser = await createAuthUser(userPayload.email, password);
@@ -1474,18 +1598,33 @@ export async function saveStudentAction(formData: FormData) {
     }
 
     authUserId = createdAuthUser.userId;
+  } else {
+    const { data: targetUser } = await supabase
+      .from("users")
+      .select("school_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    assertSameSchool(scope, targetUser?.school_id);
+    targetSchoolId = targetUser?.school_id ?? null;
   }
 
+  const userSchoolId = scope.isSuperAdmin ? targetSchoolId : scope.schoolId;
   const { data: savedUser, error: userError } = id
     ? await supabase
         .from("users")
-        .update({ ...userPayload, role_id: roleId })
+        .update({ ...userPayload, role_id: roleId, school_id: userSchoolId })
         .eq("id", id)
         .select("id")
         .single()
     : await supabase
         .from("users")
-        .insert({ ...userPayload, role_id: roleId, auth_user_id: authUserId })
+        .insert({
+          ...userPayload,
+          role_id: roleId,
+          auth_user_id: authUserId,
+          school_id: userSchoolId,
+        })
         .select("id")
         .single();
 
@@ -1533,6 +1672,7 @@ export async function saveStudentAction(formData: FormData) {
 
 export async function saveClassMemberAction(formData: FormData) {
   const currentUser = await requirePermission("students.manage");
+  const scope = await requireSchoolScope();
   const parsed = classMemberSchema.safeParse({
     student_id: formString(formData, "student_id"),
     class_id: formString(formData, "class_id"),
@@ -1548,6 +1688,22 @@ export async function saveClassMemberAction(formData: FormData) {
 
   const supabase = await createClient();
   const { student_id, class_id, joined_at } = parsed.data;
+  const [{ data: student }, { data: classItem }] = await Promise.all([
+    supabase
+      .from("users")
+      .select("school_id")
+      .eq("id", student_id)
+      .maybeSingle(),
+    supabase
+      .from("classes")
+      .select("school_id")
+      .eq("id", class_id)
+      .maybeSingle(),
+  ]);
+
+  assertSameSchool(scope, student?.school_id);
+  assertSameSchool(scope, classItem?.school_id);
+
   const { data: activeMembership } = await supabase
     .from("class_members")
     .select("id")

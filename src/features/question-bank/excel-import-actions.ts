@@ -12,6 +12,10 @@ import {
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 
 export type ExcelImportPreviewState = {
@@ -258,10 +262,17 @@ async function getImportSubjectMap(userId: string, roleName?: string) {
     return subjectMap;
   }
 
-  const { data } = await supabase
+  let query = supabase
     .from("subjects")
     .select("id, code, school_id")
     .eq("is_active", true);
+
+  if (roleName !== "super_admin") {
+    const scope = await requireSchoolScope();
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data } = await query;
   const subjectMap = new Map<string, { id: string; school_id: string }>();
 
   for (const subject of data ?? []) {

@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import type { CurrentUser } from "@/types/auth";
 
 type MonitoringScope = "all" | "teacher";
@@ -8,8 +13,10 @@ export async function getMonitoringSchedules(options?: {
   user?: CurrentUser;
   subject_id?: string;
 }) {
+  const schoolScope = await requireSchoolScope();
+  const scopedSchoolId = requireScopedSchoolId(schoolScope);
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("exam_schedules")
     .select(
       "id, title, status, start_at, end_at, created_by, exam_packages(title, subject_id, subjects(code, name))",
@@ -17,6 +24,12 @@ export async function getMonitoringSchedules(options?: {
     .is("deleted_at", null)
     .in("status", ["scheduled", "active", "finished"])
     .order("start_at", { ascending: false });
+
+  if (scopedSchoolId) {
+    query = query.eq("school_id", scopedSchoolId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];
@@ -80,6 +93,8 @@ export async function getScheduleMonitoring(
     return [];
   }
 
+  await assertMonitoringScheduleInScope(scheduleId);
+
   const supabase = await createClient();
   let query = supabase
     .from("exam_participants")
@@ -110,6 +125,8 @@ export async function getMonitoringClasses(scheduleId?: string) {
   if (!scheduleId) {
     return [];
   }
+
+  await assertMonitoringScheduleInScope(scheduleId);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -152,8 +169,10 @@ export async function getMonitoringSubjectOptions(options?: {
 }
 
 export async function getProctorScheduleOverview() {
+  const schoolScope = await requireSchoolScope();
+  const scopedSchoolId = requireScopedSchoolId(schoolScope);
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("exam_schedules")
     .select(
       "id, title, status, start_at, end_at, token_required, access_token, exam_packages(title, subjects(code, name)), exam_schedule_classes(classes(id, name)), exam_participants(id, status, class_id, exam_attempts(id, status, locked_at, exam_events(id, event_type, created_at)))",
@@ -161,6 +180,12 @@ export async function getProctorScheduleOverview() {
     .is("deleted_at", null)
     .in("status", ["scheduled", "active", "finished"])
     .order("start_at", { ascending: true });
+
+  if (scopedSchoolId) {
+    query = query.eq("school_id", scopedSchoolId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];
@@ -209,4 +234,16 @@ export function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   }
 
   return value ?? null;
+}
+
+async function assertMonitoringScheduleInScope(scheduleId: string) {
+  const schoolScope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: schedule } = await supabase
+    .from("exam_schedules")
+    .select("school_id")
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  assertSameSchool(schoolScope, schedule?.school_id);
 }

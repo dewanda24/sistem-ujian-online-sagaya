@@ -16,6 +16,7 @@ export const adminUserSchema = z
     password: z.string().optional().default(""),
     full_name: z.string().min(2, "Nama lengkap wajib diisi"),
     role_id: z.string().uuid("Role wajib dipilih"),
+    school_id: optionalUuidField,
     status: z.enum(["active", "inactive"]).default("active"),
   })
   .superRefine((value, context) => {

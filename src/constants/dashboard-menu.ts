@@ -65,7 +65,7 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     label: "Roles",
     href: "/dashboard/admin/roles",
     icon: "shield-check",
-    roles: ["super_admin", "admin"],
+    roles: ["super_admin"],
     permission: "roles.view",
   },
   {
@@ -100,7 +100,7 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
         label: "Sekolah",
         href: "/dashboard/master-data/schools",
         icon: "building-2",
-        roles: ["super_admin", "admin"],
+        roles: ["super_admin"],
         permission: "schools.view",
       },
       {
@@ -142,7 +142,7 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
         label: "Admin Sekolah",
         href: "/dashboard/master-data/admins",
         icon: "shield-check",
-        roles: ["super_admin", "admin"],
+        roles: ["super_admin"],
         permission: "users.view",
       },
       {

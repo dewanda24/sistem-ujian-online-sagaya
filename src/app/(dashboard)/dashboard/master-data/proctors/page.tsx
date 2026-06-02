@@ -3,6 +3,7 @@ import { OperationalRoleUsersPage } from "@/features/admin/components/operationa
 type PageProps = {
   searchParams: Promise<{
     q?: string;
+    school_id?: string;
     user_status?: string;
     edit?: string;
     status?: string;

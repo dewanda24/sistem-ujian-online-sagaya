@@ -1,4 +1,8 @@
 import { requireAuth } from "@/lib/auth/require-auth";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import type { SelectOption } from "@/lib/master-data/queries";
 
@@ -17,6 +21,12 @@ export type StimulusFilters = {
 };
 
 export async function getDefaultSchoolId() {
+  const scope = await requireSchoolScope();
+
+  if (!scope.isSuperAdmin) {
+    return requireScopedSchoolId(scope);
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("schools")
@@ -42,6 +52,7 @@ export async function getDefaultSchoolId() {
 
 export async function getScopedSubjectOptions(): Promise<SelectOption[]> {
   const user = await requireAuth();
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
 
   if (user.roles?.name === "teacher") {
@@ -74,11 +85,17 @@ export async function getScopedSubjectOptions(): Promise<SelectOption[]> {
     );
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("subjects")
     .select("id, code, name")
     .eq("is_active", true)
     .order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];

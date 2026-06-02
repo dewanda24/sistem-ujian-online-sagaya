@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { classMemberSchema } from "@/lib/validations/master-data";
@@ -19,14 +23,23 @@ type ClassMemberImportResult = {
   };
 };
 
-async function getStudentIdByEmail(email: string, studentRoleId: string) {
+async function getStudentIdByEmail(
+  email: string,
+  studentRoleId: string,
+  schoolId?: string | null,
+) {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("users")
     .select("id")
     .eq("email", email.trim())
-    .eq("role_id", studentRoleId)
-    .maybeSingle();
+    .eq("role_id", studentRoleId);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query.maybeSingle();
 
   return data?.id ? (data.id as string) : null;
 }
@@ -46,17 +59,25 @@ type ClassLookupResult =
 async function getClassByNameAndAcademicYear({
   className,
   academicYearName,
+  schoolId,
 }: {
   className: string;
   academicYearName: string;
+  schoolId?: string | null;
 }): Promise<ClassLookupResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("classes")
     .select("id, school_id, academic_year_id, academic_years!inner(name)")
     .ilike("name", className.trim())
     .eq("academic_years.name", academicYearName.trim())
     .eq("is_active", true);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data || data.length === 0) {
     return { ok: false, reason: "not_found" };
@@ -114,6 +135,7 @@ export async function commitStudentClassAssignmentImportAction(
   formData: FormData,
 ): Promise<ClassMemberImportResult> {
   const currentUser = await requirePermission("students.manage");
+  const scope = await requireSchoolScope();
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -188,10 +210,16 @@ export async function commitStudentClassAssignmentImportAction(
     }
 
     // Lookup student and class
-    const studentId = await getStudentIdByEmail(studentEmail, studentRoleId);
+    const schoolId = scope.isSuperAdmin ? null : requireScopedSchoolId(scope);
+    const studentId = await getStudentIdByEmail(
+      studentEmail,
+      studentRoleId,
+      schoolId,
+    );
     const classLookup = await getClassByNameAndAcademicYear({
       className,
       academicYearName: academicYear,
+      schoolId,
     });
 
     if (!studentId) {

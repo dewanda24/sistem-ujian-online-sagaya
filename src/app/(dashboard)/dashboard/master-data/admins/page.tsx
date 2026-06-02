@@ -1,8 +1,10 @@
 import { OperationalRoleUsersPage } from "@/features/admin/components/operational-role-users-page";
+import { requireRole } from "@/lib/auth/require-role";
 
 type PageProps = {
   searchParams: Promise<{
     q?: string;
+    school_id?: string;
     user_status?: string;
     edit?: string;
     status?: string;
@@ -11,6 +13,7 @@ type PageProps = {
 };
 
 export default async function MasterDataAdminsPage({ searchParams }: PageProps) {
+  await requireRole("super_admin");
   const params = await searchParams;
 
   return (

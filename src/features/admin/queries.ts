@@ -1,4 +1,8 @@
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 
 type Relation<T> = T | T[] | null | undefined;
@@ -18,10 +22,15 @@ export type AdminUserRow = {
   email: string;
   status: string;
   role_id: string | null;
+  school_id?: string | null;
   roles?: Relation<{
     id: string;
     name: string;
     label: string;
+  }>;
+  schools?: Relation<{
+    id: string;
+    name: string;
   }>;
   user_profiles?: Relation<{
     full_name?: string | null;
@@ -92,7 +101,7 @@ export async function getOperationalUserRoleOptions() {
   const { data, error } = await supabase
     .from("roles")
     .select("id, name, label")
-    .not("name", "in", "(teacher,student)")
+    .not("name", "in", "(super_admin,admin,teacher,student)")
     .order("name", { ascending: true });
 
   if (error || !data) {
@@ -127,15 +136,31 @@ export type AdminUserFilters = {
   q?: string;
   role_id?: string;
   role_names?: string[];
+  school_id?: string;
   status?: string;
 };
 
-export async function getUserGovernanceSummary() {
+export type UserGovernanceSummaryFilters = {
+  school_id?: string;
+};
+
+export async function getUserGovernanceSummary(
+  filters: UserGovernanceSummaryFilters = {},
+) {
   await requirePermission("users.view");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("users")
     .select("id, auth_user_id, status, roles(name, label)");
+
+  if (scope.isSuperAdmin && filters.school_id) {
+    query = query.eq("school_id", filters.school_id);
+  } else if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return {
@@ -176,14 +201,25 @@ export async function getUserGovernanceSummary() {
 
 export async function getAdminUsers(filters: AdminUserFilters | string = "") {
   await requirePermission("users.view");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const search = typeof filters === "string" ? filters : filters.q ?? "";
   let query = supabase
     .from("users")
     .select(
-      "id, auth_user_id, username, email, status, role_id, roles(id, name, label), user_profiles(full_name, nip, nis, nisn, phone)",
+      "id, auth_user_id, username, email, status, role_id, school_id, roles(id, name, label), schools(id, name), user_profiles(full_name, nip, nis, nisn, phone)",
     )
     .order("username", { ascending: true });
+
+  if (
+    scope.isSuperAdmin &&
+    typeof filters !== "string" &&
+    filters.school_id
+  ) {
+    query = query.eq("school_id", filters.school_id);
+  } else if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.or(
@@ -216,6 +252,7 @@ export async function getAdminUsers(filters: AdminUserFilters | string = "") {
   return (data as AdminUserRow[]).map((item) => ({
     ...item,
     role: firstRelation(item.roles),
+    school: firstRelation(item.schools),
     profile: firstRelation(item.user_profiles),
   }));
 }

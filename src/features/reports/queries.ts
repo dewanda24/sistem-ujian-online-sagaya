@@ -1,4 +1,8 @@
 import { requireAuth } from "@/lib/auth/require-auth";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 
 type Relation<T> = T | T[] | null | undefined;
@@ -120,11 +124,22 @@ export async function getReportAttempts(
   filters: ReportFilters = {},
 ): Promise<ReportAttempt[]> {
   const user = await requireAuth();
+  const schoolScope = await requireSchoolScope();
   const supabase = await createClient();
   let scheduleIds: string[] | null = null;
 
   if (user.roles?.name === "teacher") {
     scheduleIds = await getTeacherScheduleIds(user.id);
+
+    if (scheduleIds.length === 0) {
+      return [];
+    }
+  }
+
+  if (user.roles?.name !== "teacher" && !schoolScope.isSuperAdmin) {
+    scheduleIds = await getAdminScheduleIds(
+      requireScopedSchoolId(schoolScope)!,
+    );
 
     if (scheduleIds.length === 0) {
       return [];
@@ -544,13 +559,35 @@ async function getTeacherScheduleIds(userId: string) {
   return (schedules ?? []).map((item) => item.id as string);
 }
 
+async function getAdminScheduleIds(schoolId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exam_schedules")
+    .select("id")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((item) => item.id as string);
+}
+
 async function getReportParticipants(
   filters: ReportFilters = {},
 ): Promise<ReportParticipant[]> {
   const user = await requireAuth();
+  const schoolScope = await requireSchoolScope();
   const supabase = await createClient();
-  const scheduleIds =
+  let scheduleIds =
     user.roles?.name === "teacher" ? await getTeacherScheduleIds(user.id) : null;
+
+  if (user.roles?.name !== "teacher" && !schoolScope.isSuperAdmin) {
+    scheduleIds = await getAdminScheduleIds(
+      requireScopedSchoolId(schoolScope)!,
+    );
+  }
 
   if (scheduleIds && scheduleIds.length === 0) {
     return [];
@@ -674,11 +711,18 @@ function collectFilterOptionsFromAttempt(
 }
 
 async function getAcademicYearReportOptions() {
+  const schoolScope = await requireSchoolScope();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("academic_years")
     .select("id, name")
     .order("name", { ascending: false });
+
+  if (!schoolScope.isSuperAdmin && schoolScope.user.roles?.name !== "teacher") {
+    query = query.eq("school_id", requireScopedSchoolId(schoolScope));
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];
@@ -691,11 +735,21 @@ async function getAcademicYearReportOptions() {
 }
 
 async function getSemesterReportOptions() {
+  const schoolScope = await requireSchoolScope();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("semesters")
-    .select("id, name, academic_years(name)")
+    .select("id, name, academic_years!inner(name, school_id)")
     .order("name");
+
+  if (!schoolScope.isSuperAdmin && schoolScope.user.roles?.name !== "teacher") {
+    query = query.eq(
+      "academic_years.school_id",
+      requireScopedSchoolId(schoolScope),
+    );
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];

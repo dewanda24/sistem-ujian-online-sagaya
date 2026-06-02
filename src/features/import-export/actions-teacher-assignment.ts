@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { teacherAssignmentSchema } from "@/lib/validations/master-data";
@@ -20,6 +24,12 @@ type TeacherAssignmentImportResult = {
 };
 
 async function getDefaultSchoolId() {
+  const scope = await requireSchoolScope();
+
+  if (!scope.isSuperAdmin) {
+    return requireScopedSchoolId(scope);
+  }
+
   const supabase = await createClient();
   const { data: activeSchool } = await supabase
     .from("schools")
@@ -55,14 +65,23 @@ async function getAcademicYearIdByName(name: string, schoolId: string) {
   return data?.id ? (data.id as string) : null;
 }
 
-async function getTeacherIdByEmail(email: string, teacherRoleId: string) {
+async function getTeacherIdByEmail(
+  email: string,
+  teacherRoleId: string,
+  schoolId?: string | null,
+) {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("users")
     .select("id")
     .eq("email", email.trim())
-    .eq("role_id", teacherRoleId)
-    .maybeSingle();
+    .eq("role_id", teacherRoleId);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query.maybeSingle();
 
   return data?.id ? (data.id as string) : null;
 }
@@ -234,7 +253,11 @@ export async function commitTeacherSubjectAssignmentImportAction(
     }
 
     // Lookup IDs
-    const teacherId = await getTeacherIdByEmail(teacherEmail, teacherRoleId);
+    const teacherId = await getTeacherIdByEmail(
+      teacherEmail,
+      teacherRoleId,
+      schoolId,
+    );
     const subjectId = await getSubjectIdByCode(subjectCode, schoolId);
     const classId = await getClassIdByNameAndAcademicYear({
       className,

@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import {
   examPackageActiveSchema,
@@ -62,10 +66,37 @@ function generateExamToken() {
   return token;
 }
 
+async function assertPackageSchoolScope(packageId: string) {
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: examPackage } = await supabase
+    .from("exam_packages")
+    .select("school_id")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  assertSameSchool(scope, examPackage?.school_id);
+  return scope;
+}
+
+async function assertScheduleSchoolScope(scheduleId: string) {
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: schedule } = await supabase
+    .from("exam_schedules")
+    .select("school_id")
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  assertSameSchool(scope, schedule?.school_id);
+  return scope;
+}
+
 export async function saveExamPackageAction(formData: FormData) {
   const currentUser = await requireAuth();
   const packageId = formString(formData, "id");
   await requirePermission("exam_packages.manage");
+  const scope = await requireSchoolScope();
 
   const parsed = examPackageSchema.safeParse({
     id: packageId,
@@ -91,9 +122,15 @@ export async function saveExamPackageAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, question_ids, ...payload } = parsed.data;
+  assertSameSchool(scope, payload.school_id);
+
+  if (id) {
+    await assertPackageSchoolScope(id);
+  }
+
   const selectedQuestions = await supabase
     .from("questions")
-    .select("id, subject_id, point, status, is_active, deleted_at")
+    .select("id, school_id, subject_id, point, status, is_active, deleted_at")
     .in("id", question_ids);
 
   if (selectedQuestions.error || !selectedQuestions.data?.length) {
@@ -108,6 +145,10 @@ export async function saveExamPackageAction(formData: FormData) {
     question_ids,
     payload.subject_id,
   );
+
+  selectedQuestions.data.forEach((question) => {
+    assertSameSchool(scope, question.school_id);
+  });
 
   if (!selectionReadiness.ok) {
     redirectTo("/dashboard/exams/packages", selectionReadiness);
@@ -208,6 +249,8 @@ export async function updateExamPackageStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await assertPackageSchoolScope(parsed.data.id);
+
   if (parsed.data.status === "published") {
     const readiness = await validateExamPackageReady(parsed.data.id);
 
@@ -373,6 +416,8 @@ export async function toggleExamPackageActiveAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await assertPackageSchoolScope(parsed.data.id);
+
   const { error } = await supabase
     .from("exam_packages")
     .update({ is_active: parsed.data.is_active })
@@ -399,6 +444,8 @@ export async function archiveExamPackageAction(formData: FormData) {
   const currentUser = await requirePermission("exam_packages.archive");
   const supabase = await createClient();
   const id = formString(formData, "id");
+  await assertPackageSchoolScope(id);
+
   const { error } = await supabase
     .from("exam_packages")
     .update({
@@ -429,6 +476,7 @@ export async function saveExamScheduleAction(formData: FormData) {
   const currentUser = await requireAuth();
   const scheduleId = formString(formData, "id");
   await requirePermission("exam_schedules.manage");
+  const scope = await requireSchoolScope();
 
   const parsed = examScheduleSchema.safeParse({
     id: scheduleId,
@@ -454,6 +502,42 @@ export async function saveExamScheduleAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, class_ids, ...payload } = parsed.data;
+  assertSameSchool(scope, payload.school_id);
+
+  if (id) {
+    await assertScheduleSchoolScope(id);
+  }
+
+  const [
+    { data: examPackage },
+    { data: academicYear },
+    { data: classes },
+  ] = await Promise.all([
+    supabase
+      .from("exam_packages")
+      .select("school_id")
+      .eq("id", payload.exam_package_id)
+      .maybeSingle(),
+    supabase
+      .from("academic_years")
+      .select("school_id")
+      .eq("id", payload.academic_year_id)
+      .maybeSingle(),
+    class_ids.length > 0
+      ? supabase.from("classes").select("id, school_id").in("id", class_ids)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  assertSameSchool(scope, examPackage?.school_id);
+  assertSameSchool(scope, academicYear?.school_id);
+  if ((classes ?? []).length !== new Set(class_ids).size) {
+    assertSameSchool(scope, null);
+  }
+
+  (classes ?? []).forEach((classItem) =>
+    assertSameSchool(scope, classItem.school_id),
+  );
+
   if (payload.status === "scheduled" || payload.status === "active") {
     const validation = await validateScheduleInputReady({
       scheduleId: id,
@@ -568,6 +652,8 @@ export async function updateExamScheduleStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await assertScheduleSchoolScope(parsed.data.id);
+
   if (parsed.data.status === "scheduled" || parsed.data.status === "active") {
     const validation = await validateScheduleReady(parsed.data.id);
 
@@ -625,6 +711,8 @@ export async function syncExamScheduleParticipantsAction(formData: FormData) {
     });
   }
 
+  await assertScheduleSchoolScope(id);
+
   const result = await syncScheduleParticipants(id);
 
   if (result.ok) {
@@ -645,6 +733,105 @@ export async function syncExamScheduleParticipantsAction(formData: FormData) {
   redirectTo("/dashboard/exams/schedules", result);
 }
 
+export async function resetExamScheduleSessionsAction(formData: FormData) {
+  const currentUser = await requirePermission("exam_schedules.manage");
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: "Jadwal ujian tidak valid.",
+    });
+  }
+
+  await assertScheduleSchoolScope(id);
+
+  const supabase = await createClient();
+  const { data: attempts, error: attemptsError } = await supabase
+    .from("exam_attempts")
+    .select("id")
+    .eq("exam_schedule_id", id)
+    .neq("status", "cancelled");
+
+  if (attemptsError) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: attemptsError.message,
+    });
+  }
+
+  const { data: participants, error: participantsError } = await supabase
+    .from("exam_participants")
+    .select("id")
+    .eq("exam_schedule_id", id);
+
+  if (participantsError) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: participantsError.message,
+    });
+  }
+
+  const now = new Date().toISOString();
+  const { error: attemptResetError } = await supabase
+    .from("exam_attempts")
+    .update({
+      status: "cancelled",
+      submitted_at: null,
+      last_saved_at: now,
+      locked_at: null,
+      lock_reason: null,
+    })
+    .eq("exam_schedule_id", id)
+    .neq("status", "cancelled");
+
+  if (attemptResetError) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: attemptResetError.message,
+    });
+  }
+
+  const { error: participantResetError } = await supabase
+    .from("exam_participants")
+    .update({
+      status: "assigned",
+      started_at: null,
+      submitted_at: null,
+    })
+    .eq("exam_schedule_id", id);
+
+  if (!participantResetError) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "exam_schedules.sessions_reset",
+      entityType: "exam_schedules",
+      entityId: id,
+      payload: {
+        reset_attempt_count: attempts?.length ?? 0,
+        reset_participant_count: participants?.length ?? 0,
+      },
+    });
+  }
+
+  revalidatePath("/dashboard/exams/schedules");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/active-exams");
+  revalidatePath("/dashboard/student/history");
+  revalidatePath("/dashboard/proctor/monitoring");
+  revalidatePath("/dashboard/admin/monitoring");
+  revalidatePath("/dashboard/super-admin/monitoring");
+  revalidatePath("/dashboard/teacher/monitoring");
+  redirectTo("/dashboard/exams/schedules", {
+    ok: !participantResetError,
+    message: participantResetError
+      ? participantResetError.message
+      : `Reset sesi selesai. ${attempts?.length ?? 0} attempt dibatalkan dan ${
+          participants?.length ?? 0
+        } peserta bisa mulai ulang.`,
+  });
+}
+
 export async function toggleExamScheduleActiveAction(formData: FormData) {
   const currentUser = await requirePermission("exam_schedules.manage");
   const parsed = examScheduleActiveSchema.safeParse({
@@ -660,6 +847,8 @@ export async function toggleExamScheduleActiveAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await assertScheduleSchoolScope(parsed.data.id);
+
   const { error } = await supabase
     .from("exam_schedules")
     .update({ is_active: parsed.data.is_active })
@@ -686,6 +875,8 @@ export async function archiveExamScheduleAction(formData: FormData) {
   const currentUser = await requirePermission("exam_schedules.archive");
   const supabase = await createClient();
   const id = formString(formData, "id");
+  await assertScheduleSchoolScope(id);
+
   const { error } = await supabase
     .from("exam_schedules")
     .update({
@@ -726,6 +917,8 @@ export async function regenerateExamTokenAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  await assertScheduleSchoolScope(parsed.data.id);
+
   const accessToken = generateExamToken();
   const { error } = await supabase
     .from("exam_schedules")

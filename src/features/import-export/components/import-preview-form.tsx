@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
+import { ImportResultSummary } from "@/components/common/import-result-summary";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { commitStudentClassAssignmentImportAction } from "@/features/import-export/actions";
+import { commitTeacherSubjectAssignmentImportAction } from "@/features/import-export/actions-teacher-assignment";
 import {
   importTemplates,
   type TemplateType,
@@ -18,8 +22,26 @@ const templateTypes: TemplateType[] = [
   "students",
   "teachers",
   "classes",
+  "student-class-assignments",
+  "teacher-subject-assignments",
   "questions",
 ];
+
+type ActionState = {
+  ok: boolean;
+  message: string;
+  summary?: {
+    total: number;
+    valid: number;
+    invalid: number;
+    errors: Array<{ row_number: number; errors: string[] }>;
+  };
+};
+
+const initialActionState: ActionState = {
+  ok: false,
+  message: "",
+};
 
 function parseCsvLine(line: string) {
   const values: string[] = [];
@@ -84,16 +106,49 @@ export function ImportPreviewForm() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [error, setError] = useState("");
+  const [studentAssignmentState, studentAssignmentAction] = useActionState<
+    ActionState,
+    FormData
+  >(
+    (_previousState, formData) =>
+      commitStudentClassAssignmentImportAction(formData),
+    initialActionState,
+  );
+  const [teacherAssignmentState, teacherAssignmentAction] = useActionState<
+    ActionState,
+    FormData
+  >(
+    (_previousState, formData) =>
+      commitTeacherSubjectAssignmentImportAction(formData),
+    initialActionState,
+  );
   const template = importTemplates[templateType];
   const importAction =
     templateType === "students"
       ? importStudentsCsvAction
       : templateType === "teachers"
         ? importTeachersCsvAction
+        : templateType === "student-class-assignments"
+          ? studentAssignmentAction
+          : templateType === "teacher-subject-assignments"
+            ? teacherAssignmentAction
+            : null;
+  const actionState =
+    templateType === "student-class-assignments"
+      ? studentAssignmentState
+      : templateType === "teacher-subject-assignments"
+        ? teacherAssignmentState
         : null;
   const requiredHeaders = useMemo(
-    () => template.columns.map((column) => column.key),
-    [template],
+    () => {
+      const optionalHeaders =
+        templateType === "student-class-assignments" ? ["joined_at"] : [];
+
+      return template.columns
+        .map((column) => column.key)
+        .filter((header) => !optionalHeaders.includes(header));
+    },
+    [template, templateType],
   );
   const missingHeaders = requiredHeaders.filter(
     (header) => !headers.includes(header),
@@ -103,7 +158,34 @@ export function ImportPreviewForm() {
       .filter((header) => !row[header])
       .map((header) => `Baris ${index + 2}: ${header} kosong`),
   );
-  const isValid = headers.length > 0 && missingHeaders.length === 0 && rowErrors.length === 0;
+  const formatErrors =
+    templateType === "student-class-assignments"
+      ? rows.flatMap((row, index) => {
+          const joinedAt = row.joined_at?.trim();
+
+          if (!joinedAt || /^\d{4}-\d{2}-\d{2}$/.test(joinedAt)) {
+            return [];
+          }
+
+          return [
+            `Baris ${index + 2}: joined_at harus format YYYY-MM-DD (contoh: 2026-07-15)`,
+          ];
+        })
+      : [];
+  const validationErrors = [...rowErrors, ...formatErrors];
+  const isValid =
+    headers.length > 0 &&
+    missingHeaders.length === 0 &&
+    validationErrors.length === 0;
+
+  useEffect(() => {
+    if (!actionState?.message) return;
+    if (actionState.ok) {
+      toast.success(actionState.message);
+      return;
+    }
+    toast.error(actionState.message);
+  }, [actionState]);
 
   async function handleFile(file?: File) {
     setError("");
@@ -171,7 +253,7 @@ export function ImportPreviewForm() {
               juga membuat akun auth sesuai kolom email dan password.
             </p>
             <ConfirmSubmitButton
-              confirmMessage={`Import ${rows.length} baris ${templateType === "students" ? "siswa" : "guru"} sekarang? Pastikan password awal dan email sudah benar.`}
+              confirmMessage={`Import ${rows.length} baris ${template.title} sekarang? Pastikan data sudah benar.`}
               confirmTitle="Konfirmasi Import"
               loadingText="Mengimport..."
               variant="default"
@@ -211,12 +293,37 @@ export function ImportPreviewForm() {
           Header belum lengkap: {missingHeaders.join(", ")}
         </p>
       ) : null}
-      {rowErrors.length ? (
+      {validationErrors.length ? (
         <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          {rowErrors.slice(0, 8).map((item) => (
+          {validationErrors.slice(0, 8).map((item) => (
             <div key={item}>{item}</div>
           ))}
-          {rowErrors.length > 8 ? <div>+{rowErrors.length - 8} error lain.</div> : null}
+          {validationErrors.length > 8 ? (
+            <div>+{validationErrors.length - 8} error lain.</div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {actionState?.summary ? (
+        <div className="mt-4">
+          <ImportResultSummary
+            totalRows={actionState.summary.total}
+            successCount={actionState.summary.valid}
+            errorCount={actionState.summary.invalid}
+            failedRows={actionState.summary.errors}
+          />
+        </div>
+      ) : null}
+
+      {actionState?.message ? (
+        <div
+          className={`mt-4 rounded-md p-3 text-sm ${
+            actionState.ok
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border border-destructive/30 bg-destructive/10 text-destructive"
+          }`}
+        >
+          {actionState.message}
         </div>
       ) : null}
 

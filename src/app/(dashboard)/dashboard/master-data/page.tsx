@@ -3,12 +3,14 @@ import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { requirePermission } from "@/lib/auth/require-permission";
+import type { RoleName } from "@/types/auth";
 
 const modules = [
   {
     title: "Sekolah",
     href: "/dashboard/master-data/schools",
     description: "Single-school saat ini, multi-school ready lewat school_id.",
+    roles: ["super_admin"] as RoleName[],
   },
   {
     title: "Tahun Ajaran",
@@ -39,6 +41,7 @@ const modules = [
     title: "Admin Sekolah",
     href: "/dashboard/master-data/admins",
     description: "Akun admin operasional sekolah.",
+    roles: ["super_admin"] as RoleName[],
   },
   {
     title: "Proctor / Pengawas",
@@ -50,10 +53,19 @@ const modules = [
     href: "/dashboard/master-data/students",
     description: "Data siswa dan riwayat class_members.",
   },
-];
+] satisfies Array<{
+  title: string;
+  href: string;
+  description: string;
+  roles?: RoleName[];
+}>;
 
 export default async function MasterDataPage() {
-  await requirePermission("master_data.view");
+  const currentUser = await requirePermission("master_data.view");
+  const roleName = currentUser.roles?.name;
+  const visibleModules = modules.filter(
+    (module) => !module.roles || (roleName && module.roles.includes(roleName)),
+  );
 
   return (
     <div>
@@ -62,7 +74,7 @@ export default async function MasterDataPage() {
         description="Fondasi data akademik untuk CBT sekolah: sekolah, periode akademik, kelas, mata pelajaran, guru, dan siswa."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => (
+        {visibleModules.map((module) => (
           <Link key={module.href} href={module.href}>
             <DashboardCard
               title={module.title}

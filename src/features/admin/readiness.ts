@@ -10,6 +10,9 @@ type ReadinessItem = {
 
 export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
   const [
+    activeSchools,
+    schoolAdminsWithoutSchool,
+    operationalUsersWithoutSchool,
     usersWithoutAuth,
     usersWithoutRole,
     inactiveUsers,
@@ -19,6 +22,15 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
     lockFieldsAvailable,
     serviceRoleAvailable,
   ] = await Promise.all([
+    countActiveSchools(),
+    countUsersWithoutSchoolByRoles(["admin"]),
+    countUsersWithoutSchoolByRoles([
+      "admin",
+      "principal",
+      "teacher",
+      "student",
+      "proctor",
+    ]),
     countUsersWithoutAuth(),
     countUsersWithoutRole(),
     countInactiveUsers(),
@@ -30,6 +42,30 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
   ]);
 
   return [
+    {
+      title: "Sekolah Aktif",
+      status: activeSchools > 0 ? "ready" : "missing",
+      value: String(activeSchools),
+      description:
+        "Minimal satu sekolah aktif wajib dibuat sebelum Admin Sekolah mengisi data operasional.",
+      href: "/dashboard/master-data/schools",
+    },
+    {
+      title: "Admin Tanpa Sekolah",
+      status: schoolAdminsWithoutSchool === 0 ? "ready" : "missing",
+      value: String(schoolAdminsWithoutSchool),
+      description:
+        "Admin Sekolah wajib punya school_id agar tidak masuk halaman forbidden.",
+      href: "/dashboard/master-data/admins",
+    },
+    {
+      title: "User Operasional Tanpa Scope",
+      status: operationalUsersWithoutSchool === 0 ? "ready" : "warning",
+      value: String(operationalUsersWithoutSchool),
+      description:
+        "Guru, siswa, proctor, principal, dan admin sebaiknya terhubung ke sekolah untuk mode multi-school.",
+      href: "/dashboard/admin/users",
+    },
     {
       title: "Supabase Service Role",
       status: serviceRoleAvailable ? "ready" : "warning",
@@ -88,6 +124,28 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       href: "/dashboard/exams/schedules",
     },
   ];
+}
+
+async function countActiveSchools() {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("schools")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+
+  return count ?? 0;
+}
+
+async function countUsersWithoutSchoolByRoles(roleNames: string[]) {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("users")
+    .select("id, roles!inner(name)", { count: "exact", head: true })
+    .in("roles.name", roleNames)
+    .is("school_id", null)
+    .eq("status", "active");
+
+  return count ?? 0;
 }
 
 async function countUsersWithoutAuth() {

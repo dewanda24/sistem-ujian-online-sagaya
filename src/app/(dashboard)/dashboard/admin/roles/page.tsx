@@ -9,6 +9,7 @@ import { getAdminRoles } from "@/features/admin/queries";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { requireRole } from "@/lib/auth/require-role";
 
 type PageProps = {
   searchParams: Promise<{
@@ -18,6 +19,7 @@ type PageProps = {
 };
 
 export default async function RolesPage({ searchParams }: PageProps) {
+  await requireRole("super_admin");
   await requirePermission("roles.view");
   const user = await requireAuth();
   const params = await searchParams;

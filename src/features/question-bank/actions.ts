@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import {
   questionActiveSchema,
@@ -125,6 +130,18 @@ function bypassesSubjectScope(user: CurrentUser) {
   return user.roles?.name !== "teacher";
 }
 
+async function assertAdminSameSchool(
+  user: CurrentUser,
+  targetSchoolId: string | null | undefined,
+) {
+  if (user.roles?.name !== "admin") {
+    return;
+  }
+
+  const scope = await requireSchoolScope();
+  assertSameSchool(scope, targetSchoolId);
+}
+
 async function getTeacherSubjectIds(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -146,6 +163,22 @@ async function assertSubjectInScope(
   subjectId: string,
   redirectPath: string,
 ) {
+  const supabase = await createClient();
+  const { data: subject, error } = await supabase
+    .from("subjects")
+    .select("school_id")
+    .eq("id", subjectId)
+    .maybeSingle();
+
+  if (error || !subject) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Mapel tidak ditemukan.",
+    });
+  }
+
+  await assertAdminSameSchool(user, subject.school_id);
+
   if (bypassesSubjectScope(user)) {
     return;
   }
@@ -164,7 +197,7 @@ async function getQuestionSubjectId(questionId: string, redirectPath: string) {
   const supabase = await createClient();
   const { data: question, error } = await supabase
     .from("questions")
-    .select("id, subject_id")
+    .select("id, school_id, subject_id")
     .eq("id", questionId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -175,6 +208,9 @@ async function getQuestionSubjectId(questionId: string, redirectPath: string) {
       message: "Soal tidak ditemukan atau sudah diarsipkan.",
     });
   }
+
+  const user = await requireAuth();
+  await assertAdminSameSchool(user, question.school_id);
 
   return question.subject_id as string;
 }
@@ -485,6 +521,7 @@ async function createInlineStimulus({
   }
 
   await assertSubjectInScope(user, subjectId, QUESTION_PATH);
+  await assertAdminSameSchool(user, parsed.data.school_id);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -553,6 +590,7 @@ export async function saveQuestionStimulusAction(formData: FormData) {
   }
 
   await assertSubjectInScope(user, parsed.data.subject_id, STIMULUS_PATH);
+  await assertAdminSameSchool(user, parsed.data.school_id);
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
@@ -792,10 +830,17 @@ async function getImportSubjectMap(userId: string, roleName?: string) {
     return subjectMap;
   }
 
-  const { data } = await supabase
+  let query = supabase
     .from("subjects")
     .select("id, code, school_id")
     .eq("is_active", true);
+
+  if (roleName !== "super_admin") {
+    const scope = await requireSchoolScope();
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data } = await query;
   const subjectMap = new Map<string, { id: string; school_id: string }>();
 
   for (const subject of data ?? []) {
@@ -879,6 +924,7 @@ export async function saveQuestionCategoryAction(formData: FormData) {
   }
 
   await assertSubjectInScope(user, parsed.data.subject_id, CATEGORY_PATH);
+  await assertAdminSameSchool(user, parsed.data.school_id);
 
   const supabase = await createClient();
   const { id, ...payload } = parsed.data;
@@ -1024,6 +1070,7 @@ export async function saveQuestionAction(formData: FormData) {
     await assertQuestionInScope(currentUser, id);
   }
 
+  await assertAdminSameSchool(currentUser, payload.school_id);
   await assertSubjectInScope(currentUser, payload.subject_id, QUESTION_PATH);
   await assertCategoryMatchesSubject(
     currentUser,

@@ -5,6 +5,7 @@ import {
   getTeacherResultRecap,
 } from "@/features/results/queries";
 import { getReportSummary } from "@/features/reports/queries";
+import { requireSchoolScope } from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
@@ -15,11 +16,23 @@ type DashboardStat = {
   href?: string;
 };
 
-async function countTable(table: string) {
+async function getAdminSchoolId() {
+  const scope = await requireSchoolScope();
+
+  return scope.user.roles?.name === "admin" ? scope.schoolId : null;
+}
+
+async function countTable(table: string, schoolId?: string | null) {
   const supabase = await createClient();
-  const { count } = await supabase
+  let query = supabase
     .from(table)
     .select("id", { count: "exact", head: true });
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { count } = await query;
 
   return count ?? 0;
 }
@@ -28,28 +41,43 @@ async function countWhere(
   table: string,
   column: string,
   value: string | boolean,
+  schoolId?: string | null,
 ) {
   const supabase = await createClient();
-  const { count } = await supabase
+  let query = supabase
     .from(table)
     .select("id", { count: "exact", head: true })
     .eq(column, value);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { count } = await query;
 
   return count ?? 0;
 }
 
 async function countUsersByRole(roleName: RoleName) {
+  const schoolId = await getAdminSchoolId();
   const supabase = await createClient();
-  const { count } = await supabase
+  let query = supabase
     .from("users")
     .select("id, roles!inner(name)", { count: "exact", head: true })
     .eq("roles.name", roleName)
     .eq("status", "active");
 
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { count } = await query;
+
   return count ?? 0;
 }
 
 async function countSchedulesToday() {
+  const schoolId = await getAdminSchoolId();
   const supabase = await createClient();
   const now = new Date();
   const start = new Date(now);
@@ -58,24 +86,37 @@ async function countSchedulesToday() {
   start.setHours(0, 0, 0, 0);
   end.setHours(23, 59, 59, 999);
 
-  const { count } = await supabase
+  let query = supabase
     .from("exam_schedules")
     .select("id", { count: "exact", head: true })
     .is("deleted_at", null)
     .gte("start_at", start.toISOString())
     .lte("start_at", end.toISOString());
 
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { count } = await query;
+
   return count ?? 0;
 }
 
 async function countSchedulesWithoutParticipants() {
+  const schoolId = await getAdminSchoolId();
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("exam_schedules")
     .select("id, exam_participants(id)")
     .is("deleted_at", null)
     .eq("is_active", true)
     .in("status", ["scheduled", "active"]);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query;
 
   return (data ?? []).filter(
     (schedule) => (schedule.exam_participants ?? []).length === 0,
@@ -83,11 +124,18 @@ async function countSchedulesWithoutParticipants() {
 }
 
 async function getClassReadinessCounts() {
+  const schoolId = await getAdminSchoolId();
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("classes")
     .select("id, homeroom_teacher_id, class_members(id, left_at)")
     .eq("is_active", true);
+
+  if (schoolId) {
+    query = query.eq("school_id", schoolId);
+  }
+
+  const { data } = await query;
 
   const classes = data ?? [];
 
@@ -267,6 +315,7 @@ export async function getRoleDashboardStats(
   }
 
   if (role === "admin") {
+    const schoolId = user.school_id;
     const [
       students,
       teachers,
@@ -280,9 +329,9 @@ export async function getRoleDashboardStats(
     ] = await Promise.all([
       countUsersByRole("student"),
       countUsersByRole("teacher"),
-      countTable("classes"),
-      countTable("subjects"),
-      countWhere("exam_schedules", "status", "active"),
+      countTable("classes", schoolId),
+      countTable("subjects", schoolId),
+      countWhere("exam_schedules", "status", "active", schoolId),
       countSchedulesToday(),
       countSchedulesWithoutParticipants(),
       getClassReadinessCounts(),

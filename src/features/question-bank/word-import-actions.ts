@@ -12,6 +12,10 @@ import {
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 
 export type WordImportPreviewState = {
@@ -292,11 +296,17 @@ async function getScopedSubject(
       : null;
   }
 
-  const { data } = await supabase
+  let query = supabase
     .from("subjects")
     .select("id, school_id")
-    .eq("id", subjectId)
-    .maybeSingle();
+    .eq("id", subjectId);
+
+  if (roleName !== "super_admin") {
+    const scope = await requireSchoolScope();
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data } = await query.maybeSingle();
 
   return data?.id
     ? { id: data.id as string, school_id: data.school_id as string }

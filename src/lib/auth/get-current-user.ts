@@ -25,10 +25,15 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       email,
       status,
       role_id,
+      school_id,
       roles (
         id,
         name,
         label
+      ),
+      schools (
+        id,
+        name
       ),
       user_profiles (
         full_name,
@@ -44,6 +49,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   const role = Array.isArray(appUser.roles) ? appUser.roles[0] : appUser.roles;
+  const school = Array.isArray(appUser.schools)
+    ? appUser.schools[0]
+    : appUser.schools;
 
   const profile = Array.isArray(appUser.user_profiles)
     ? appUser.user_profiles[0]
@@ -61,6 +69,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     username: appUser.username,
     status: appUser.status,
     role_id: appUser.role_id,
+    school_id: appUser.school_id ?? null,
+    school_name: school?.name ?? null,
     roles: role
       ? {
           id: role.id,

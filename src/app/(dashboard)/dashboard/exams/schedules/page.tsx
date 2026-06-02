@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/master-data/status-badge";
 import {
   archiveExamScheduleAction,
   regenerateExamTokenAction,
+  resetExamScheduleSessionsAction,
   saveExamScheduleAction,
   syncExamScheduleParticipantsAction,
   toggleExamScheduleActiveAction,
@@ -594,6 +595,15 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                   <input type="hidden" name="id" value={schedule.id} />
                   <ConfirmSubmitButton confirmMessage="Sync peserta dari kelas target? Peserta lama dan attempt tidak akan dihapus.">
                     Sync Peserta
+                  </ConfirmSubmitButton>
+                </form>
+                <form action={resetExamScheduleSessionsAction}>
+                  <input type="hidden" name="id" value={schedule.id} />
+                  <ConfirmSubmitButton
+                    confirmMessage="Reset semua sesi siswa pada jadwal ini? Semua attempt aktif/submitted akan dibatalkan dan siswa bisa mulai ulang."
+                    confirmationText="RESET"
+                  >
+                    Reset Sesi
                   </ConfirmSubmitButton>
                 </form>
                 <form action={archiveExamScheduleAction}>

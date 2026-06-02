@@ -10,6 +10,7 @@ import {
   toggleSchoolAction,
 } from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { requireRole } from "@/lib/auth/require-role";
 import { getSchools } from "@/lib/master-data/queries";
 
 type PageProps = {
@@ -22,6 +23,7 @@ type PageProps = {
 };
 
 export default async function SchoolsPage({ searchParams }: PageProps) {
+  await requireRole("super_admin");
   await requirePermission("schools.view");
   const params = await searchParams;
   const schools = await getSchools(params.q);

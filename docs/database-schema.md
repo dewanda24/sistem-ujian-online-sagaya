@@ -25,6 +25,33 @@ Current Scope:
 
 ---
 
+# Multi-School Operating Rules
+
+Core model:
+
+- Super Admin bersifat global dan boleh memiliki users.school_id null.
+- Admin Sekolah, principal, teacher, student, dan proctor adalah role operasional sekolah dan harus memiliki users.school_id untuk mode multi-school.
+- Relasi tenant saat ini memakai users.school_id, bukan school_users, karena satu akun hanya diizinkan aktif pada satu sekolah.
+- Data akademik dan ujian harus selalu difilter berdasarkan school_id atau relasi parent yang memiliki school_id.
+- Jika role operasional belum memiliki school_id, dashboard operasional akan diarahkan ke /dashboard/forbidden?reason=missing-school-scope.
+
+Setup setelah database kosong:
+
+1. Login sebagai Super Admin.
+2. Buka /dashboard/master-data/schools dan buat minimal satu sekolah aktif.
+3. Buka /dashboard/master-data/admins dan buat Admin Sekolah, lalu pilih sekolahnya.
+4. Admin Sekolah login dan mengisi tahun ajaran, semester, kelas, mapel, guru, siswa, assignment, bank soal, dan ujian.
+5. Cek /dashboard/super-admin/readiness untuk memastikan tidak ada Admin/User operasional tanpa school scope.
+
+DB hardening Sprint 4:
+
+- Migration 20260602_multi_school_hardening.sql menambah helper RLS berbasis auth.uid().
+- Tabel tenant utama memiliki policy RLS berdasarkan current_app_school_id() dan bypass Super Admin.
+- Constraint/index tenant menahan duplikasi data per sekolah.
+- Trigger konsistensi menolak paket, jadwal, soal, kategori, stimulus, dan target kelas yang lintas sekolah.
+
+---
+
 # SPRINT 1 — Authentication & Authorization Foundation
 
 Purpose:
@@ -127,6 +154,7 @@ Columns:
 - id uuid primary key
 - auth_user_id uuid references auth.users.id
 - role_id uuid references public.roles.id
+- school_id uuid nullable references public.schools.id
 - username text
 - email text
 - status text
@@ -137,6 +165,7 @@ Relations:
 
 - users.auth_user_id -> auth.users.id
 - users.role_id -> roles.id
+- users.school_id -> schools.id
 
 Business Rules:
 
@@ -144,6 +173,8 @@ Business Rules:
 - auth.users.id HARUS dicocokkan ke users.auth_user_id
 - Jangan query users.id menggunakan auth user id
 - status harus active agar dapat login dashboard
+- role admin wajib punya school_id agar hanya dapat mengakses data sekolahnya
+- role super_admin boleh school_id null dan tetap dapat mengakses semua sekolah
 
 ---
 

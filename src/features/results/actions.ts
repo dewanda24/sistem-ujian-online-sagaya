@@ -7,6 +7,10 @@ import { firstRelation } from "@/features/results/queries";
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+} from "@/lib/auth/school-scope";
 import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -135,15 +139,11 @@ async function canManageAttempt(
   attemptId: string,
   user: Awaited<ReturnType<typeof requirePermission>>,
 ) {
-  if (hasPermission(user, "exam_results.recap") && user.roles?.name !== "teacher") {
-    return true;
-  }
-
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
     .select(
-      "id, exam_schedules(exam_packages(subject_id))",
+      "id, exam_schedules(school_id, exam_packages(subject_id))",
     )
     .eq("id", attemptId)
     .maybeSingle();
@@ -151,6 +151,13 @@ async function canManageAttempt(
   const schedule = firstRelation(attempt?.exam_schedules);
   const examPackage = firstRelation(schedule?.exam_packages);
   const subjectId = examPackage?.subject_id;
+
+  if (hasPermission(user, "exam_results.recap") && user.roles?.name !== "teacher") {
+    const scope = await requireSchoolScope();
+    assertSameSchool(scope, schedule?.school_id);
+
+    return true;
+  }
 
   if (!subjectId) {
     return false;

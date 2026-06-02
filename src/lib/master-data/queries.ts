@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 
 export type SelectOption = {
   value: string;
@@ -58,9 +63,44 @@ function getClassRelation(value: ClassRelation) {
   return firstRelation(value);
 }
 
+async function assertUserSchoolScope(userId: string) {
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: user } = await supabase
+    .from("users")
+    .select("school_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  assertSameSchool(scope, user?.school_id);
+}
+
+async function getScopedUserIds(userIds: string[]) {
+  const scope = await requireSchoolScope();
+
+  if (scope.isSuperAdmin) {
+    return userIds;
+  }
+
+  const schoolId = requireScopedSchoolId(scope);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("users")
+    .select("id")
+    .in("id", userIds)
+    .eq("school_id", schoolId);
+
+  return (data ?? []).map((user) => user.id as string);
+}
+
 export async function getSchools(search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase.from("schools").select("*").order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
@@ -85,11 +125,16 @@ export async function getSchoolOptions(): Promise<SelectOption[]> {
 }
 
 export async function getAcademicYears(search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase
     .from("academic_years")
     .select("*, schools(name)")
     .order("name", { ascending: false });
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
@@ -114,11 +159,16 @@ export async function getAcademicYearOptions(): Promise<SelectOption[]> {
 }
 
 export async function getSemesters(search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase
     .from("semesters")
-    .select("*, academic_years(name, school_id, schools(name))")
+    .select("*, academic_years!inner(name, school_id, schools(name))")
     .order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("academic_years.school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
@@ -134,6 +184,7 @@ export async function getSemesters(search = "") {
 }
 
 export async function getClasses(search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase
     .from("classes")
@@ -142,6 +193,10 @@ export async function getClasses(search = "") {
     )
     .order("grade_level")
     .order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
@@ -166,11 +221,16 @@ export async function getClassOptions(): Promise<SelectOption[]> {
 }
 
 export async function getSubjects(search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase
     .from("subjects")
     .select("*, schools(name)")
     .order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%`);
@@ -206,6 +266,7 @@ export async function getRoleId(roleName: string) {
 }
 
 export async function getUsersByRole(roleName: "teacher" | "student", search = "") {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   let query = supabase
     .from("users")
@@ -214,6 +275,10 @@ export async function getUsersByRole(roleName: "teacher" | "student", search = "
     )
     .eq("roles.name", roleName)
     .order("username");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   if (search) {
     query = query.or(`username.ilike.%${search}%,email.ilike.%${search}%`);
@@ -244,6 +309,7 @@ export async function getTeacherOptions(): Promise<SelectOption[]> {
 }
 
 export async function getTeacherAssignments(teacherId: string) {
+  await assertUserSchoolScope(teacherId);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("teacher_subjects")
@@ -263,11 +329,17 @@ export async function getTeacherAssignmentCounts(teacherIds: string[]) {
     return new Map<string, number>();
   }
 
+  const scopedTeacherIds = await getScopedUserIds(teacherIds);
+
+  if (scopedTeacherIds.length === 0) {
+    return new Map<string, number>();
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("teacher_subjects")
     .select("teacher_id")
-    .in("teacher_id", teacherIds);
+    .in("teacher_id", scopedTeacherIds);
 
   if (error || !data) {
     return new Map<string, number>();
@@ -287,6 +359,7 @@ export async function getTeacherAssignmentCounts(teacherIds: string[]) {
 }
 
 export async function getStudentClassHistory(studentId: string) {
+  await assertUserSchoolScope(studentId);
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_members")
@@ -306,11 +379,17 @@ export async function getStudentActiveClassCounts(studentIds: string[]) {
     return new Map<string, number>();
   }
 
+  const scopedStudentIds = await getScopedUserIds(studentIds);
+
+  if (scopedStudentIds.length === 0) {
+    return new Map<string, number>();
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("class_members")
     .select("student_id, class_id")
-    .in("student_id", studentIds)
+    .in("student_id", scopedStudentIds)
     .is("left_at", null);
 
   const activeClassIdsByStudent = new Map<string, Set<string>>();
@@ -327,7 +406,7 @@ export async function getStudentActiveClassCounts(studentIds: string[]) {
     }
   }
 
-  const studentsWithoutActiveClass = studentIds.filter(
+  const studentsWithoutActiveClass = scopedStudentIds.filter(
     (studentId) => !activeClassIdsByStudent.has(studentId),
   );
 
@@ -363,8 +442,9 @@ export async function getStudentLoginCards(filters: {
   class_id?: string;
   q?: string;
 }): Promise<StudentLoginCard[]> {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
-  const query = supabase
+  let query = supabase
     .from("users")
     .select(
       "id, email, username, status, roles!inner(name), user_profiles(full_name, nis, nisn)",
@@ -372,6 +452,10 @@ export async function getStudentLoginCards(filters: {
     .eq("roles.name", "student")
     .eq("status", "active")
     .order("username");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("school_id", requireScopedSchoolId(scope));
+  }
 
   const { data: students, error } = await query;
 

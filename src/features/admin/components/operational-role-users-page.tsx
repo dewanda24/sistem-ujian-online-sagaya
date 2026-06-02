@@ -15,6 +15,7 @@ import {
   getRoleOptionsByNames,
 } from "@/features/admin/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { getSchoolOptions } from "@/lib/master-data/queries";
 
 type OperationalRoleUsersPageProps = {
   title: string;
@@ -25,6 +26,7 @@ type OperationalRoleUsersPageProps = {
   redirectPath: string;
   searchParams: {
     q?: string;
+    school_id?: string;
     user_status?: string;
     edit?: string;
     status?: string;
@@ -41,14 +43,18 @@ export async function OperationalRoleUsersPage({
   redirectPath,
   searchParams,
 }: OperationalRoleUsersPageProps) {
-  await requirePermission("users.view");
-  const [users, roles] = await Promise.all([
+  const currentUser = await requirePermission("users.view");
+  const [users, roles, schools] = await Promise.all([
     getAdminUsers({
       q: searchParams.q,
+      school_id: searchParams.school_id,
       status: searchParams.user_status,
       role_names: roleNames,
     }),
     getRoleOptionsByNames(roleNames),
+    currentUser.roles?.name === "super_admin"
+      ? getSchoolOptions()
+      : Promise.resolve([]),
   ]);
   const editable = users.find((user) => user.id === searchParams.edit);
   const defaultRole = editable?.role ?? roles[0];
@@ -120,6 +126,20 @@ export async function OperationalRoleUsersPage({
               ))}
             </select>
           )}
+          {currentUser.roles?.name === "super_admin" ? (
+            <select
+              name="school_id"
+              defaultValue={editable?.school_id ?? ""}
+              className="rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">Tanpa sekolah</option>
+              {schools.map((school) => (
+                <option key={school.value} value={school.value}>
+                  {school.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select
             name="status"
             defaultValue={editable?.status ?? "active"}
@@ -145,7 +165,7 @@ export async function OperationalRoleUsersPage({
         </form>
       </FormSection>
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-3">
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-4">
         <input
           name="q"
           defaultValue={searchParams.q ?? ""}
@@ -161,13 +181,27 @@ export async function OperationalRoleUsersPage({
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+        {currentUser.roles?.name === "super_admin" ? (
+          <select
+            name="school_id"
+            defaultValue={searchParams.school_id ?? ""}
+            className="rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">Semua sekolah</option>
+            {schools.map((school) => (
+              <option key={school.value} value={school.value}>
+                {school.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
           Filter
         </button>
       </form>
 
       <DataTable
-        columns={["Nama", "Email", "Role", "Auth User", "Status", "Aksi"]}
+        columns={["Nama", "Email", "Role", "Sekolah", "Auth User", "Status", "Aksi"]}
         isEmpty={users.length === 0}
         empty={
           <EmptyState title={emptyTitle} description={emptyDescription} />
@@ -191,6 +225,12 @@ export async function OperationalRoleUsersPage({
               </div>
             </td>
             <td className="px-4 py-3">
+              <SchoolScopeCell
+                roleName={item.role?.name}
+                schoolName={item.school?.name}
+              />
+            </td>
+            <td className="px-4 py-3">
               <span className="font-mono text-xs">
                 {item.auth_user_id ?? "-"}
               </span>
@@ -201,7 +241,11 @@ export async function OperationalRoleUsersPage({
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-2">
                 <a
-                  href={`${redirectPath}?edit=${item.id}`}
+                  href={`${redirectPath}?edit=${item.id}${
+                    searchParams.school_id
+                      ? `&school_id=${searchParams.school_id}`
+                      : ""
+                  }`}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                 >
                   Edit
@@ -247,4 +291,26 @@ export async function OperationalRoleUsersPage({
       </DataTable>
     </div>
   );
+}
+
+function SchoolScopeCell({
+  roleName,
+  schoolName,
+}: {
+  roleName?: string;
+  schoolName?: string | null;
+}) {
+  if (schoolName) {
+    return <span className="text-sm">{schoolName}</span>;
+  }
+
+  if (roleName === "admin") {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+        Belum diset
+      </span>
+    );
+  }
+
+  return <span className="text-sm text-muted-foreground">-</span>;
 }

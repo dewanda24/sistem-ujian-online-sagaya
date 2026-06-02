@@ -19,6 +19,8 @@ export interface CurrentUser {
   username: string;
   status: string;
   role_id: string | null;
+  school_id: string | null;
+  school_name: string | null;
 
   roles: {
     id?: string;

@@ -1,4 +1,9 @@
 import { requireAuth } from "@/lib/auth/require-auth";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 
 type Relation<T> = T | T[] | null | undefined;
@@ -36,7 +41,7 @@ export async function getResultDetail(attemptId: string) {
   let attemptQuery = supabase
     .from("exam_attempts")
     .select(
-      "*, users(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, start_at, end_at, exam_packages(id, title, total_points, show_result, subjects(id, code, name)))",
+      "*, users(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, school_id, start_at, end_at, exam_packages(id, title, total_points, show_result, subjects(id, code, name)))",
     )
     .eq("id", attemptId);
 
@@ -48,6 +53,23 @@ export async function getResultDetail(attemptId: string) {
 
   if (error || !attempt) {
     return null;
+  }
+
+  const schedule = firstRelation(attempt.exam_schedules);
+  const examPackage = firstRelation(schedule?.exam_packages);
+  const subject = firstRelation(examPackage?.subjects);
+
+  if (user.roles?.name === "teacher") {
+    const canView = subject?.id
+      ? await teacherHasSubject(user.id, subject.id as string)
+      : false;
+
+    if (!canView) {
+      return null;
+    }
+  } else if (user.roles?.name !== "student") {
+    const scope = await requireSchoolScope();
+    assertSameSchool(scope, schedule?.school_id as string | null | undefined);
   }
 
   const { data: answers } = await supabase
@@ -70,8 +92,20 @@ export async function getTeacherResultRecap(filters?: {
   subject_id?: string;
 }) {
   const user = await requireAuth();
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const subjectIds = await getTeacherSubjectIds(user.id);
+  let scopedScheduleIds: string[] | null = null;
+
+  if (user.roles?.name !== "teacher" && !scope.isSuperAdmin) {
+    scopedScheduleIds = await getSchoolScheduleIds(
+      requireScopedSchoolId(scope)!,
+    );
+
+    if (scopedScheduleIds.length === 0) {
+      return [];
+    }
+  }
 
   let query = supabase
     .from("exam_attempts")
@@ -87,6 +121,10 @@ export async function getTeacherResultRecap(filters?: {
 
   if (filters?.schedule_id) {
     query = query.eq("exam_schedule_id", filters.schedule_id);
+  }
+
+  if (scopedScheduleIds) {
+    query = query.in("exam_schedule_id", scopedScheduleIds);
   }
 
   if (user.roles?.name === "teacher") {
@@ -192,4 +230,28 @@ async function getTeacherSubjectIds(userId: string) {
   }
 
   return [...new Set(data.map((item) => item.subject_id as string))];
+}
+
+async function teacherHasSubject(userId: string, subjectId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("teacher_subjects")
+    .select("id")
+    .eq("teacher_id", userId)
+    .eq("subject_id", subjectId)
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(data?.id);
+}
+
+async function getSchoolScheduleIds(schoolId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("exam_schedules")
+    .select("id")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null);
+
+  return (data ?? []).map((schedule) => schedule.id as string);
 }

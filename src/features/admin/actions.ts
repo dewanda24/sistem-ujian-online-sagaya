@@ -6,6 +6,11 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { requireRole } from "@/lib/auth/require-role";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+} from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import {
   adminRoleLabelSchema,
@@ -61,6 +66,18 @@ function serviceRoleClient() {
   );
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
+}
+
+function isGlobalUserRole(roleName: string | null | undefined) {
+  return roleName === "super_admin" || roleName === "admin";
+}
+
 async function getRoleNameById(roleId: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -93,6 +110,7 @@ export async function saveAdminUserAction(formData: FormData) {
     password: formString(formData, "password"),
     full_name: formString(formData, "full_name"),
     role_id: formString(formData, "role_id"),
+    school_id: formString(formData, "school_id"),
     status: formString(formData, "status") || "active",
   });
 
@@ -106,6 +124,7 @@ export async function saveAdminUserAction(formData: FormData) {
   const currentUser = await requirePermission(
     parsed.data.id ? "users.update" : "users.create",
   );
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const adminClient = serviceRoleClient();
   const {
@@ -116,6 +135,7 @@ export async function saveAdminUserAction(formData: FormData) {
     password,
     full_name,
     role_id,
+    school_id,
     status,
   } = parsed.data;
   let authUserId = auth_user_id;
@@ -126,6 +146,14 @@ export async function saveAdminUserAction(formData: FormData) {
       ok: false,
       message:
         "Role guru dan siswa dikelola dari Master Data. Pilih role operasional.",
+    });
+  }
+
+  if (!scope.isSuperAdmin && isGlobalUserRole(roleName)) {
+    redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
+      ok: false,
+      message:
+        "Akun Admin Sekolah dan Super Admin hanya boleh dikelola oleh Super Admin.",
     });
   }
 
@@ -180,12 +208,47 @@ export async function saveAdminUserAction(formData: FormData) {
     }
   }
 
+  let targetSchoolId: string | null = null;
+
+  if (id) {
+    const { data: targetUser } = await supabase
+      .from("users")
+      .select("school_id, roles(name)")
+      .eq("id", id)
+      .maybeSingle();
+    const targetRole = firstRelation(targetUser?.roles);
+
+    assertSameSchool(scope, targetUser?.school_id);
+
+    if (!scope.isSuperAdmin && isGlobalUserRole(targetRole?.name)) {
+      redirectTo(`${redirectPath}?edit=${id}`, {
+        ok: false,
+        message:
+          "Akun Admin Sekolah dan Super Admin hanya boleh dikelola oleh Super Admin.",
+      });
+    }
+
+    targetSchoolId = targetUser?.school_id ?? null;
+  }
+
+  const resolvedSchoolId = scope.isSuperAdmin
+    ? (school_id ?? targetSchoolId)
+    : scope.schoolId;
+
+  if (roleName === "admin" && !resolvedSchoolId) {
+    redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
+      ok: false,
+      message: "Admin Sekolah wajib terhubung ke sekolah.",
+    });
+  }
+
   const userPayload = {
     auth_user_id: authUserId,
     email,
     username,
     role_id,
     status,
+    school_id: resolvedSchoolId,
   };
 
   const { data: savedUser, error: userError } = id
@@ -239,8 +302,26 @@ export async function saveAdminUserAction(formData: FormData) {
 export async function toggleAdminUserStatusAction(formData: FormData) {
   const redirectPath = getOperationalUserRedirectPath(formData);
   const currentUser = await requirePermission("users.update");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
+  const { data: targetUser } = await supabase
+    .from("users")
+    .select("school_id, roles(name)")
+    .eq("id", id)
+    .maybeSingle();
+  const targetRole = firstRelation(targetUser?.roles);
+
+  assertSameSchool(scope, targetUser?.school_id);
+
+  if (!scope.isSuperAdmin && isGlobalUserRole(targetRole?.name)) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message:
+        "Akun Admin Sekolah dan Super Admin hanya boleh dikelola oleh Super Admin.",
+    });
+  }
+
   const status = formString(formData, "status") === "active" ? "active" : "inactive";
   const { error } = await supabase.from("users").update({ status }).eq("id", id);
 
@@ -266,6 +347,7 @@ export async function toggleAdminUserStatusAction(formData: FormData) {
 export async function resetAdminUserPasswordAction(formData: FormData) {
   const redirectPath = getOperationalUserRedirectPath(formData);
   const currentUser = await requirePermission("users.update");
+  const scope = await requireSchoolScope();
   const parsed = adminUserPasswordResetSchema.safeParse({
     id: formString(formData, "id"),
     password: formString(formData, "password"),
@@ -282,7 +364,7 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
   const supabase = await createClient();
   const { data: targetUser } = await supabase
     .from("users")
-    .select("id, auth_user_id, email, roles(name)")
+    .select("id, auth_user_id, email, school_id, roles(name)")
     .eq("id", parsed.data.id)
     .maybeSingle();
   const role = Array.isArray(targetUser?.roles)
@@ -293,6 +375,16 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     redirectTo(redirectPath, {
       ok: false,
       message: "Auth user belum terhubung.",
+    });
+  }
+
+  assertSameSchool(scope, targetUser.school_id);
+
+  if (!scope.isSuperAdmin && isGlobalUserRole(role?.name)) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message:
+        "Akun Admin Sekolah dan Super Admin hanya boleh dikelola oleh Super Admin.",
     });
   }
 
@@ -342,6 +434,7 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
 }
 
 export async function updateRolePermissionAction(formData: FormData) {
+  await requireRole("super_admin");
   const currentUser = await requirePermission("roles.manage");
   const supabase = await createClient();
   const roleId = formString(formData, "role_id");
@@ -409,6 +502,7 @@ export async function updateRolePermissionAction(formData: FormData) {
 }
 
 export async function updateRoleLabelAction(formData: FormData) {
+  await requireRole("super_admin");
   const currentUser = await requirePermission("roles.manage");
   const parsed = adminRoleLabelSchema.safeParse({
     id: formString(formData, "id"),

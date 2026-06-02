@@ -1,5 +1,9 @@
 import { requireAuth } from "@/lib/auth/require-auth";
 import {
+  requireSchoolScope,
+  requireScopedSchoolId,
+} from "@/lib/auth/school-scope";
+import {
   getAcademicYearOptions,
   getClassOptions,
   getSubjectOptions,
@@ -64,6 +68,12 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
 }
 
 export async function getDefaultSchoolId() {
+  const scope = await requireSchoolScope();
+
+  if (!scope.isSuperAdmin) {
+    return requireScopedSchoolId(scope);
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("schools")
@@ -173,11 +183,18 @@ export async function getAcademicYearSelectOptions() {
 }
 
 export async function getSemesterOptions(): Promise<SelectOption[]> {
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("semesters")
-    .select("id, name, academic_years(name)")
+    .select("id, name, academic_years!inner(name, school_id)")
     .order("name");
+
+  if (!scope.isSuperAdmin) {
+    query = query.eq("academic_years.school_id", requireScopedSchoolId(scope));
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return [];

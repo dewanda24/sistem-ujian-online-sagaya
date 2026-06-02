@@ -20,11 +20,13 @@ import {
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { getSchoolOptions } from "@/lib/master-data/queries";
 
 type PageProps = {
   searchParams: Promise<{
     q?: string;
     role_id?: string;
+    school_id?: string;
     user_status?: string;
     edit?: string;
     status?: string;
@@ -33,17 +35,23 @@ type PageProps = {
 };
 
 export default async function UsersPage({ searchParams }: PageProps) {
-  await requirePermission("users.view");
+  const currentUser = await requirePermission("users.view");
   const params = await searchParams;
-  const [users, roles, operationalRoles, summary] = await Promise.all([
+  const [users, roles, operationalRoles, summary, schools] = await Promise.all([
     getAdminUsers({
       q: params.q,
       role_id: params.role_id,
+      school_id: params.school_id,
       status: params.user_status,
     }),
     getAdminRoleOptions(),
     getOperationalUserRoleOptions(),
-    getUserGovernanceSummary(),
+    getUserGovernanceSummary({
+      school_id: params.school_id,
+    }),
+    currentUser.roles?.name === "super_admin"
+      ? getSchoolOptions()
+      : Promise.resolve([]),
   ]);
   const editable = users.find((user) => user.id === params.edit);
 
@@ -166,6 +174,20 @@ export default async function UsersPage({ searchParams }: PageProps) {
               </option>
             ))}
           </select>
+          {currentUser.roles?.name === "super_admin" ? (
+            <select
+              name="school_id"
+              defaultValue={editable?.school_id ?? ""}
+              className="rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">Tanpa sekolah</option>
+              {schools.map((school) => (
+                <option key={school.value} value={school.value}>
+                  {school.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select
             name="status"
             defaultValue={editable?.status ?? "active"}
@@ -191,7 +213,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
         </form>
       </FormSection>
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-4">
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-5">
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -219,6 +241,20 @@ export default async function UsersPage({ searchParams }: PageProps) {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+        {currentUser.roles?.name === "super_admin" ? (
+          <select
+            name="school_id"
+            defaultValue={params.school_id ?? ""}
+            className="rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">Semua sekolah</option>
+            {schools.map((school) => (
+              <option key={school.value} value={school.value}>
+                {school.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
           Filter
         </button>
@@ -229,6 +265,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           "Nama",
           "Email",
           "Role",
+          "Sekolah",
           "Auth User",
           "Status",
           "Aksi",
@@ -259,6 +296,12 @@ export default async function UsersPage({ searchParams }: PageProps) {
               </div>
             </td>
             <td className="px-4 py-3">
+              <SchoolScopeCell
+                roleName={item.role?.name}
+                schoolName={item.school?.name}
+              />
+            </td>
+            <td className="px-4 py-3">
               <span className="font-mono text-xs">
                 {item.auth_user_id ?? "-"}
               </span>
@@ -274,7 +317,9 @@ export default async function UsersPage({ searchParams }: PageProps) {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   <a
-                    href={`/dashboard/admin/users?edit=${item.id}`}
+                    href={`/dashboard/admin/users?edit=${item.id}${
+                      params.school_id ? `&school_id=${params.school_id}` : ""
+                    }`}
                     className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                   >
                     Edit
@@ -334,4 +379,26 @@ function QuickLink({ href, label }: { href: string; label: string }) {
       {label}
     </Link>
   );
+}
+
+function SchoolScopeCell({
+  roleName,
+  schoolName,
+}: {
+  roleName?: string;
+  schoolName?: string | null;
+}) {
+  if (schoolName) {
+    return <span className="text-sm">{schoolName}</span>;
+  }
+
+  if (roleName === "admin") {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+        Belum diset
+      </span>
+    );
+  }
+
+  return <span className="text-sm text-muted-foreground">-</span>;
 }
