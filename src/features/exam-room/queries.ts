@@ -163,7 +163,7 @@ export async function getAttemptQuestions(attemptId: string) {
   const { data, error } = await supabase
     .from("exam_package_questions")
     .select(
-      "order_number, questions(id, type, content, point, explanation, question_stimuli(id, title, content, media_url, media_type), question_attachments(id, media_type, url, file_name, caption, order_number), question_options(id, option_label, option_text, order_number))",
+      "order_number, point_override, questions(id, type, content, point, explanation, question_stimuli(id, title, content, media_url, media_type), question_attachments(id, media_type, url, file_name, caption, order_number), question_options(id, option_label, option_text, order_number))",
     )
     .eq("exam_package_id", packageId)
     .order("order_number");
@@ -173,13 +173,25 @@ export async function getAttemptQuestions(attemptId: string) {
   }
 
   return data
-    .map((item) => ({
-      order_number: item.order_number as number,
-      question: Array.isArray(item.questions)
+    .map((item) => {
+      const question = Array.isArray(item.questions)
         ? item.questions[0]
-        : item.questions,
-    }))
-    .filter((item) => item.question);
+        : item.questions;
+
+      return question
+        ? {
+            order_number: item.order_number as number,
+            question: {
+              ...question,
+              point: Number(item.point_override ?? question.point ?? 0),
+            },
+          }
+        : null;
+    })
+    .filter(
+      (item): item is NonNullable<typeof item> =>
+        Boolean(item?.question),
+    );
 }
 
 export async function getAttemptAnswers(attemptId: string) {

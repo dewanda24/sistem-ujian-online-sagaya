@@ -11,6 +11,7 @@ import {
   archiveExamPackageAction,
   saveExamPackageAction,
   toggleExamPackageActiveAction,
+  updateExamPackageQuestionPointsAction,
   updateExamPackageStatusAction,
 } from "@/features/exams/actions";
 import {
@@ -42,7 +43,9 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
 }
 
 type PackageQuestion = {
+  id?: string | null;
   question_id?: string | null;
+  point_override?: number | string | null;
   questions?: {
     id?: string | null;
     subject_id?: string | null;
@@ -74,7 +77,16 @@ type ExamPackageWithQuestions = {
 function getPackageReadiness(examPackage: ExamPackageWithQuestions) {
   const packageQuestions = examPackage.exam_package_questions ?? [];
   const questions = packageQuestions
-    .map((item) => firstRelation(item.questions))
+    .map((item) => {
+      const question = firstRelation(item.questions);
+
+      return question
+        ? {
+            ...question,
+            effectivePoint: Number(item.point_override ?? question.point ?? 0),
+          }
+        : null;
+    })
     .filter(Boolean);
   const multipleChoice = questions.filter(
     (question) => question?.type === "multiple_choice",
@@ -91,7 +103,7 @@ function getPackageReadiness(examPackage: ExamPackageWithQuestions) {
       !question?.is_active ||
       Boolean(question?.deleted_at) ||
       question?.subject_id !== examPackage.subject_id ||
-      Number(question?.point ?? 0) <= 0,
+      Number(question?.effectivePoint ?? 0) <= 0,
   ).length;
   const missingRelations = packageQuestions.length - questions.length;
   const totalQuestionMismatch =
@@ -101,7 +113,7 @@ function getPackageReadiness(examPackage: ExamPackageWithQuestions) {
     missingRelations > 0 ? `${missingRelations} relasi soal invalid` : "",
     invalidQuestions > 0 ? `${invalidQuestions} soal tidak siap` : "",
     totalQuestionMismatch ? "Jumlah soal tidak sinkron" : "",
-    Number(examPackage.total_points ?? 0) <= 0 ? "Total poin belum valid" : "",
+    getPackageTotalPoints(examPackage) <= 0 ? "Total poin belum valid" : "",
   ].filter(Boolean);
 
   return {
@@ -113,7 +125,22 @@ function getPackageReadiness(examPackage: ExamPackageWithQuestions) {
     easy,
     medium,
     hard,
+    totalPoints: getPackageTotalPoints(examPackage),
   };
+}
+
+function getPackageTotalPoints(examPackage: ExamPackageWithQuestions) {
+  const packageQuestions = examPackage.exam_package_questions ?? [];
+
+  if (packageQuestions.length === 0) {
+    return Number(examPackage.total_points ?? 0);
+  }
+
+  return packageQuestions.reduce((total, item) => {
+    const question = firstRelation(item.questions);
+
+    return total + Number(item.point_override ?? question?.point ?? 0);
+  }, 0);
 }
 
 export default async function ExamPackagesPage({ searchParams }: PageProps) {
@@ -428,7 +455,30 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
                 );
               })()}
             </td>
-            <td className="px-4 py-3">{examPackage.total_points}</td>
+            <td className="px-4 py-3">
+              <div>{getPackageReadiness(examPackage).totalPoints}</div>
+              <form
+                action={updateExamPackageQuestionPointsAction}
+                className="mt-2 flex max-w-44 items-center gap-2"
+              >
+                <input type="hidden" name="id" value={examPackage.id} />
+                <input
+                  name="point_override"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  defaultValue="1"
+                  aria-label="Bobot semua soal"
+                  className="w-20 rounded-md border px-2 py-1 text-xs"
+                />
+                <ConfirmSubmitButton
+                  confirmMessage="Ubah bobot semua soal dalam paket ini? Bobot asli bank soal tidak ikut berubah."
+                  loadingText="Menyimpan..."
+                >
+                  Set
+                </ConfirmSubmitButton>
+              </form>
+            </td>
             <td className="px-4 py-3">
               <StatusPill value={examPackage.status} />
             </td>

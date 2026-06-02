@@ -38,6 +38,10 @@ function formStringList(formData: FormData, key: string) {
   return formData.getAll(key).map(String).filter(Boolean);
 }
 
+function formNumber(formData: FormData, key: string) {
+  return Number(formString(formData, key));
+}
+
 function redirectTo(path: string, result: ActionResult): never {
   const params = new URLSearchParams({
     notice: result.ok ? "success" : "error",
@@ -281,6 +285,83 @@ export async function updateExamPackageStatusAction(formData: FormData) {
   });
 }
 
+export async function updateExamPackageQuestionPointsAction(formData: FormData) {
+  const currentUser = await requirePermission("exam_packages.manage");
+  const packageId = formString(formData, "id");
+  const point = formNumber(formData, "point_override");
+
+  if (!packageId) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: "Paket ujian tidak valid.",
+    });
+  }
+
+  if (!Number.isFinite(point) || point <= 0) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: "Bobot massal harus lebih dari 0.",
+    });
+  }
+
+  await assertPackageSchoolScope(packageId);
+  const supabase = await createClient();
+  const { data: packageQuestions, error: readError } = await supabase
+    .from("exam_package_questions")
+    .select("id")
+    .eq("exam_package_id", packageId);
+
+  if (readError || !packageQuestions?.length) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: readError?.message ?? "Paket belum memiliki soal.",
+    });
+  }
+
+  const { error: updateError } = await supabase
+    .from("exam_package_questions")
+    .update({ point_override: point })
+    .eq("exam_package_id", packageId);
+
+  if (updateError) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: updateError.message,
+    });
+  }
+
+  const { error: packageError } = await supabase
+    .from("exam_packages")
+    .update({
+      total_points: point * packageQuestions.length,
+    })
+    .eq("id", packageId);
+
+  if (!packageError) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "exam_packages.question_points_bulk_update",
+      entityType: "exam_packages",
+      entityId: packageId,
+      payload: {
+        point_override: point,
+        question_count: packageQuestions.length,
+        total_points: point * packageQuestions.length,
+      },
+    });
+  }
+
+  revalidatePath("/dashboard/exams/packages");
+  revalidatePath("/dashboard/exams/schedules");
+  revalidatePath("/dashboard/exams");
+  redirectTo("/dashboard/exams/packages", {
+    ok: !packageError,
+    message: packageError
+      ? packageError.message
+      : `Bobot ${packageQuestions.length} soal dalam paket berhasil diubah menjadi ${point}.`,
+  });
+}
+
 function validateSelectedQuestionsForPackage(
   questions: Array<{
     id: string;
@@ -347,7 +428,7 @@ async function validateExamPackageReady(packageId: string): Promise<ActionResult
   const { data: examPackage, error } = await supabase
     .from("exam_packages")
     .select(
-      "id, subject_id, total_questions, exam_package_questions(question_id, questions(id, subject_id, point, status, is_active, deleted_at))",
+      "id, subject_id, total_questions, exam_package_questions(question_id, point_override, questions(id, subject_id, point, status, is_active, deleted_at))",
     )
     .eq("id", packageId)
     .maybeSingle();

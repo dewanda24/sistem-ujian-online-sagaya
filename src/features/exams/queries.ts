@@ -251,7 +251,7 @@ export async function getExamPackages(filters: ExamPackageFilters) {
   let query = supabase
     .from("exam_packages")
     .select(
-      "*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id, questions(id, subject_id, type, difficulty, point, status, is_active, deleted_at))",
+      "*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id, point_override, questions(id, subject_id, type, difficulty, point, status, is_active, deleted_at))",
     )
     .is("deleted_at", null)
     .in("subject_id", subjectIds)

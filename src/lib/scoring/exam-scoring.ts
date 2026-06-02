@@ -189,7 +189,7 @@ async function getPackageQuestions(packageId: string) {
   const { data } = await supabase
     .from("exam_package_questions")
     .select(
-      "question_id, questions(id, type, point, question_options(id, is_correct))",
+      "question_id, point_override, questions(id, type, point, question_options(id, is_correct))",
     )
     .eq("exam_package_id", packageId);
 
@@ -210,7 +210,7 @@ async function getPackageQuestions(packageId: string) {
 
       return {
         question_id: question.id as string,
-        point: Number(question.point ?? 0),
+        point: Number(item.point_override ?? question.point ?? 0),
         type: question.type as "multiple_choice" | "essay",
         correct_option_id: correctOption?.id ?? null,
       };
