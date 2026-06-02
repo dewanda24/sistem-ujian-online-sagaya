@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
@@ -10,7 +10,6 @@ import {
   type ExcelImportPreviewState,
 } from "@/features/question-bank/excel-import-actions";
 import {
-  validateExcelImportRow,
   type ExcelImportRow,
 } from "@/features/question-bank/excel-import";
 
@@ -31,24 +30,13 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
     initialState,
   );
   const [rows, setRows] = useState<ExcelImportRow[]>([]);
-  const subjectCodes = useMemo(
-    () => new Set(rows.map((row) => row.subject_code).filter(Boolean)),
-    [rows],
-  );
-  const validatedRows = rows.map((row) => {
-    const validation = validateExcelImportRow(row, subjectCodes);
-
-    return {
-      ...row,
-      errors: validation.errors,
-      warnings: validation.warnings,
-    };
-  });
+  const validatedRows = rows;
   const validCount = validatedRows.filter((row) => row.errors.length === 0).length;
   const warningCount = validatedRows.filter(
     (row) => row.errors.length === 0 && row.warnings.length > 0,
   ).length;
   const errorCount = validatedRows.length - validCount;
+  const validRows = validatedRows.filter((row) => row.errors.length === 0);
 
   useEffect(() => {
     if (previewState.rows.length > 0) {
@@ -197,7 +185,7 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
             <input
               type="hidden"
               name="rows_json"
-              value={JSON.stringify(validatedRows)}
+              value={JSON.stringify(validRows)}
             />
             <ConfirmSubmitButton
               disabled={validCount === 0}

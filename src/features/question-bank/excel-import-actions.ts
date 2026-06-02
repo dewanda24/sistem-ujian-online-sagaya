@@ -24,7 +24,7 @@ export type ExcelImportPreviewState = {
   rows: ExcelImportRow[];
 };
 
-const IMPORT_EXCEL_PATH = "/dashboard/import-export";
+const IMPORT_EXCEL_PATH = "/dashboard/question-bank/import-excel";
 const optionLabels = ["A", "B", "C", "D"] as const;
 
 function formString(formData: FormData, key: string) {

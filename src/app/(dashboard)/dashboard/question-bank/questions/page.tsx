@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ConfirmLinkButton } from "@/components/dashboard/confirm-link-button";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -50,6 +51,17 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
     difficulty: params.difficulty,
     status: params.status,
   };
+  const exportParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) {
+      exportParams.set(key, value);
+    }
+  }
+
+  const exportHref = `/api/question-bank/export${
+    exportParams.size > 0 ? `?${exportParams.toString()}` : ""
+  }`;
   const [subjects, schoolId, categories, stimuli, questions] =
     await Promise.all([
       getScopedSubjectOptions(),
@@ -69,36 +81,41 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
       />
 
       <FormSection
-        title="Import Bank Soal"
-        description="Kelola import bank soal dalam berbagai format"
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/dashboard/import-export"
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-            >
-              Dashboard Import/Export
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Gunakan Dashboard Import/Export untuk template dan koordinasi dengan
-            fitur import lainnya.
-          </p>
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="Quick Links"
-        description="Akses cepat ke fitur terkait bank soal"
+        title="Import / Export Bank Soal"
+        description="Akses langsung untuk template, import, dan export CSV sesuai filter daftar soal."
       >
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/dashboard/import-export"
+            href="/dashboard/question-bank/import-word"
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
-            Dashboard Import/Export
+            Import Word
           </Link>
+          <Link
+            href="/dashboard/question-bank/import-excel"
+            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            Import Excel/CSV
+          </Link>
+          <Link
+            href="/api/templates/questions-word"
+            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            Template Word
+          </Link>
+          <Link
+            href="/api/templates/questions-excel"
+            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            Template Excel
+          </Link>
+          <ConfirmLinkButton
+            href={exportHref}
+            confirmMessage="Export bank soal sesuai filter saat ini ke CSV?"
+            variant="outline"
+          >
+            Export CSV
+          </ConfirmLinkButton>
         </div>
       </FormSection>
 
