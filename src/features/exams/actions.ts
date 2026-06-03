@@ -10,6 +10,7 @@ import {
   assertSameSchool,
   requireSchoolScope,
 } from "@/lib/auth/school-scope";
+import { jakartaDatetimeLocalToIso } from "@/lib/date-time";
 import { createClient } from "@/lib/supabase/server";
 import {
   examPackageActiveSchema,
@@ -56,7 +57,7 @@ function toDatetime(value: string) {
     return "";
   }
 
-  return new Date(value).toISOString();
+  return jakartaDatetimeLocalToIso(value);
 }
 
 function generateExamToken() {

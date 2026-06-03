@@ -9,6 +9,7 @@ import {
   getSubjectOptions,
   type SelectOption,
 } from "@/lib/master-data/queries";
+import { jakartaDateRangeToUtcIso } from "@/lib/date-time";
 import { createClient } from "@/lib/supabase/server";
 
 export type ExamPackageFilters = {
@@ -340,11 +341,17 @@ export async function getExamSchedules(filters: ExamScheduleFilters) {
   }
 
   if (filters.date_from) {
-    query = query.gte("start_at", `${filters.date_from}T00:00:00.000Z`);
+    query = query.gte(
+      "start_at",
+      jakartaDateRangeToUtcIso(filters.date_from, "start"),
+    );
   }
 
   if (filters.date_to) {
-    query = query.lte("start_at", `${filters.date_to}T23:59:59.999Z`);
+    query = query.lte(
+      "start_at",
+      jakartaDateRangeToUtcIso(filters.date_to, "end"),
+    );
   }
 
   const { data, error } = await query;

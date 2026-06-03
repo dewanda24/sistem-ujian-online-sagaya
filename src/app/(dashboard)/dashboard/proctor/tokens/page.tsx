@@ -9,16 +9,14 @@ import {
   getProctorScheduleOverview,
 } from "@/features/monitoring/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 function formatDateTime(value?: string | null) {
   if (!value) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 export default async function ProctorTokensPage() {

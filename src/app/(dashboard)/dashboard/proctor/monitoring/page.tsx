@@ -21,6 +21,7 @@ import {
 } from "@/features/monitoring/queries";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 type PageProps = {
   searchParams: Promise<{
@@ -40,10 +41,7 @@ function formatDateTime(value?: string | null) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 export default async function MonitoringPage({

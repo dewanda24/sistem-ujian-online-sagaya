@@ -7,6 +7,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { submitAttemptAction } from "@/features/exam-room/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
+import { formatJakartaDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 
 type ExamEventType =
@@ -1077,10 +1078,7 @@ function formatDateTime(value?: string | null) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 function getRemainingSeconds(value?: string | null) {

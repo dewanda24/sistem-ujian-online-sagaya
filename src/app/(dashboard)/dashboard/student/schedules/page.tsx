@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
 import { getStudentExamSchedules } from "@/features/exam-room/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 export default async function StudentSchedulesPage() {
   await requirePermission("active_exams.view");
@@ -31,16 +32,10 @@ export default async function StudentSchedulesPage() {
               {schedule.exam_packages?.subjects?.code ?? "-"}
             </td>
             <td className="px-4 py-3">
-              {new Intl.DateTimeFormat("id-ID", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(schedule.start_at))}
+              {formatJakartaDateTime(schedule.start_at)}
             </td>
             <td className="px-4 py-3">
-              {new Intl.DateTimeFormat("id-ID", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(schedule.end_at))}
+              {formatJakartaDateTime(schedule.end_at)}
             </td>
             <td className="px-4 py-3">{schedule.status}</td>
           </tr>

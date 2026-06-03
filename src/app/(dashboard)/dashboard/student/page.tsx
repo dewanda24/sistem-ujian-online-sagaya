@@ -14,6 +14,7 @@ import {
   getStudentSubmittedAttempts,
 } from "@/features/results/queries";
 import { requireRole } from "@/lib/auth/require-role";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 type Relation<T> = T | T[] | null | undefined;
 
@@ -30,10 +31,7 @@ function formatDateTime(value?: string | null) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 function getParticipant(schedule: {

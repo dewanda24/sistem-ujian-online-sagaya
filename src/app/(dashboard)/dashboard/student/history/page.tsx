@@ -7,6 +7,7 @@ import {
   getStudentSubmittedAttempts,
 } from "@/features/results/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 type PageProps = {
   searchParams: Promise<{
@@ -64,10 +65,7 @@ export default async function ExamHistoryPage({ searchParams }: PageProps) {
               </td>
               <td className="px-4 py-3">
                 {attempt.submitted_at
-                  ? new Intl.DateTimeFormat("id-ID", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }).format(new Date(attempt.submitted_at))
+                  ? formatJakartaDateTime(attempt.submitted_at)
                   : "-"}
               </td>
               <td className="px-4 py-3">

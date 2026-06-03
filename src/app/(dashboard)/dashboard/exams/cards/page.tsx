@@ -11,6 +11,7 @@ import {
   type ExamAdmissionCard,
 } from "@/features/exams/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 type PageProps = {
   searchParams: Promise<{
@@ -35,10 +36,7 @@ function formatDateTime(value: string) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 function buildPreviewHref(

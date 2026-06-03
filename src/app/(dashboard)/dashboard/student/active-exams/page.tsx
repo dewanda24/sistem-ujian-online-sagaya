@@ -6,6 +6,7 @@ import { DataTable } from "@/components/master-data/data-table";
 import { startExamAction } from "@/features/exam-room/actions";
 import { getStudentExamSchedules } from "@/features/exam-room/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 type PageProps = {
   searchParams: Promise<{
@@ -13,13 +14,6 @@ type PageProps = {
     message?: string;
   }>;
 };
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function getParticipant(schedule: {
   exam_participants?: Array<{
@@ -73,9 +67,9 @@ export default async function ActiveExamsPage({ searchParams }: PageProps) {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <div>{formatDateTime(schedule.start_at)}</div>
+                <div>{formatJakartaDateTime(schedule.start_at)}</div>
                 <div className="text-xs text-muted-foreground">
-                  sampai {formatDateTime(schedule.end_at)}
+                  sampai {formatJakartaDateTime(schedule.end_at)}
                 </div>
               </td>
               <td className="px-4 py-3">

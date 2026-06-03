@@ -10,16 +10,14 @@ import {
   getHomeroomScheduleSummary,
 } from "@/features/homeroom/queries";
 import { requireRole } from "@/lib/auth/require-role";
+import { formatJakartaDateTime } from "@/lib/date-time";
 
 function formatDateTime(value?: string | null) {
   if (!value) {
     return "-";
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJakartaDateTime(value);
 }
 
 export default async function TeacherHomeroomPage() {

@@ -26,6 +26,10 @@ import {
   getSemesterOptions,
 } from "@/features/exams/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import {
+  formatJakartaDateTime,
+  isoToJakartaDatetimeLocal,
+} from "@/lib/date-time";
 
 type PageProps = {
   searchParams: Promise<{
@@ -39,24 +43,6 @@ type PageProps = {
     message?: string;
   }>;
 };
-
-function toDatetimeLocal(value?: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60000;
-
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) {
@@ -282,14 +268,14 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
             <input
               name="start_at"
               type="datetime-local"
-              defaultValue={toDatetimeLocal(editable?.start_at)}
+              defaultValue={isoToJakartaDatetimeLocal(editable?.start_at)}
               className="rounded-md border px-3 py-2 text-sm"
               required
             />
             <input
               name="end_at"
               type="datetime-local"
-              defaultValue={toDatetimeLocal(editable?.end_at)}
+              defaultValue={isoToJakartaDatetimeLocal(editable?.end_at)}
               className="rounded-md border px-3 py-2 text-sm"
               required
             />
@@ -478,9 +464,9 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
               </div>
             </td>
             <td className="px-4 py-3">
-              <div>{formatDateTime(schedule.start_at)}</div>
+              <div>{formatJakartaDateTime(schedule.start_at)}</div>
               <div className="text-xs text-muted-foreground">
-                sampai {formatDateTime(schedule.end_at)}
+                sampai {formatJakartaDateTime(schedule.end_at)}
               </div>
             </td>
             <td className="px-4 py-3">
