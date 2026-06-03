@@ -108,6 +108,7 @@ const seriousEventTypes: ExamEventType[] = [
   "fullscreen_exit",
   "before_unload",
 ];
+const maxAntiCheatViolations = 8;
 
 export function ExamRoomWorkspace({
   attempt,
@@ -296,12 +297,12 @@ export function ExamRoomWorkspace({
       );
       setViolationCount(nextCount);
 
-      if (nextCount >= 3) {
+      if (nextCount >= maxAntiCheatViolations) {
         setWarning({
           count: nextCount,
           title: "Ujian dikumpulkan otomatis",
           message:
-            "Sistem mendeteksi tiga pelanggaran. Jawaban akan dikumpulkan otomatis.",
+            `Sistem mendeteksi ${maxAntiCheatViolations} pelanggaran. Jawaban akan dikumpulkan otomatis.`,
         });
         autoSubmittingRef.current = true;
         setSubmitLocked(true);
@@ -594,7 +595,10 @@ export function ExamRoomWorkspace({
           label="Soal Terjawab"
           value={`${answeredCount}/${questions.length}`}
         />
-      <InfoItem label="Pelanggaran" value={`${violationCount}/3`} />
+      <InfoItem
+        label="Pelanggaran"
+        value={`${violationCount}/${maxAntiCheatViolations}`}
+      />
       </div>
 
       <div
@@ -896,7 +900,7 @@ export function ExamRoomWorkspace({
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4">
           <div className="w-full max-w-md rounded-lg bg-background p-5 shadow-xl">
             <p className="text-xs font-medium uppercase text-muted-foreground">
-              Pelanggaran {warning.count}/3
+              Pelanggaran {warning.count}/{maxAntiCheatViolations}
             </p>
             <h3 className="mt-2 text-lg font-semibold">{warning.title}</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -904,11 +908,13 @@ export function ExamRoomWorkspace({
             </p>
             <button
               type="button"
-              disabled={warning.count >= 3}
+              disabled={warning.count >= maxAntiCheatViolations}
               onClick={closeWarningAndRefocus}
               className="mt-5 w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {warning.count >= 3 ? "Mengumpulkan..." : "Saya mengerti"}
+              {warning.count >= maxAntiCheatViolations
+                ? "Mengumpulkan..."
+                : "Saya mengerti"}
             </button>
           </div>
         </div>

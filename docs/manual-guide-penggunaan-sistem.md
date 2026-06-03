@@ -834,7 +834,7 @@ Aturan pelanggaran:
 
 - pelanggaran 1: peringatan,
 - pelanggaran 2: peringatan keras,
-- pelanggaran 3: auto-submit.
+- pelanggaran 8: auto-submit.
 
 Saat siswa klik `Saya Mengerti`, sistem mencoba masuk fullscreen kembali.
 
@@ -1312,7 +1312,7 @@ Sistem akan:
 - menampilkan warning,
 - meminta siswa masuk fullscreen kembali.
 
-Jika pelanggaran mencapai batas:
+Jika pelanggaran mencapai batas 8 kali:
 
 - sistem auto-submit attempt.
 
