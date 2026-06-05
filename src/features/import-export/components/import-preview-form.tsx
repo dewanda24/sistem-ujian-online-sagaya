@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { ImportResultSummary } from "@/components/common/import-result-summary";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { DataTable } from "@/components/master-data/data-table";
 import { commitStudentClassAssignmentImportAction } from "@/features/import-export/actions";
 import { commitTeacherSubjectAssignmentImportAction } from "@/features/import-export/actions-teacher-assignment";
 import {
@@ -341,31 +342,23 @@ export function ImportPreviewForm({
       ) : null}
 
       {rows.length ? (
-        <div className="mt-4 overflow-hidden rounded-lg border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b bg-muted/60 text-xs uppercase text-muted-foreground">
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header} className="px-3 py-2 font-medium">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.slice(0, 20).map((row, index) => (
-                  <tr key={index}>
-                    {headers.map((header) => (
-                      <td key={header} className="px-3 py-2">
-                        {row[header] || "-"}
-                      </td>
-                    ))}
-                  </tr>
+        <div className="mt-4">
+          <DataTable
+            columns={headers}
+            empty="Belum ada data."
+            searchPlaceholder="Cari isi preview..."
+            stickyActionColumn={false}
+          >
+            {rows.map((row, index) => (
+              <tr key={index}>
+                {headers.map((header) => (
+                  <td key={header} className="px-4 py-3">
+                    {row[header] || "-"}
+                  </td>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            ))}
+          </DataTable>
         </div>
       ) : null}
     </section>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { DataTable } from "@/components/master-data/data-table";
 import {
   previewExcelImportAction,
   saveExcelImportAction,
@@ -142,27 +143,25 @@ export function ExcelImportForm({
               }}
             />
           </div>
-          <div className="overflow-hidden rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-left text-sm">
-                <thead className="border-b bg-muted/60 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Baris</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Mapel</th>
-                    <th className="px-3 py-2">Kategori</th>
-                    <th className="px-3 py-2">Tipe</th>
-                    <th className="px-3 py-2">Soal</th>
-                    <th className="px-3 py-2">Opsi</th>
-                    <th className="px-3 py-2">Jawaban</th>
-                    <th className="px-3 py-2">Stimulus</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {validatedRows.map((row) => (
-                    <tr key={row.local_id} className="align-top">
-                      <td className="px-3 py-2">{row.row_number}</td>
-                      <td className="px-3 py-2">
+          <DataTable
+            columns={[
+              "Baris",
+              "Status",
+              "Mapel",
+              "Kategori",
+              "Tipe",
+              "Soal",
+              "Opsi",
+              "Jawaban",
+              "Stimulus",
+            ]}
+            searchPlaceholder="Cari soal, mapel, kategori..."
+            stickyActionColumn={false}
+          >
+            {validatedRows.map((row) => (
+              <tr key={row.local_id} className="align-top">
+                <td className="px-4 py-3">{row.row_number}</td>
+                <td className="px-4 py-3">
                         <div
                           className={
                             row.errors.length
@@ -183,34 +182,33 @@ export function ExcelImportForm({
                             {item}
                           </div>
                         ))}
-                      </td>
-                      <td className="px-3 py-2">{row.subject_code || "-"}</td>
-                      <td className="px-3 py-2">{row.category || "-"}</td>
-                      <td className="px-3 py-2">{row.type}</td>
-                      <td className="max-w-xs px-3 py-2 whitespace-pre-wrap">
-                        {row.content || "-"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {["A", "B", "C", "D", "E"].map((label) => (
-                          <div key={label}>
-                            {label}.{" "}
-                            {row[`option_${label.toLowerCase()}` as keyof ExcelImportRow] as string}
-                          </div>
-                        ))}
-                      </td>
-                      <td className="px-3 py-2">{row.correct_answer || "-"}</td>
-                      <td className="max-w-xs px-3 py-2">
-                        <div className="font-medium">{row.stimulus_title || "-"}</div>
-                        <div className="line-clamp-3 text-xs text-muted-foreground">
-                          {row.stimulus_content}
-                        </div>
-                      </td>
-                    </tr>
+                </td>
+                <td className="px-4 py-3">{row.subject_code || "-"}</td>
+                <td className="px-4 py-3">{row.category || "-"}</td>
+                <td className="px-4 py-3">{row.type}</td>
+                <td className="max-w-xs whitespace-pre-wrap px-4 py-3">
+                  {row.content || "-"}
+                </td>
+                <td className="px-4 py-3">
+                  {["A", "B", "C", "D", "E"].map((label) => (
+                    <div key={label}>
+                      {label}.{" "}
+                      {row[
+                        `option_${label.toLowerCase()}` as keyof ExcelImportRow
+                      ] as string}
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </td>
+                <td className="px-4 py-3">{row.correct_answer || "-"}</td>
+                <td className="max-w-xs px-4 py-3">
+                  <div className="font-medium">{row.stimulus_title || "-"}</div>
+                  <div className="line-clamp-3 text-xs text-muted-foreground">
+                    {row.stimulus_content}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
           <form action={saveExcelImportAction} className="mt-5 flex justify-end">
             <input
               type="hidden"
