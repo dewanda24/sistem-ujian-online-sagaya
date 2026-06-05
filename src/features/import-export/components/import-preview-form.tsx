@@ -12,9 +12,14 @@ import {
   type TemplateType,
 } from "@/features/import-export/templates";
 import {
+  importClassesCsvAction,
   importStudentsCsvAction,
   importTeachersCsvAction,
 } from "@/lib/actions/master-data-actions";
+import {
+  getMissingCsvHeaders,
+  parseCsvText,
+} from "@/lib/import/csv";
 
 type PreviewRow = Record<string, string>;
 
@@ -42,63 +47,6 @@ const initialActionState: ActionState = {
   ok: false,
   message: "",
 };
-
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-
-  return values;
-}
-
-function parseCsv(text: string) {
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
-
-  if (lines.length === 0) {
-    return { headers: [] as string[], rows: [] as PreviewRow[] };
-  }
-
-  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
-  const rows = lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
-
-    return headers.reduce<PreviewRow>((row, header, index) => {
-      row[header] = values[index] ?? "";
-      return row;
-    }, {});
-  });
-
-  return { headers, rows };
-}
 
 export function ImportPreviewForm() {
   const [templateType, setTemplateType] = useState<TemplateType>("students");
@@ -128,11 +76,13 @@ export function ImportPreviewForm() {
       ? importStudentsCsvAction
       : templateType === "teachers"
         ? importTeachersCsvAction
-        : templateType === "student-class-assignments"
-          ? studentAssignmentAction
-          : templateType === "teacher-subject-assignments"
-            ? teacherAssignmentAction
-            : null;
+        : templateType === "classes"
+          ? importClassesCsvAction
+          : templateType === "student-class-assignments"
+            ? studentAssignmentAction
+            : templateType === "teacher-subject-assignments"
+              ? teacherAssignmentAction
+              : null;
   const actionState =
     templateType === "student-class-assignments"
       ? studentAssignmentState
@@ -150,9 +100,7 @@ export function ImportPreviewForm() {
     },
     [template, templateType],
   );
-  const missingHeaders = requiredHeaders.filter(
-    (header) => !headers.includes(header),
-  );
+  const missingHeaders = getMissingCsvHeaders(headers, requiredHeaders);
   const rowErrors = rows.flatMap((row, index) =>
     requiredHeaders
       .filter((header) => !row[header])
@@ -202,9 +150,9 @@ export function ImportPreviewForm() {
       return;
     }
 
-    const parsed = parseCsv(await file.text());
+    const parsed = parseCsvText(await file.text());
     setHeaders(parsed.headers);
-    setRows(parsed.rows);
+    setRows(parsed.rows as PreviewRow[]);
   }
 
   return (

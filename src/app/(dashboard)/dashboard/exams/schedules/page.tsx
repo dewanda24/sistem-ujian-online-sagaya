@@ -1,6 +1,7 @@
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { ActionsMenu } from "@/components/dashboard/actions-menu";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -523,16 +524,16 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(schedule.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
+              <ActionsMenu>
                 <a
                   href={`/dashboard/exams/schedules?edit=${schedule.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  className="block rounded-md border px-3 py-1.5 text-center text-xs hover:bg-muted"
                 >
                   Edit
                 </a>
                 <a
                   href={`/dashboard/exams/cards?schedule_id=${schedule.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  className="block rounded-md border px-3 py-1.5 text-center text-xs hover:bg-muted"
                 >
                   Kartu
                 </a>
@@ -549,6 +550,7 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                     <input type="hidden" name="status" value={status} />
                     <ConfirmSubmitButton
                       confirmMessage={`Ubah status jadwal menjadi ${status}?`}
+                      className="w-full"
                     >
                       {status}
                     </ConfirmSubmitButton>
@@ -567,19 +569,26 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                         ? "Nonaktifkan jadwal ujian ini?"
                         : "Aktifkan jadwal ujian ini?"
                     }
+                    className="w-full"
                   >
                     {schedule.is_active ? "Nonaktifkan" : "Aktifkan"}
                   </ConfirmSubmitButton>
                 </form>
                 <form action={regenerateExamTokenAction}>
                   <input type="hidden" name="id" value={schedule.id} />
-                  <ConfirmSubmitButton confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi.">
+                  <ConfirmSubmitButton
+                    confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi."
+                    className="w-full"
+                  >
                     Token Baru
                   </ConfirmSubmitButton>
                 </form>
                 <form action={syncExamScheduleParticipantsAction}>
                   <input type="hidden" name="id" value={schedule.id} />
-                  <ConfirmSubmitButton confirmMessage="Sync peserta dari kelas target? Peserta lama dan attempt tidak akan dihapus.">
+                  <ConfirmSubmitButton
+                    confirmMessage="Sync peserta dari kelas target? Peserta lama dan attempt tidak akan dihapus."
+                    className="w-full"
+                  >
                     Sync Peserta
                   </ConfirmSubmitButton>
                 </form>
@@ -588,6 +597,7 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                   <ConfirmSubmitButton
                     confirmMessage="Reset semua sesi siswa pada jadwal ini? Semua attempt aktif/submitted akan dibatalkan dan siswa bisa mulai ulang."
                     confirmationText="RESET"
+                    className="w-full"
                   >
                     Reset Sesi
                   </ConfirmSubmitButton>
@@ -597,11 +607,12 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
                   <ConfirmSubmitButton
                     confirmMessage="Arsipkan jadwal ujian ini?"
                     variant="danger"
+                    className="w-full"
                   >
                     Arsipkan
                   </ConfirmSubmitButton>
                 </form>
-              </div>
+              </ActionsMenu>
             </td>
           </tr>
         ))}

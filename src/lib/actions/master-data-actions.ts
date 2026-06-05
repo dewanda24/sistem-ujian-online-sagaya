@@ -25,11 +25,14 @@ import {
   teacherAssignmentSchema,
   teacherSchema,
 } from "@/lib/validations/master-data";
+import { parseCsvText } from "@/lib/import/csv";
 
 type ActionResult = {
   ok: boolean;
   message: string;
 };
+
+const IMPORT_CENTER_PATH = "/dashboard/import-export";
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -43,60 +46,8 @@ function nullableDate(value: string) {
   return value ? value : null;
 }
 
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-
-  return values;
-}
-
 function parseCsv(text: string) {
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
-
-  if (lines.length < 2) {
-    return [];
-  }
-
-  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
-
-  return lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
-
-    return headers.reduce<Record<string, string>>((row, header, index) => {
-      row[header] = values[index] ?? "";
-      return row;
-    }, {});
-  });
+  return parseCsvText(text).rows;
 }
 
 function redirectTo(path: string, result: ActionResult): never {
@@ -419,7 +370,7 @@ export async function saveClassAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirectTo("/dashboard/master-data/classes", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Data kelas tidak valid.",
     });
@@ -724,7 +675,7 @@ export async function importClassesCsvAction(formData: FormData) {
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    redirectTo("/dashboard/master-data/classes", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "File CSV kelas wajib diunggah.",
     });
@@ -733,7 +684,7 @@ export async function importClassesCsvAction(formData: FormData) {
   const rows = parseCsv(await file.text());
 
   if (rows.length === 0) {
-    redirectTo("/dashboard/master-data/classes", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "CSV kosong atau header tidak valid.",
     });
@@ -842,7 +793,8 @@ export async function importClassesCsvAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/master-data/classes");
-  redirectTo("/dashboard/master-data/classes", {
+  revalidatePath(IMPORT_CENTER_PATH);
+  redirectTo(IMPORT_CENTER_PATH, {
     ok: errors.length === 0,
     message:
       errors.length > 0
@@ -858,7 +810,7 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    redirectTo("/dashboard/master-data/students", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "File CSV assignment siswa-kelas wajib diunggah.",
     });
@@ -867,7 +819,7 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
   const rows = parseCsv(await file.text());
 
   if (rows.length === 0) {
-    redirectTo("/dashboard/master-data/students", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "CSV kosong atau header tidak valid.",
     });
@@ -876,7 +828,7 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
   const schoolId = await getDefaultSchoolId();
 
   if (!schoolId) {
-    redirectTo("/dashboard/master-data/students", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "Sekolah aktif/default tidak ditemukan.",
     });
@@ -966,7 +918,8 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
   });
 
   revalidatePath("/dashboard/master-data/students");
-  redirectTo("/dashboard/master-data/students", {
+  revalidatePath(IMPORT_CENTER_PATH);
+  redirectTo(IMPORT_CENTER_PATH, {
     ok: errors.length === 0,
     message:
       errors.length > 0
@@ -982,7 +935,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    redirectTo("/dashboard/master-data/teachers", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "File CSV assignment guru-mapel-kelas wajib diunggah.",
     });
@@ -991,7 +944,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
   const rows = parseCsv(await file.text());
 
   if (rows.length === 0) {
-    redirectTo("/dashboard/master-data/teachers", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "CSV kosong atau header tidak valid.",
     });
@@ -1000,7 +953,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
   const schoolId = await getDefaultSchoolId();
 
   if (!schoolId) {
-    redirectTo("/dashboard/master-data/teachers", {
+    redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
       message: "Sekolah aktif/default tidak ditemukan.",
     });
@@ -1100,7 +1053,8 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
   });
 
   revalidatePath("/dashboard/master-data/teachers");
-  redirectTo("/dashboard/master-data/teachers", {
+  revalidatePath(IMPORT_CENTER_PATH);
+  redirectTo(IMPORT_CENTER_PATH, {
     ok: errors.length === 0,
     message:
       errors.length > 0
@@ -1307,7 +1261,7 @@ export async function importTeachersCsvAction(formData: FormData) {
     formData,
     roleName: "teacher",
     permission: "teachers.manage",
-    redirectPath: "/dashboard/master-data/teachers",
+    redirectPath: IMPORT_CENTER_PATH,
   });
 }
 
@@ -1316,7 +1270,7 @@ export async function importStudentsCsvAction(formData: FormData) {
     formData,
     roleName: "student",
     permission: "students.manage",
-    redirectPath: "/dashboard/master-data/students",
+    redirectPath: IMPORT_CENTER_PATH,
   });
 }
 

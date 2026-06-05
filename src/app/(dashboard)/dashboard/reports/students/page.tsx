@@ -41,10 +41,10 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
           description="Daftar nilai individual peserta dan status grading."
         />
         <Link
-          href="/dashboard/import-export"
+          href="/api/reports/export?type=students"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Buka Import/Export
+          Export CSV
         </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-8">

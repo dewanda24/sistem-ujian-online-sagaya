@@ -8,6 +8,7 @@ import { commitStudentClassAssignmentImportAction } from "@/features/import-expo
 import { LoadingButton } from "@/components/common/loading-button";
 import { ImportResultSummary } from "@/components/common/import-result-summary";
 import Link from "next/link";
+import { getMissingCsvHeaders, parseCsvText } from "@/lib/import/csv";
 
 interface ValidationResult {
   row_number: number;
@@ -30,50 +31,14 @@ type ActionState = {
   };
 };
 
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const next = line[i + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      i++;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-}
-
 function parseCsv(text: string) {
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
+  const parsed = parseCsvText(text);
 
-  if (lines.length < 2) {
+  if (parsed.rows.length === 0) {
     return [];
   }
 
-  const headers = parseCsvLine(lines[0]).map((header) =>
+  const headers = parsed.headers.map((header) =>
     header.toLowerCase().trim(),
   );
   const expectedHeaders = [
@@ -84,22 +49,19 @@ function parseCsv(text: string) {
   ];
 
   // Check if headers are valid
-  const hasValidHeaders = expectedHeaders.every((expected) =>
-    headers.some((h) => h === expected),
-  );
+  const missingHeaders = getMissingCsvHeaders(headers, expectedHeaders);
 
-  if (!hasValidHeaders) {
+  if (missingHeaders.length > 0) {
     throw new Error(
-      `Header tidak lengkap. Diperlukan: ${expectedHeaders.join(", ")}`,
+      `Header tidak lengkap. Belum ada: ${missingHeaders.join(", ")}`,
     );
   }
 
-  return lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
+  return parsed.rows.map((sourceRow) => {
     const row: Record<string, string> = {};
 
-    for (let i = 0; i < headers.length; i++) {
-      row[headers[i]] = values[i] ?? "";
+    for (const [key, value] of Object.entries(sourceRow)) {
+      row[key.toLowerCase().trim()] = value;
     }
 
     return row;

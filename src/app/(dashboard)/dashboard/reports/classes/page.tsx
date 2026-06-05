@@ -53,10 +53,10 @@ export default async function ClassReportsPage({ searchParams }: PageProps) {
       />
       <div className="flex justify-end">
         <Link
-          href="/dashboard/import-export"
+          href="/api/reports/export?type=classes"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Buka Import/Export
+          Export CSV
         </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-7">

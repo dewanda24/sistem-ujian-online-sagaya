@@ -1,22 +1,9 @@
 // src/lib/auth/role-redirect.ts
 
+import { getRoleDashboardPath } from "@/lib/auth/access-matrix";
+
 export function getDashboardPath(role?: string | null) {
-  switch (role) {
-    case "super_admin":
-      return "/dashboard/super-admin";
-    case "admin":
-      return "/dashboard/admin";
-    case "teacher":
-      return "/dashboard/teacher";
-    case "proctor":
-      return "/dashboard/proctor";
-    case "student":
-      return "/dashboard/student";
-    case "principal":
-      return "/dashboard/principal";
-    default:
-      return "/login";
-  }
+  return getRoleDashboardPath(role);
 }
 
 export function getRoleDashboardSegment(role?: string | null) {

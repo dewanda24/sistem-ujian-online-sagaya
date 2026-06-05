@@ -12,6 +12,7 @@ import {
 } from "@/features/monitoring/actions";
 import { MonitoringActionButton } from "@/features/monitoring/components/monitoring-action-button";
 import { MonitoringAutoRefresh } from "@/features/monitoring/components/monitoring-auto-refresh";
+import { MonitoringDetailDrawer } from "@/features/monitoring/components/monitoring-detail-drawer";
 import {
   firstRelation,
   getMonitoringClasses,
@@ -211,10 +212,10 @@ export default async function MonitoringPage({
 
       <div className="flex flex-wrap justify-end gap-2">
         <a
-          href="/dashboard/import-export"
+          href="/api/monitoring/export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Buka Import/Export
+          Export Monitoring CSV
         </a>
       </div>
 
@@ -224,13 +225,9 @@ export default async function MonitoringPage({
           "Kelas",
           "Status",
           "Lock",
-          "Mulai",
-          "Submit",
-          "Last Save",
           "Jawaban",
           "Event",
-          "Last Event",
-          "Aksi",
+          "Detail",
         ]}
         isEmpty={participants.length === 0}
         empty={
@@ -267,128 +264,141 @@ export default async function MonitoringPage({
               </td>
               <td className="px-4 py-3">
                 {attempt?.locked_at ? (
-                  <div>
-                    <StatusPill value="locked" />
-                    <div className="mt-1 max-w-40 truncate text-xs text-muted-foreground">
-                      {attempt.lock_reason ?? "Dikunci"}
-                    </div>
-                  </div>
+                  <StatusPill value="locked" />
                 ) : (
                   <span className="text-xs text-muted-foreground">-</span>
                 )}
               </td>
-              <td className="px-4 py-3">
-                {formatDateTime(attempt?.started_at ?? participant.started_at)}
-              </td>
-              <td className="px-4 py-3">
-                {formatDateTime(attempt?.submitted_at ?? participant.submitted_at)}
-              </td>
-              <td className="px-4 py-3">
-                {formatDateTime(attempt?.last_saved_at)}
-              </td>
               <td className="px-4 py-3">{answerCount}</td>
               <td className="px-4 py-3">{events.length}</td>
               <td className="px-4 py-3">
-                {lastEvent ? (
-                  <div>
-                    <div>{lastEvent.event_type}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDateTime(lastEvent.created_at)}
-                    </div>
-                  </div>
-                ) : (
-                  "-"
-                )}
-              </td>
-              <td className="px-4 py-3">
-                {attempt?.id && canControlSessions ? (
-                  <details className="relative">
-                    <summary className="w-28 cursor-pointer rounded-md border px-3 py-1.5 text-center text-xs font-medium hover:bg-muted">
-                      Aksi
-                    </summary>
-                    <div className="absolute right-0 z-20 mt-2 w-44 space-y-2 rounded-lg border bg-card p-2 shadow-lg">
-                      <form action={forceSubmitAttemptAction}>
-                        <input type="hidden" name="attempt_id" value={attempt.id} />
-                        <input type="hidden" name="return_to" value={returnTo} />
-                        <MonitoringActionButton
-                          className="w-full"
-                          disabled={
-                            attempt.status === "submitted" ||
-                            attempt.status === "cancelled"
-                          }
-                          confirmMessage="Force submit attempt siswa ini? Jawaban yang tersimpan akan dinilai."
-                        >
-                          Force Submit
-                        </MonitoringActionButton>
-                      </form>
-                      {attempt.locked_at ? (
-                        <form action={unlockAttemptAction}>
-                          <input type="hidden" name="attempt_id" value={attempt.id} />
-                          <input type="hidden" name="return_to" value={returnTo} />
-                          <MonitoringActionButton
-                            className="w-full"
-                            confirmMessage="Buka lock attempt siswa ini? Siswa bisa lanjut mengerjakan."
-                          >
-                            Unlock
-                          </MonitoringActionButton>
-                        </form>
-                      ) : (
-                        <form action={lockAttemptAction}>
-                          <input type="hidden" name="attempt_id" value={attempt.id} />
-                          <input type="hidden" name="return_to" value={returnTo} />
-                          <input
-                            type="hidden"
-                            name="lock_reason"
-                            value="Dikunci dari monitoring ujian."
-                          />
-                          <MonitoringActionButton
-                            className="w-full"
-                            disabled={attempt.status !== "in_progress"}
-                            confirmMessage="Kunci attempt siswa ini? Siswa tidak bisa menyimpan jawaban atau submit sampai dibuka."
-                          >
-                            Lock
-                          </MonitoringActionButton>
-                        </form>
-                      )}
-                      <form action={resetAttemptAction}>
-                        <input type="hidden" name="attempt_id" value={attempt.id} />
-                        <input type="hidden" name="return_to" value={returnTo} />
-                        <MonitoringActionButton
-                          className="w-full"
-                          variant="danger"
-                          disabled={attempt.status === "cancelled"}
-                          confirmMessage="Reset attempt siswa ini? Attempt lama ditandai cancelled dan siswa bisa mulai ulang."
-                        >
-                          Reset
-                        </MonitoringActionButton>
-                      </form>
-                    </div>
-                  </details>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {canControlSessions &&
-                    !attempt?.id &&
-                    participant.status !== "absent" ? (
-                      <form action={markParticipantAbsentAction}>
-                        <input
-                          type="hidden"
-                          name="participant_id"
-                          value={participant.id}
-                        />
-                        <input type="hidden" name="return_to" value={returnTo} />
-                        <MonitoringActionButton
-                          variant="danger"
-                          confirmMessage="Tandai peserta ini tidak hadir?"
-                        >
-                          Absent
-                        </MonitoringActionButton>
-                      </form>
-                    ) : null}
-                    <span className="text-xs text-muted-foreground">
-                      {attempt?.id ? "Read-only" : "Belum mulai"}
-                    </span>
-                  </div>
-                )}
+                <MonitoringDetailDrawer
+                  participantName={profile?.full_name ?? user?.username ?? "-"}
+                  identity={profile?.nis ?? user?.email ?? ""}
+                  className={classItem?.name ?? "-"}
+                  status={attempt?.status ?? participant.status ?? "assigned"}
+                  lockedReason={attempt?.lock_reason ?? undefined}
+                  startedAt={formatDateTime(
+                    attempt?.started_at ?? participant.started_at,
+                  )}
+                  submittedAt={formatDateTime(
+                    attempt?.submitted_at ?? participant.submitted_at,
+                  )}
+                  lastSavedAt={formatDateTime(attempt?.last_saved_at)}
+                  answerCount={answerCount}
+                  eventCount={events.length}
+                  lastEventType={String(lastEvent?.event_type ?? "")}
+                  lastEventAt={formatDateTime(lastEvent?.created_at)}
+                  actions={
+                    canControlSessions ? (
+                      <>
+                        {attempt?.id ? (
+                          <>
+                            <form action={forceSubmitAttemptAction}>
+                              <input
+                                type="hidden"
+                                name="attempt_id"
+                                value={attempt.id}
+                              />
+                              <input type="hidden" name="return_to" value={returnTo} />
+                              <MonitoringActionButton
+                                className="w-full"
+                                disabled={
+                                  attempt.status === "submitted" ||
+                                  attempt.status === "cancelled"
+                                }
+                                confirmMessage="Force submit attempt siswa ini? Jawaban yang tersimpan akan dinilai."
+                              >
+                                Force Submit
+                              </MonitoringActionButton>
+                            </form>
+                            {attempt.locked_at ? (
+                              <form action={unlockAttemptAction}>
+                                <input
+                                  type="hidden"
+                                  name="attempt_id"
+                                  value={attempt.id}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="return_to"
+                                  value={returnTo}
+                                />
+                                <MonitoringActionButton
+                                  className="w-full"
+                                  confirmMessage="Buka lock attempt siswa ini? Siswa bisa lanjut mengerjakan."
+                                >
+                                  Unlock
+                                </MonitoringActionButton>
+                              </form>
+                            ) : (
+                              <form action={lockAttemptAction}>
+                                <input
+                                  type="hidden"
+                                  name="attempt_id"
+                                  value={attempt.id}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="return_to"
+                                  value={returnTo}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="lock_reason"
+                                  value="Dikunci dari monitoring ujian."
+                                />
+                                <MonitoringActionButton
+                                  className="w-full"
+                                  disabled={attempt.status !== "in_progress"}
+                                  confirmMessage="Kunci attempt siswa ini? Siswa tidak bisa menyimpan jawaban atau submit sampai dibuka."
+                                >
+                                  Lock
+                                </MonitoringActionButton>
+                              </form>
+                            )}
+                            <form action={resetAttemptAction}>
+                              <input
+                                type="hidden"
+                                name="attempt_id"
+                                value={attempt.id}
+                              />
+                              <input type="hidden" name="return_to" value={returnTo} />
+                              <MonitoringActionButton
+                                className="w-full"
+                                variant="danger"
+                                disabled={attempt.status === "cancelled"}
+                                confirmMessage="Reset attempt siswa ini? Attempt lama ditandai cancelled dan siswa bisa mulai ulang."
+                              >
+                                Reset
+                              </MonitoringActionButton>
+                            </form>
+                          </>
+                        ) : participant.status !== "absent" ? (
+                          <form action={markParticipantAbsentAction}>
+                            <input
+                              type="hidden"
+                              name="participant_id"
+                              value={participant.id}
+                            />
+                            <input type="hidden" name="return_to" value={returnTo} />
+                            <MonitoringActionButton
+                              className="w-full"
+                              variant="danger"
+                              confirmMessage="Tandai peserta ini tidak hadir?"
+                            >
+                              Absent
+                            </MonitoringActionButton>
+                          </form>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Tidak ada aksi
+                          </span>
+                        )}
+                      </>
+                    ) : null
+                  }
+                />
               </td>
             </tr>
           );

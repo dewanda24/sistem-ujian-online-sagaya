@@ -25,6 +25,7 @@ import {
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { hasPermission } from "@/lib/auth/has-permission";
 
 type PageProps = {
   searchParams: Promise<{
@@ -41,8 +42,9 @@ type PageProps = {
 };
 
 export default async function QuestionsPage({ searchParams }: PageProps) {
-  await requirePermission("question_bank.view");
+  const user = await requirePermission("question_bank.view");
   const params = await searchParams;
+  const canUseImportCenter = hasPermission(user, "import_export.view");
   const filters = {
     q: params.q,
     subject_id: params.subject_id,
@@ -82,21 +84,36 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
 
       <FormSection
         title="Import / Export Bank Soal"
-        description="Akses langsung untuk template, import, dan export CSV sesuai filter daftar soal."
+        description={
+          canUseImportCenter
+            ? "Import resmi Bank Soal untuk admin dipusatkan melalui Import Center."
+            : "Akses langsung untuk import guru dan export CSV sesuai filter daftar soal."
+        }
       >
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/dashboard/question-bank/import-word"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            Import Word
-          </Link>
-          <Link
-            href="/dashboard/question-bank/import-excel"
-            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
-          >
-            Import Excel/CSV
-          </Link>
+          {canUseImportCenter ? (
+            <Link
+              href="/dashboard/import-export"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              Import melalui Import Center
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/dashboard/question-bank/import-word"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+              >
+                Import Word
+              </Link>
+              <Link
+                href="/dashboard/question-bank/import-excel"
+                className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+              >
+                Import Excel/CSV
+              </Link>
+            </>
+          )}
           <Link
             href="/api/templates/questions-word"
             className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"

@@ -88,7 +88,7 @@ export async function proxy(request: NextRequest) {
     return redirectWithSessionCookies(
       request,
       response,
-      getDashboardPath(role),
+      "/dashboard/forbidden",
     );
   }
 

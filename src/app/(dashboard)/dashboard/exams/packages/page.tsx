@@ -1,6 +1,7 @@
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { ActionsMenu } from "@/components/dashboard/actions-menu";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -486,10 +487,10 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(examPackage.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
+              <ActionsMenu>
                 <a
                   href={`/dashboard/exams/packages?edit=${examPackage.id}&subject_id=${examPackage.subject_id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  className="block rounded-md border px-3 py-1.5 text-center text-xs hover:bg-muted"
                 >
                   Edit
                 </a>
@@ -499,6 +500,7 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
                     <input type="hidden" name="status" value={status} />
                     <ConfirmSubmitButton
                       confirmMessage={`Ubah status paket menjadi ${status}?`}
+                      className="w-full"
                     >
                       {status}
                     </ConfirmSubmitButton>
@@ -517,6 +519,7 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
                         ? "Nonaktifkan paket ujian ini?"
                         : "Aktifkan paket ujian ini?"
                     }
+                    className="w-full"
                   >
                     {examPackage.is_active ? "Nonaktifkan" : "Aktifkan"}
                   </ConfirmSubmitButton>
@@ -526,11 +529,12 @@ export default async function ExamPackagesPage({ searchParams }: PageProps) {
                   <ConfirmSubmitButton
                     confirmMessage="Arsipkan paket ujian ini?"
                     variant="danger"
+                    className="w-full"
                   >
                     Arsipkan
                   </ConfirmSubmitButton>
                 </form>
-              </div>
+              </ActionsMenu>
             </td>
           </tr>
         ))}

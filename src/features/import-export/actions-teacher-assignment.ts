@@ -11,6 +11,7 @@ import {
 import { getRoleId } from "@/lib/master-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { teacherAssignmentSchema } from "@/lib/validations/master-data";
+import { parseCsvLine } from "@/lib/import/csv";
 
 type TeacherAssignmentImportResult = {
   ok: boolean;
@@ -96,40 +97,6 @@ async function getSubjectIdByCode(code: string, schoolId: string) {
     .maybeSingle();
 
   return data?.id ? (data.id as string) : null;
-}
-
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-
-  return values;
 }
 
 async function getClassIdByNameAndAcademicYear({

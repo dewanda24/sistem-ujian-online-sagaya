@@ -7,7 +7,7 @@ export async function requirePermission(permission: string) {
   const user = await requireAuth();
 
   if (!hasPermission(user, permission)) {
-    redirect("/dashboard");
+    redirect("/dashboard/forbidden");
   }
 
   return user;

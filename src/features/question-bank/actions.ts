@@ -20,6 +20,7 @@ import {
   questionStimulusSchema,
   questionStatusSchema,
 } from "@/lib/validations/question-bank";
+import { parseCsvText } from "@/lib/import/csv";
 import type { CurrentUser } from "@/types/auth";
 
 type ActionResult = {
@@ -61,60 +62,8 @@ function formBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-
-  return values;
-}
-
 function parseCsv(text: string) {
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
-
-  if (lines.length < 2) {
-    return [];
-  }
-
-  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
-
-  return lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
-
-    return headers.reduce<Record<string, string>>((row, header, index) => {
-      row[header] = values[index] ?? "";
-      return row;
-    }, {});
-  });
+  return parseCsvText(text).rows;
 }
 
 function redirectTo(path: string, result: ActionResult): never {

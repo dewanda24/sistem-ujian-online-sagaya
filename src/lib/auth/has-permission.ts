@@ -1,4 +1,5 @@
 import type { CurrentUser } from "@/types/auth";
+import { canRoleAccessPermission } from "@/lib/auth/access-matrix";
 
 type PermissionInput =
   | string
@@ -20,11 +21,22 @@ export function hasPermission(
     return true;
   }
 
+  if (
+    typeof permission === "string" &&
+    !canRoleAccessPermission(user.roles?.name, permission)
+  ) {
+    return false;
+  }
+
   if (typeof permission === "string") {
     return user.permissions.some((item) => item.code === permission);
   }
 
   if (permission.code) {
+    if (!canRoleAccessPermission(user.roles?.name, permission.code)) {
+      return false;
+    }
+
     return user.permissions.some((item) => item.code === permission.code);
   }
 
