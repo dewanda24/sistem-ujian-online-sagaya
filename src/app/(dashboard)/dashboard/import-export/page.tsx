@@ -6,18 +6,12 @@ import { ConfirmLinkButton } from "@/components/dashboard/confirm-link-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
-import { ImportPreviewForm } from "@/features/import-export/components/import-preview-form";
+import { ImportWizard } from "@/features/import-export/components/import-wizard";
 import {
   getImportExportHistories,
   type ExportHistoryRow,
   type ImportHistoryRow,
 } from "@/features/import-export/queries";
-import {
-  importTemplates,
-  type TemplateType,
-} from "@/features/import-export/templates";
-import { ExcelImportForm } from "@/features/question-bank/components/excel-import-form";
-import { WordImportForm } from "@/features/question-bank/components/word-import-form";
 import {
   getQuestionCategoryOptions,
   getScopedSubjectOptions,
@@ -42,25 +36,6 @@ type PageProps = {
     message?: string;
   }>;
 };
-
-const templateTypes: TemplateType[] = [
-  "students",
-  "teachers",
-  "classes",
-  "student-class-assignments",
-  "teacher-subject-assignments",
-  "questions",
-];
-
-const importSteps = [
-  "Pilih Modul",
-  "Template",
-  "Upload",
-  "Validasi",
-  "Preview",
-  "Commit",
-  "Result",
-];
 
 const exportItems = [
   {
@@ -209,80 +184,13 @@ function ImportDataTab({
   categories: Awaited<ReturnType<typeof getQuestionCategoryOptions>>;
 }) {
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border bg-card p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold">Wizard Import Data</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Preview hanya memvalidasi dan menampilkan data. Database baru berubah
-            saat Commit atau Import Sekarang dijalankan.
-          </p>
-        </div>
-        <div className="grid gap-2 md:grid-cols-7">
-          {importSteps.map((step, index) => (
-            <div key={step} className="rounded-md border px-3 py-2 text-sm">
-              <div className="text-xs text-muted-foreground">
-                Step {index + 1}
-              </div>
-              <div className="font-medium">{step}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {templateTypes.map((type) => {
-          const template = importTemplates[type];
-
-          return (
-            <DashboardCard
-              key={type}
-              title={template.title}
-              description={template.description}
-              className="h-full"
-            >
-              <Link
-                href={`/api/templates/${type}`}
-                className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-              >
-                Download Template CSV
-              </Link>
-            </DashboardCard>
-          );
-        })}
-        <DashboardCard
-          title="Template Bank Soal Word"
-          description="Template DOCX resmi untuk import Bank Soal Word."
-          className="h-full"
-        >
-          <Link
-            href="/api/templates/questions-word"
-            className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            Download Template Word
-          </Link>
-        </DashboardCard>
-      </section>
-
-      <ImportPreviewForm />
-
-      {canManageQuestions ? (
-        <>
-          <ExcelImportForm notice={notice} message={message} />
-          <WordImportForm
-            subjects={subjects}
-            categories={categories}
-            notice={notice}
-            message={message}
-          />
-        </>
-      ) : (
-        <DashboardCard
-          title="Bank Soal Excel/CSV dan Word"
-          description="Backend tersedia, tetapi user ini belum memiliki izin question_bank.manage."
-        />
-      )}
-    </div>
+    <ImportWizard
+      canManageQuestions={canManageQuestions}
+      notice={notice}
+      message={message}
+      subjects={subjects}
+      categories={categories}
+    />
   );
 }
 

@@ -29,7 +29,6 @@ const templateTypes: TemplateType[] = [
   "classes",
   "student-class-assignments",
   "teacher-subject-assignments",
-  "questions",
 ];
 
 type ActionState = {
@@ -48,8 +47,16 @@ const initialActionState: ActionState = {
   message: "",
 };
 
-export function ImportPreviewForm() {
-  const [templateType, setTemplateType] = useState<TemplateType>("students");
+export function ImportPreviewForm({
+  moduleType,
+  hideModuleSelector = false,
+}: {
+  moduleType?: TemplateType;
+  hideModuleSelector?: boolean;
+}) {
+  const [templateType, setTemplateType] = useState<TemplateType>(
+    moduleType ?? "students",
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<PreviewRow[]>([]);
@@ -168,32 +175,40 @@ export function ImportPreviewForm() {
   return (
     <section className="rounded-lg border bg-card p-5 shadow-sm">
       <div className="mb-4">
-          <h2 className="text-base font-semibold">Wizard Import Resmi</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        <h2 className="text-base font-semibold">Upload, Validasi, Preview</h2>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
           Validasi struktur CSV sebelum commit. Tombol Commit / Import Sekarang
           hanya aktif jika validasi berhasil.
-          </p>
+        </p>
       </div>
 
       <form action={importAction ?? undefined} className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-[220px_1fr]">
-        <select
-          value={templateType}
-          onChange={(event) => {
-            setTemplateType(event.target.value as TemplateType);
-            setSelectedFile(null);
-            setHeaders([]);
-            setRows([]);
-            setError("");
-          }}
-          className="rounded-md border bg-background px-3 py-2 text-sm"
+        <div
+          className={
+            hideModuleSelector
+              ? "grid gap-3"
+              : "grid gap-3 md:grid-cols-[220px_1fr]"
+          }
         >
-          {templateTypes.map((type) => (
-            <option key={type} value={type}>
-              {importTemplates[type].title}
-            </option>
-          ))}
-        </select>
+        {hideModuleSelector ? null : (
+          <select
+            value={templateType}
+            onChange={(event) => {
+              setTemplateType(event.target.value as TemplateType);
+              setSelectedFile(null);
+              setHeaders([]);
+              setRows([]);
+              setError("");
+            }}
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            {templateTypes.map((type) => (
+              <option key={type} value={type}>
+                {importTemplates[type].title}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           key={templateType}
           name="file"

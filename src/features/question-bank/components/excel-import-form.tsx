@@ -16,6 +16,7 @@ import {
 type ExcelImportFormProps = {
   notice?: string;
   message?: string;
+  hideTemplateLink?: boolean;
 };
 
 const initialState: ExcelImportPreviewState = {
@@ -24,7 +25,11 @@ const initialState: ExcelImportPreviewState = {
   rows: [],
 };
 
-export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
+export function ExcelImportForm({
+  notice,
+  message,
+  hideTemplateLink = false,
+}: ExcelImportFormProps) {
   const [previewState, previewAction, isPreviewPending] = useActionState(
     previewExcelImportAction,
     initialState,
@@ -62,7 +67,7 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
 
       <section className="rounded-lg border bg-card p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold">Upload Excel/CSV</h2>
+          <h2 className="text-base font-semibold">Upload File</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Preview dulu sebelum simpan. Hanya baris valid yang akan diimport
             sebagai draft.
@@ -77,12 +82,14 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
             required
           />
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/api/templates/questions-excel"
-              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
-            >
-              Download Template Excel
-            </Link>
+            {hideTemplateLink ? null : (
+              <Link
+                href="/api/templates/questions-excel"
+                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              >
+                Download Template Excel
+              </Link>
+            )}
             <button
               disabled={isPreviewPending}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"

@@ -25,6 +25,7 @@ type WordImportFormProps = {
   categories: CategoryOption[];
   notice?: string;
   message?: string;
+  hideTemplateLink?: boolean;
 };
 
 const initialState: WordImportPreviewState = {
@@ -45,6 +46,7 @@ export function WordImportForm({
   categories,
   notice,
   message,
+  hideTemplateLink = false,
 }: WordImportFormProps) {
   const [previewState, previewAction, isPreviewPending] = useActionState(
     previewWordImportAction,
@@ -143,7 +145,7 @@ export function WordImportForm({
 
       <section className="rounded-lg border bg-card p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold">Upload Template Word</h2>
+          <h2 className="text-base font-semibold">Upload File</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Gunakan template resmi agar hasil parsing rapi. Hasil import selalu
             disimpan sebagai draft.
@@ -210,12 +212,14 @@ export function WordImportForm({
             />
           </label>
           <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-            <Link
-              href="/api/templates/questions-word"
-              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
-            >
-              Download Template Word
-            </Link>
+            {hideTemplateLink ? null : (
+              <Link
+                href="/api/templates/questions-word"
+                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              >
+                Download Template Word
+              </Link>
+            )}
             <button
               disabled={isPreviewPending}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
