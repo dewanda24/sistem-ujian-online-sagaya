@@ -112,6 +112,29 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
             <Metric label="Warning" value={warningCount} tone="warning" />
             <Metric label="Error" value={errorCount} tone="danger" />
           </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <DownloadJsonButton
+              filename="bank-soal-excel-error-log.json"
+              label="Download Error Log"
+              payload={validatedRows
+                .filter((row) => row.errors.length > 0)
+                .map((row) => ({
+                  row_number: row.row_number,
+                  errors: row.errors,
+                }))}
+              disabled={errorCount === 0}
+            />
+            <DownloadJsonButton
+              filename="bank-soal-excel-preview-result.json"
+              label="Download Result"
+              payload={{
+                total_rows: validatedRows.length,
+                valid_rows: validCount,
+                error_rows: errorCount,
+                rows: validatedRows,
+              }}
+            />
+          </div>
           <div className="overflow-hidden rounded-lg border">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1100px] text-left text-sm">
@@ -161,7 +184,7 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
                         {row.content || "-"}
                       </td>
                       <td className="px-3 py-2">
-                        {["A", "B", "C", "D"].map((label) => (
+                        {["A", "B", "C", "D", "E"].map((label) => (
                           <div key={label}>
                             {label}.{" "}
                             {row[`option_${label.toLowerCase()}` as keyof ExcelImportRow] as string}
@@ -201,6 +224,42 @@ export function ExcelImportForm({ notice, message }: ExcelImportFormProps) {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function DownloadJsonButton({
+  filename,
+  label,
+  payload,
+  disabled = false,
+}: {
+  filename: string;
+  label: string;
+  payload: unknown;
+  disabled?: boolean;
+}) {
+  function download() {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={download}
+      disabled={disabled}
+      className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {label}
+    </button>
   );
 }
 

@@ -720,14 +720,14 @@ export async function importClassesCsvAction(formData: FormData) {
     }
 
     const homeroomTeacherId = await getTeacherIdByEmail(
-      row.homeroom_teacher_email ?? "",
+      row.homeroom_teacher ?? row.homeroom_teacher_email ?? "",
       schoolId,
     );
     const parsed = classSchema.safeParse({
       school_id: schoolId,
       academic_year_id: academicYearId,
-      name: row.name ?? "",
-      grade_level: row.grade_level ?? "",
+      name: row.class_name ?? row.name ?? "",
+      grade_level: row.grade ?? row.grade_level ?? "",
       homeroom_teacher_id: homeroomTeacherId,
       is_active: String(row.is_active ?? "true").toLowerCase() !== "false",
     });

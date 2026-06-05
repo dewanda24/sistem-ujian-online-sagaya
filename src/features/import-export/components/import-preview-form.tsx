@@ -121,6 +121,16 @@ export function ImportPreviewForm() {
         })
       : [];
   const validationErrors = [...rowErrors, ...formatErrors];
+  const downloadableErrors = [
+    ...missingHeaders.map((header) => ({
+      row_number: 1,
+      errors: [`Header wajib "${header}" belum ada`],
+    })),
+    ...validationErrors.map((item) => ({
+      row_number: Number(item.match(/Baris (\d+)/)?.[1] ?? 0),
+      errors: [item],
+    })),
+  ];
   const isValid =
     headers.length > 0 &&
     missingHeaders.length === 0 &&
@@ -158,11 +168,11 @@ export function ImportPreviewForm() {
   return (
     <section className="rounded-lg border bg-card p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Import Staging Preview</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Validasi struktur CSV sebelum import. Untuk template siswa dan guru,
-          tombol import akan muncul setelah preview valid.
-        </p>
+          <h2 className="text-base font-semibold">Wizard Import Resmi</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          Validasi struktur CSV sebelum commit. Tombol Commit / Import Sekarang
+          hanya aktif jika validasi berhasil.
+          </p>
       </div>
 
       <form action={importAction ?? undefined} className="space-y-4">
@@ -230,9 +240,36 @@ export function ImportPreviewForm() {
         <div className="rounded-md border p-3 text-sm">
           <div className="text-xs text-muted-foreground">Status</div>
           <div className={isValid ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
-            {isValid ? "Valid preview" : "Perlu validasi"}
+            {isValid ? "Valid" : "Error"}
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <DownloadJsonButton
+          filename={`validation-error-${templateType}.json`}
+          label="Download Error Log"
+          payload={{
+            module: template.title,
+            total_rows: rows.length,
+            valid_rows: isValid ? rows.length : 0,
+            error_rows: downloadableErrors.length,
+            errors: downloadableErrors,
+          }}
+          disabled={downloadableErrors.length === 0}
+        />
+        <DownloadJsonButton
+          filename={`preview-result-${templateType}.json`}
+          label="Download Result"
+          payload={{
+            module: template.title,
+            total_rows: rows.length,
+            valid_rows: isValid ? rows.length : 0,
+            error_rows: downloadableErrors.length,
+            preview_rows: rows,
+          }}
+          disabled={rows.length === 0}
+        />
       </div>
 
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
@@ -260,6 +297,19 @@ export function ImportPreviewForm() {
             errorCount={actionState.summary.invalid}
             failedRows={actionState.summary.errors}
           />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <DownloadJsonButton
+              filename={`commit-result-${templateType}.json`}
+              label="Download Result"
+              payload={actionState.summary}
+            />
+            <DownloadJsonButton
+              filename={`commit-error-log-${templateType}.json`}
+              label="Download Error Log"
+              payload={actionState.summary.errors}
+              disabled={actionState.summary.errors.length === 0}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -304,5 +354,41 @@ export function ImportPreviewForm() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function DownloadJsonButton({
+  filename,
+  label,
+  payload,
+  disabled = false,
+}: {
+  filename: string;
+  label: string;
+  payload: unknown;
+  disabled?: boolean;
+}) {
+  function download() {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={download}
+      disabled={disabled}
+      className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {label}
+    </button>
   );
 }

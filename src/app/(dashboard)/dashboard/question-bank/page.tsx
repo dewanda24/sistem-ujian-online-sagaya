@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 const modules = [
@@ -38,7 +39,19 @@ const modules = [
 ];
 
 export default async function QuestionBankPage() {
-  await requirePermission("question_bank.view");
+  const user = await requirePermission("question_bank.view");
+  const canUseImportCenter = hasPermission(user, "import_export.view");
+  const visibleModules = canUseImportCenter
+    ? [
+        ...modules.slice(0, 3),
+        {
+          title: "Import / Export Center",
+          href: "/dashboard/import-export?tab=import",
+          description:
+            "Import Word, Excel/CSV, template, export, dan riwayat dipusatkan di halaman resmi admin.",
+        },
+      ]
+    : modules;
 
   return (
     <div>
@@ -47,7 +60,7 @@ export default async function QuestionBankPage() {
         description="Fondasi bank soal CBT untuk guru dan admin. Target kelas akan ditangani pada sprint paket ujian dan jadwal ujian."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => (
+        {visibleModules.map((module) => (
           <Link key={module.href} href={module.href}>
             <DashboardCard
               title={module.title}

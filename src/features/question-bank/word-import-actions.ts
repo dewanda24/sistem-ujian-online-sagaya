@@ -29,7 +29,7 @@ export type WordImportPreviewState = {
   };
 };
 
-const IMPORT_WORD_PATH = "/dashboard/question-bank/import-word";
+const IMPORT_WORD_PATH = "/dashboard/import-export?tab=import";
 const optionLabels = ["A", "B", "C", "D"] as const;
 
 function formString(formData: FormData, key: string) {
@@ -335,5 +335,5 @@ function redirectWithMessage(ok: boolean, message: string): never {
     message,
   });
 
-  redirect(`${IMPORT_WORD_PATH}?${params.toString()}`);
+  redirect(`${IMPORT_WORD_PATH}&${params.toString()}`);
 }

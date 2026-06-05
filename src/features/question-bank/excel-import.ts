@@ -12,6 +12,7 @@ export type ExcelImportRow = {
   option_b: string;
   option_c: string;
   option_d: string;
+  option_e: string;
   correct_answer: string;
   explanation: string;
   point: string;
@@ -31,6 +32,7 @@ export const excelImportColumns = [
   "option_b",
   "option_c",
   "option_d",
+  "option_e",
   "correct_answer",
   "explanation",
   "point",
@@ -40,14 +42,15 @@ export const excelImportColumns = [
 
 export type ExcelImportColumn = (typeof excelImportColumns)[number];
 
-const optionLabels = ["A", "B", "C", "D"] as const;
+const optionLabels = ["A", "B", "C", "D", "E"] as const;
 
 export function normalizeExcelImportRows(
   rows: Record<string, unknown>[],
   subjectCodes: Set<string>,
 ) {
   return rows.map((row, index) => {
-    const type: ExcelImportQuestionType = normalizeCell(row.type).toLowerCase() === "essay"
+    const typeValue = normalizeCell(row.question_type || row.type);
+    const type: ExcelImportQuestionType = typeValue.toLowerCase() === "essay"
       ? "essay"
       : "multiple_choice";
     const baseRow = {
@@ -57,14 +60,15 @@ export function normalizeExcelImportRows(
       category: normalizeCell(row.category || row.category_name),
       type,
       difficulty: normalizeDifficulty(normalizeCell(row.difficulty)),
-      content: normalizeCell(row.content),
+      content: normalizeCell(row.question_text || row.content),
       option_a: normalizeCell(row.option_a),
       option_b: normalizeCell(row.option_b),
       option_c: normalizeCell(row.option_c),
       option_d: normalizeCell(row.option_d),
+      option_e: normalizeCell(row.option_e),
       correct_answer: normalizeCell(row.correct_answer || row.correct_option).toUpperCase(),
       explanation: normalizeCell(row.explanation),
-      point: normalizeCell(row.point) || "1",
+      point: normalizeCell(row.points || row.point) || "1",
       stimulus_title: normalizeCell(row.stimulus_title),
       stimulus_content: normalizeCell(row.stimulus_content),
     };
@@ -109,6 +113,7 @@ export function validateExcelImportRow(
       B: row.option_b,
       C: row.option_c,
       D: row.option_d,
+      E: row.option_e,
     };
 
     for (const label of optionLabels) {

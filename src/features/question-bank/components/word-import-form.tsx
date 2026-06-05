@@ -252,6 +252,29 @@ export function WordImportForm({
               <span className="text-muted-foreground">{errorCount} error</span>
             </div>
           </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <DownloadJsonButton
+              filename="bank-soal-word-error-log.json"
+              label="Download Error Log"
+              payload={validatedQuestions
+                .filter((question) => question.errors.length > 0)
+                .map((question, index) => ({
+                  row_number: question.number || index + 1,
+                  errors: question.errors,
+                }))}
+              disabled={errorCount === 0}
+            />
+            <DownloadJsonButton
+              filename="bank-soal-word-preview-result.json"
+              label="Download Result"
+              payload={{
+                total_rows: validatedQuestions.length,
+                valid_rows: validCount,
+                error_rows: errorCount,
+                questions: validatedQuestions,
+              }}
+            />
+          </div>
 
           <div className="grid gap-4">
             {validatedQuestions.map((question, index) => (
@@ -434,5 +457,41 @@ export function WordImportForm({
         </section>
       ) : null}
     </div>
+  );
+}
+
+function DownloadJsonButton({
+  filename,
+  label,
+  payload,
+  disabled = false,
+}: {
+  filename: string;
+  label: string;
+  payload: unknown;
+  disabled?: boolean;
+}) {
+  function download() {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={download}
+      disabled={disabled}
+      className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {label}
+    </button>
   );
 }

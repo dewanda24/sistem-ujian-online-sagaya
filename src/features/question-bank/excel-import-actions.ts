@@ -24,8 +24,8 @@ export type ExcelImportPreviewState = {
   rows: ExcelImportRow[];
 };
 
-const IMPORT_EXCEL_PATH = "/dashboard/question-bank/import-excel";
-const optionLabels = ["A", "B", "C", "D"] as const;
+const IMPORT_EXCEL_PATH = "/dashboard/import-export?tab=import";
+const optionLabels = ["A", "B", "C", "D", "E"] as const;
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -167,6 +167,7 @@ export async function saveExcelImportAction(formData: FormData) {
         B: row.option_b,
         C: row.option_c,
         D: row.option_d,
+        E: row.option_e,
       };
       const { error: optionError } = await supabase
         .from("question_options")
@@ -390,5 +391,5 @@ function redirectWithMessage(ok: boolean, message: string): never {
     message,
   });
 
-  redirect(`${IMPORT_EXCEL_PATH}?${params.toString()}`);
+  redirect(`${IMPORT_EXCEL_PATH}&${params.toString()}`);
 }
