@@ -126,5 +126,53 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes landing-blob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(18px, 12px, 0) scale(1.06);
+  }
+}
+
+@layer utilities {
+  .landing-grid {
+    background-image:
+      linear-gradient(rgba(37, 99, 235, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px),
+      radial-gradient(circle at 72% 18%, rgba(37, 99, 235, 0.14), transparent 34%),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    background-size:
+      34px 34px,
+      34px 34px,
+      100% 100%,
+      100% 100%;
+  }
+
+  .landing-float {
+    animation: landing-float 7s ease-in-out infinite;
+  }
+
+  .landing-blob {
+    animation: landing-blob 16s ease-in-out infinite;
+  }
+
+  .landing-blob-delay {
+    animation-delay: -7s;
   }
 }
