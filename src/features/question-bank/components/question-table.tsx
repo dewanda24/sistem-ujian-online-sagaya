@@ -2,11 +2,24 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Archive, Eye, Pencil, Send, Trash2, Undo2 } from "lucide-react";
+import {
+  Archive,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  MoreHorizontal,
+  Pencil,
+  Send,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { bulkQuestionAction, updateQuestionStatusAction } from "@/features/question-bank/actions";
+import {
+  bulkQuestionAction,
+  updateQuestionStatusAction,
+} from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionStatusBadge } from "@/features/question-bank/components/question-status-badge";
 import { cn } from "@/lib/utils";
@@ -35,6 +48,8 @@ type QuestionRow = {
 type QuestionTableProps = {
   questions: QuestionRow[];
 };
+
+type Density = "compact" | "comfortable";
 
 const bulkActions = [
   {
@@ -71,12 +86,36 @@ const bulkActions = [
 
 export function QuestionTable({ questions }: QuestionTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [previewQuestion, setPreviewQuestion] = useState<QuestionRow | null>(null);
+  const [density, setDensity] = useState<Density>("compact");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected = questions.length > 0 && selectedIds.length === questions.length;
+  const pageCount = Math.max(1, Math.ceil(questions.length / rowsPerPage));
+  const currentPage = Math.min(page, pageCount);
+  const pagedQuestions = questions.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+  const visibleIds = pagedQuestions.map((question) => question.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+  const rowClassName =
+    density === "compact" ? "h-14 max-h-14" : "h-16 max-h-16";
+  const cellClassName = density === "compact" ? "px-3 py-2" : "px-3 py-3";
 
-  function toggleAll() {
-    setSelectedIds(allSelected ? [] : questions.map((question) => question.id));
+  function toggleVisible() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(id));
+      } else {
+        visibleIds.forEach((id) => next.add(id));
+      }
+
+      return Array.from(next);
+    });
   }
 
   function toggleOne(id: string) {
@@ -85,6 +124,11 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+  }
+
+  function changeRowsPerPage(value: string) {
+    setRowsPerPage(Number(value));
+    setPage(1);
   }
 
   if (questions.length === 0) {
@@ -100,6 +144,39 @@ export function QuestionTable({ questions }: QuestionTableProps) {
 
   return (
     <div className="grid gap-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-[#64748B]">
+          {questions.length} soal tersedia
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="inline-flex rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1">
+            {(["compact", "comfortable"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setDensity(item)}
+                className={cn(
+                  "rounded-lg px-3 py-1 text-xs font-medium capitalize transition",
+                  density === item
+                    ? "bg-white text-[#2563EB] shadow-sm"
+                    : "text-[#64748B] hover:text-[#0F172A]",
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <select
+            value={rowsPerPage}
+            onChange={(event) => changeRowsPerPage(event.target.value)}
+            className="h-8 rounded-xl border border-[#E2E8F0] bg-white px-2 text-xs"
+          >
+            <option value={10}>10 / halaman</option>
+            <option value={15}>15 / halaman</option>
+          </select>
+        </div>
+      </div>
+
       {selectedIds.length > 0 ? (
         <div className="sticky top-3 z-20 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -136,32 +213,33 @@ export function QuestionTable({ questions }: QuestionTableProps) {
       <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
-            <tr>
-              <th className="w-12 px-4 py-3">
+            <tr className="h-10">
+              <th className="w-11 px-3 py-2">
                 <input
                   type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
+                  checked={allVisibleSelected}
+                  onChange={toggleVisible}
                   aria-label="Select All"
                 />
               </th>
-              <th className="px-4 py-3 font-medium">Soal</th>
-              <th className="w-44 px-4 py-3 font-medium">Mapel</th>
-              <th className="w-28 px-4 py-3 font-medium">Tipe</th>
-              <th className="w-32 px-4 py-3 font-medium">Status</th>
-              <th className="w-52 px-4 py-3 font-medium">Aksi</th>
+              <th className="px-3 py-2 font-medium">Soal</th>
+              <th className="w-40 px-3 py-2 font-medium">Mapel</th>
+              <th className="w-24 px-3 py-2 font-medium">Tipe</th>
+              <th className="w-28 px-3 py-2 font-medium">Status</th>
+              <th className="w-44 px-3 py-2 font-medium">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
-            {questions.map((question) => (
+            {pagedQuestions.map((question) => (
               <tr
                 key={question.id}
                 className={cn(
-                  "align-top transition hover:bg-[#F8FAFC]",
+                  rowClassName,
+                  "transition hover:bg-[#F8FAFC]",
                   selectedSet.has(question.id) && "bg-blue-50/60",
                 )}
               >
-                <td className="px-4 py-4">
+                <td className={cellClassName}>
                   <input
                     type="checkbox"
                     checked={selectedSet.has(question.id)}
@@ -169,97 +247,54 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     aria-label={`Pilih soal ${question.id}`}
                   />
                 </td>
-                <td className="px-4 py-4">
-                  <div className="line-clamp-2 font-medium text-[#0F172A]">
+                <td className={cn(cellClassName, "min-w-0")}>
+                  <div className="line-clamp-1 font-medium leading-5 text-[#0F172A]">
                     {question.content || "-"}
                   </div>
-                  <div className="mt-1 text-xs text-[#64748B]">
-                    {question.question_categories?.name ?? "Tanpa kategori"}
+                  <div className="mt-1 flex max-w-full gap-1 overflow-hidden">
+                    {question.question_categories?.name ? (
+                      <span className="max-w-44 truncate rounded-md bg-[#F8FAFC] px-1.5 py-0.5 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
+                        {question.question_categories.name}
+                      </span>
+                    ) : null}
+                    {!question.is_active ? (
+                      <span className="rounded-md bg-[#EF4444]/10 px-1.5 py-0.5 text-[11px] text-[#EF4444]">
+                        Nonaktif
+                      </span>
+                    ) : null}
                   </div>
-                  {expandedId === question.id ? (
-                    <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                      <QuestionMathRenderer content={question.content} />
-                      {question.type === "multiple_choice" ? (
-                        <div className="mt-3 grid gap-2">
-                          {(question.question_options ?? [])
-                            .sort((a, b) => a.order_number - b.order_number)
-                            .map((option) => (
-                              <div
-                                key={option.option_label}
-                                className="flex gap-2 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2"
-                              >
-                                <span className="font-semibold">
-                                  {option.option_label}.
-                                </span>
-                                <span className="flex-1">{option.option_text}</span>
-                                {option.is_correct ? (
-                                  <span className="text-xs font-medium text-[#22C55E]">
-                                    Benar
-                                  </span>
-                                ) : null}
-                              </div>
-                            ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </td>
-                <td className="px-4 py-4 text-[#0F172A]">
+                <td className={cn(cellClassName, "truncate text-[#0F172A]")}>
                   {question.subjects
                     ? `${question.subjects.code} - ${question.subjects.name}`
                     : "-"}
                 </td>
-                <td className="px-4 py-4">
-                  {question.type === "multiple_choice" ? "PG" : "Essay"}
+                <td className={cellClassName}>
+                  <span className="rounded-md bg-[#F8FAFC] px-2 py-1 text-xs text-[#64748B] ring-1 ring-[#E2E8F0]">
+                    {question.type === "multiple_choice" ? "PG" : "Essay"}
+                  </span>
                 </td>
-                <td className="px-4 py-4">
+                <td className={cellClassName}>
                   <QuestionStatusBadge status={question.status ?? "draft"} />
-                  {!question.is_active ? (
-                    <div className="mt-2 text-xs text-[#EF4444]">Nonaktif</div>
-                  ) : null}
                 </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap gap-2">
+                <td className={cellClassName}>
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() =>
-                        setExpandedId((current) =>
-                          current === question.id ? null : question.id,
-                        )
-                      }
-                      className="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs hover:bg-[#F8FAFC]"
+                      onClick={() => setPreviewQuestion(question)}
+                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
                     >
                       <Eye className="size-3.5" />
-                      Detail
+                      Preview
                     </button>
                     <Link
                       href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                      className="inline-flex items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs hover:bg-[#F8FAFC]"
+                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
                     >
                       <Pencil className="size-3.5" />
                       Edit
                     </Link>
-                    <form action={updateQuestionStatusAction}>
-                      <input type="hidden" name="id" value={question.id} />
-                      <input
-                        type="hidden"
-                        name="status"
-                        value={
-                          question.status === "published" ? "draft" : "published"
-                        }
-                      />
-                      <ConfirmSubmitButton
-                        confirmMessage={
-                          question.status === "published"
-                            ? "Ubah soal ini menjadi draft?"
-                            : "Publish soal ini?"
-                        }
-                        variant="outline"
-                        className="rounded-xl"
-                      >
-                        {question.status === "published" ? "Draft" : "Publish"}
-                      </ConfirmSubmitButton>
-                    </form>
+                    <MoreMenu question={question} />
                   </div>
                 </td>
               </tr>
@@ -268,20 +303,24 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         </table>
       </div>
 
-      <div className="grid gap-3 md:hidden">
-        <label className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 text-sm shadow-sm">
-          <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+      <div className="grid gap-2 md:hidden">
+        <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm shadow-sm">
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            onChange={toggleVisible}
+          />
           Select All
         </label>
-        {questions.map((question) => (
+        {pagedQuestions.map((question) => (
           <article
             key={question.id}
             className={cn(
-              "rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm",
+              "max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm",
               selectedSet.has(question.id) && "bg-blue-50/60",
             )}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2">
               <input
                 type="checkbox"
                 checked={selectedSet.has(question.id)}
@@ -289,51 +328,220 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                 className="mt-1"
               />
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-[#0F172A]">
+                <div className="line-clamp-1 text-sm font-medium leading-5 text-[#0F172A]">
                   {question.content || "-"}
                 </div>
-                <div className="mt-2 grid gap-1 text-xs text-[#64748B]">
-                  <span>
-                    {question.subjects
-                      ? `${question.subjects.code} - ${question.subjects.name}`
-                      : "-"}
+                <div className="mt-1 flex items-center gap-1 overflow-hidden text-xs text-[#64748B]">
+                  <span className="truncate">
+                    {question.subjects?.code ?? "-"}
                   </span>
-                  <span>{question.type === "multiple_choice" ? "PG" : "Essay"}</span>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
+                  <span className="shrink-0 rounded-md bg-[#F8FAFC] px-1.5 py-0.5 ring-1 ring-[#E2E8F0]">
+                    {question.type === "multiple_choice" ? "PG" : "Essay"}
+                  </span>
                   <QuestionStatusBadge status={question.status ?? "draft"} />
-                  {!question.is_active ? (
-                    <span className="text-xs text-[#EF4444]">Nonaktif</span>
-                  ) : null}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewQuestion(question)}
+                    className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
+                  >
+                    Preview
+                  </button>
                   <Link
                     href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                    className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs"
+                    className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
                   >
                     Edit
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedId((current) =>
-                        current === question.id ? null : question.id,
-                      )
-                    }
-                    className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs"
-                  >
-                    Detail
-                  </button>
+                  <MoreMenu question={question} compact />
                 </div>
               </div>
             </div>
-            {expandedId === question.id ? (
-              <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm">
-                <QuestionMathRenderer content={question.content} />
-              </div>
-            ) : null}
           </article>
         ))}
+      </div>
+
+      <Pagination
+        currentPage={currentPage}
+        pageCount={pageCount}
+        rowsPerPage={rowsPerPage}
+        total={questions.length}
+        onPageChange={setPage}
+      />
+
+      {previewQuestion ? (
+        <PreviewModal
+          question={previewQuestion}
+          onClose={() => setPreviewQuestion(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function MoreMenu({
+  question,
+  compact = false,
+}: {
+  question: QuestionRow;
+  compact?: boolean;
+}) {
+  return (
+    <details className="relative">
+      <summary
+        className={cn(
+          "inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC]",
+          compact ? "h-7 px-2 text-xs" : "h-8 w-8",
+        )}
+        aria-label="More"
+      >
+        <MoreHorizontal className="size-3.5" />
+      </summary>
+      <div className="absolute right-0 z-30 mt-2 grid min-w-40 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
+        <form action={updateQuestionStatusAction}>
+          <input type="hidden" name="id" value={question.id} />
+          <input
+            type="hidden"
+            name="status"
+            value={question.status === "published" ? "draft" : "published"}
+          />
+          <ConfirmSubmitButton
+            confirmMessage={
+              question.status === "published"
+                ? "Ubah soal ini menjadi draft?"
+                : "Publish soal ini?"
+            }
+            variant="outline"
+            className="w-full justify-start rounded-lg border-0 px-2"
+          >
+            {question.status === "published" ? "Unpublish" : "Publish"}
+          </ConfirmSubmitButton>
+        </form>
+        <form action={updateQuestionStatusAction}>
+          <input type="hidden" name="id" value={question.id} />
+          <input type="hidden" name="status" value="archived" />
+          <ConfirmSubmitButton
+            confirmMessage="Arsipkan soal ini?"
+            variant="danger"
+            className="w-full justify-start rounded-lg border-0 px-2"
+          >
+            Arsipkan
+          </ConfirmSubmitButton>
+        </form>
+      </div>
+    </details>
+  );
+}
+
+function Pagination({
+  currentPage,
+  pageCount,
+  rowsPerPage,
+  total,
+  onPageChange,
+}: {
+  currentPage: number;
+  pageCount: number;
+  rowsPerPage: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const start = total === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const end = Math.min(total, currentPage * rowsPerPage);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#64748B] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        {start}-{end} dari {total} soal
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage <= 1}
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronLeft className="size-3.5" />
+          Prev
+        </button>
+        <span className="text-xs">
+          {currentPage} / {pageCount}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
+          disabled={currentPage >= pageCount}
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Next
+          <ChevronRight className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PreviewModal({
+  question,
+  onClose,
+}: {
+  question: QuestionRow;
+  onClose: () => void;
+}) {
+  const options = [...(question.question_options ?? [])].sort(
+    (a, b) => a.order_number - b.order_number,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+      <div className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[#0F172A]">Preview Soal</h2>
+            <div className="mt-1 flex flex-wrap gap-1 text-xs text-[#64748B]">
+              <span>{question.subjects?.code ?? "Mapel"}</span>
+              <span>-</span>
+              <span>{question.type === "multiple_choice" ? "Pilihan ganda" : "Essay"}</span>
+              <span>-</span>
+              <span>{question.question_categories?.name ?? "Tanpa kategori"}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm"
+          >
+            Tutup
+          </button>
+        </div>
+        <div className="space-y-4 text-sm">
+          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+            <QuestionMathRenderer content={question.content} className="leading-7" />
+          </div>
+          {question.type === "multiple_choice" ? (
+            <div className="grid gap-2">
+              {options.map((option) => (
+                <div
+                  key={option.option_label}
+                  className="flex gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2"
+                >
+                  <span className="font-semibold">{option.option_label}.</span>
+                  <span className="flex-1">{option.option_text}</span>
+                  {option.is_correct ? (
+                    <span className="text-xs font-medium text-[#22C55E]">
+                      Benar
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl bg-[#F8FAFC] p-3 text-[#64748B]">
+              Soal essay tidak memakai pilihan jawaban.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
