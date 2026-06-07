@@ -730,15 +730,17 @@ async function replaceQuestionAttachment(
 }
 
 function getQuestionOptions(formData: FormData) {
-  const labels = ["A", "B", "C", "D"];
+  const labels = ["A", "B", "C", "D", "E"];
   const correctLabel = formString(formData, "correct_option");
 
-  return labels.map((label, index) => ({
-    option_label: label,
-    option_text: formString(formData, `option_${label}`),
-    is_correct: correctLabel === label,
-    order_number: index + 1,
-  }));
+  return labels
+    .map((label, index) => ({
+      option_label: label,
+      option_text: formString(formData, `option_${label}`),
+      is_correct: correctLabel === label,
+      order_number: index + 1,
+    }))
+    .filter((option) => option.option_text.trim());
 }
 
 function getImportQuestionOptions(row: Record<string, string>) {
@@ -1174,6 +1176,75 @@ export async function updateQuestionStatusAction(formData: FormData) {
   redirectTo("/dashboard/question-bank/questions", {
     ok: !error,
     message: error ? error.message : "Status soal berhasil diperbarui.",
+  });
+}
+
+export async function bulkQuestionAction(formData: FormData) {
+  const action = formString(formData, "bulk_action");
+  const ids = formData
+    .getAll("question_ids")
+    .map((id) => String(id))
+    .filter(Boolean);
+
+  if (ids.length === 0) {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: "Pilih minimal satu soal.",
+    });
+  }
+
+  let user: CurrentUser;
+
+  if (action === "publish") {
+    user = await requirePermission("questions.publish");
+  } else if (action === "archive" || action === "delete") {
+    user = await requirePermission("questions.archive");
+  } else if (action === "unpublish") {
+    user = await requirePermission("questions.update");
+  } else {
+    redirectTo(QUESTION_PATH, {
+      ok: false,
+      message: "Aksi massal tidak valid.",
+    });
+  }
+
+  for (const id of ids) {
+    await assertQuestionInScope(user, id);
+
+    if (action === "publish") {
+      await assertQuestionPublishable(user, id);
+    }
+  }
+
+  const supabase = await createClient();
+  const payload =
+    action === "publish"
+      ? { status: "published" }
+      : action === "unpublish"
+        ? { status: "draft" }
+        : action === "archive"
+          ? { status: "archived" }
+          : { deleted_at: new Date().toISOString(), is_active: false };
+  const { error } = await supabase.from("questions").update(payload).in("id", ids);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: `questions.bulk_${action}`,
+      entityType: "questions",
+      payload: {
+        question_ids: ids,
+        count: ids.length,
+      },
+    });
+  }
+
+  revalidatePath(QUESTION_PATH);
+  redirectTo(QUESTION_PATH, {
+    ok: !error,
+    message: error
+      ? error.message
+      : `${ids.length} soal berhasil diproses.`,
   });
 }
 

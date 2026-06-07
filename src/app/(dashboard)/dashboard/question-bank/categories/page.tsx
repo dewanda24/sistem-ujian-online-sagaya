@@ -2,7 +2,6 @@ import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-butto
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
-import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
@@ -17,6 +16,8 @@ import {
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
+
+type QuestionCategoryRow = Awaited<ReturnType<typeof getQuestionCategories>>[number];
 
 type PageProps = {
   searchParams: Promise<{
@@ -112,68 +113,118 @@ export default async function QuestionCategoriesPage({
         }}
       />
 
-      <DataTable
-        columns={["Kategori", "Mapel", "Deskripsi", "Status", "Aksi"]}
-        isEmpty={categories.length === 0}
-        empty={
+      {categories.length === 0 ? (
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
           <EmptyState
             title="Belum ada kategori"
             description="Tambahkan kategori soal untuk mapel yang tersedia."
           />
-        }
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
+            <table className="w-full table-fixed text-left text-sm">
+              <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Kategori</th>
+                  <th className="w-56 px-4 py-3 font-medium">Mapel</th>
+                  <th className="px-4 py-3 font-medium">Deskripsi</th>
+                  <th className="w-28 px-4 py-3 font-medium">Status</th>
+                  <th className="w-72 px-4 py-3 font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E2E8F0]">
+                {categories.map((category) => (
+                  <tr key={category.id} className="align-top hover:bg-[#F8FAFC]">
+                    <td className="px-4 py-3 font-medium text-[#0F172A]">
+                      {category.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      {category.subjects
+                        ? `${category.subjects.code} - ${category.subjects.name}`
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-[#64748B]">
+                      {category.description || "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge active={Boolean(category.is_active)} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <CategoryActions category={category} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-3 md:hidden">
+            {categories.map((category) => (
+              <article
+                key={category.id}
+                className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm"
+              >
+                <div className="font-medium text-[#0F172A]">{category.name}</div>
+                <div className="mt-2 text-sm text-[#64748B]">
+                  {category.subjects
+                    ? `${category.subjects.code} - ${category.subjects.name}`
+                    : "-"}
+                </div>
+                <p className="mt-2 text-sm text-[#64748B]">
+                  {category.description || "-"}
+                </p>
+                <div className="mt-3">
+                  <StatusBadge active={Boolean(category.is_active)} />
+                </div>
+                <div className="mt-3">
+                  <CategoryActions category={category} />
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategoryActions({ category }: { category: QuestionCategoryRow }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a
+        href={`/dashboard/question-bank/categories?edit=${category.id}`}
+        className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs hover:bg-[#F8FAFC]"
       >
-        {categories.map((category) => (
-          <tr key={category.id}>
-            <td className="px-4 py-3 font-medium">{category.name}</td>
-            <td className="px-4 py-3">
-              {category.subjects
-                ? `${category.subjects.code} - ${category.subjects.name}`
-                : "-"}
-            </td>
-            <td className="px-4 py-3 text-muted-foreground">
-              {category.description || "-"}
-            </td>
-            <td className="px-4 py-3">
-              <StatusBadge active={Boolean(category.is_active)} />
-            </td>
-            <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={`/dashboard/question-bank/categories?edit=${category.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                >
-                  Edit
-                </a>
-                <form action={toggleQuestionCategoryAction}>
-                  <input type="hidden" name="id" value={category.id} />
-                  <input
-                    type="hidden"
-                    name="is_active"
-                    value={category.is_active ? "false" : "true"}
-                  />
-                  <ConfirmSubmitButton
-                    confirmMessage={`${
-                      category.is_active ? "Nonaktifkan" : "Aktifkan"
-                    } kategori ${category.name}?`}
-                  >
-                    {category.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </ConfirmSubmitButton>
-                </form>
-                <form action={deleteQuestionCategoryAction}>
-                  <input type="hidden" name="id" value={category.id} />
-                  <ConfirmSubmitButton
-                    confirmMessage={`Arsipkan kategori ${category.name}?`}
-                    confirmationText="HAPUS"
-                    variant="danger"
-                  >
-                    Arsipkan
-                  </ConfirmSubmitButton>
-                </form>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </DataTable>
+        Edit
+      </a>
+      <form action={toggleQuestionCategoryAction}>
+        <input type="hidden" name="id" value={category.id} />
+        <input
+          type="hidden"
+          name="is_active"
+          value={category.is_active ? "false" : "true"}
+        />
+        <ConfirmSubmitButton
+          confirmMessage={`${
+            category.is_active ? "Nonaktifkan" : "Aktifkan"
+          } kategori ${category.name}?`}
+          className="rounded-xl"
+        >
+          {category.is_active ? "Nonaktifkan" : "Aktifkan"}
+        </ConfirmSubmitButton>
+      </form>
+      <form action={deleteQuestionCategoryAction}>
+        <input type="hidden" name="id" value={category.id} />
+        <ConfirmSubmitButton
+          confirmMessage={`Arsipkan kategori ${category.name}?`}
+          confirmationText="HAPUS"
+          variant="danger"
+          className="rounded-xl"
+        >
+          Arsipkan
+        </ConfirmSubmitButton>
+      </form>
     </div>
   );
 }

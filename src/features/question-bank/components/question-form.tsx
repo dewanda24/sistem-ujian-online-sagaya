@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { Eye, Save } from "lucide-react";
 
 import { saveQuestionAction } from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import type { SelectOption } from "@/lib/master-data/queries";
+import { cn } from "@/lib/utils";
 
 type QuestionFormOption = SelectOption & {
   subject_id?: string;
@@ -58,7 +60,15 @@ type QuestionFormProps = {
   defaultCategoryId?: string;
 };
 
-const labels = ["A", "B", "C", "D"] as const;
+const labels = ["A", "B", "C", "D", "E"] as const;
+const requiredLabels = ["A", "B", "C", "D"] as const;
+const steps = [
+  "Informasi",
+  "Pertanyaan",
+  "Jawaban",
+  "Stimulus & Media",
+  "Lanjutan",
+] as const;
 type StimulusMode = "none" | "existing" | "new";
 
 function optionValue(question: EditableQuestion | null | undefined, label: string) {
@@ -81,7 +91,7 @@ function firstAttachment(question: EditableQuestion | null | undefined) {
   )[0];
 }
 
-function Section({
+function Panel({
   title,
   description,
   children,
@@ -91,15 +101,47 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <fieldset className="rounded-lg border bg-background p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
-      {description ? (
-        <p className="mb-3 mt-1 text-xs leading-5 text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
+    <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-[#0F172A]">{title}</h2>
+        {description ? (
+          <p className="mt-1 text-sm leading-6 text-[#64748B]">{description}</p>
+        ) : null}
+      </div>
       {children}
-    </fieldset>
+    </section>
+  );
+}
+
+function Accordion({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <summary className="cursor-pointer text-sm font-semibold text-[#0F172A]">
+        {title}
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
+}
+
+function FieldLabel({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid gap-1.5 text-sm text-[#0F172A]">
+      <span className="font-medium">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -109,43 +151,13 @@ function ErrorList({ errors }: { errors: string[] }) {
   }
 
   return (
-    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+    <div className="rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
       <div className="font-medium">Periksa lagi sebelum menyimpan:</div>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {errors.map((error) => (
           <li key={error}>{error}</li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function MathHelper() {
-  const examples = [
-    "$$x^2 + 5x + 6 = 0$$",
-    "\\frac{a}{b}",
-    "\\sqrt{x}",
-    "\\sum_{i=1}^{n}",
-    "\\pi",
-  ];
-
-  return (
-    <div className="rounded-md border border-dashed bg-muted/40 p-3 text-sm">
-      <div className="font-medium">Contoh rumus yang bisa dipakai</div>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">
-        {examples.map((example) => (
-          <code
-            key={example}
-            className="rounded-md border bg-background px-2 py-1 text-xs"
-          >
-            {example}
-          </code>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Salin contoh, tempel di pertanyaan/opsi/pembahasan, lalu ubah sesuai
-        kebutuhan.
-      </p>
     </div>
   );
 }
@@ -160,22 +172,21 @@ export function QuestionForm({
   defaultCategoryId,
 }: QuestionFormProps) {
   const attachment = firstAttachment(editable);
-  const initialType = editable?.type ?? "multiple_choice";
   const initialSubjectId =
     editable?.subject_id ?? defaultSubjectId ?? subjects[0]?.value ?? "";
-  const initialCorrectOption = correctOption(editable);
-
+  const [step, setStep] = useState(0);
   const [subjectId, setSubjectId] = useState(initialSubjectId);
-  const [type, setType] = useState(initialType);
+  const [type, setType] = useState(editable?.type ?? "multiple_choice");
   const [content, setContent] = useState(editable?.content ?? "");
   const [explanation, setExplanation] = useState(editable?.explanation ?? "");
   const [point, setPoint] = useState(String(editable?.point ?? "1"));
-  const [correct, setCorrect] = useState(initialCorrectOption);
+  const [correct, setCorrect] = useState(correctOption(editable));
   const [options, setOptions] = useState<Record<string, string>>({
     A: optionValue(editable, "A"),
     B: optionValue(editable, "B"),
     C: optionValue(editable, "C"),
     D: optionValue(editable, "D"),
+    E: optionValue(editable, "E"),
   });
   const [stimulusId, setStimulusId] = useState(editable?.stimulus_id ?? "");
   const [stimulusMode, setStimulusMode] = useState<StimulusMode>(
@@ -193,7 +204,7 @@ export function QuestionForm({
     attachment?.caption ?? "",
   );
   const [errors, setErrors] = useState<string[]>([]);
-  const [showMathHelper, setShowMathHelper] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const filteredCategories = useMemo(
     () =>
@@ -209,9 +220,6 @@ export function QuestionForm({
       ),
     [stimuli, subjectId],
   );
-  const selectedStimulusLabel =
-    filteredStimuli.find((stimulus) => stimulus.value === stimulusId)?.label ??
-    (editable?.stimulus_id === stimulusId ? editable?.question_stimuli?.title : "");
   const selectedStimulus =
     filteredStimuli.find((stimulus) => stimulus.value === stimulusId) ??
     (editable?.stimulus_id === stimulusId
@@ -228,27 +236,20 @@ export function QuestionForm({
   function validate() {
     const nextErrors: string[] = [];
 
-    if (!subjectId) {
-      nextErrors.push("Mapel wajib dipilih.");
-    }
-
-    if (!content.trim()) {
-      nextErrors.push("Pertanyaan wajib diisi.");
-    }
-
+    if (!subjectId) nextErrors.push("Mapel wajib dipilih.");
+    if (!content.trim()) nextErrors.push("Pertanyaan wajib diisi.");
     if (!Number(point) || Number(point) <= 0) {
       nextErrors.push("Poin wajib lebih dari 0.");
     }
 
     if (isMultipleChoice) {
-      const emptyLabels = labels.filter((label) => !options[label].trim());
-
+      const emptyLabels = requiredLabels.filter((label) => !options[label].trim());
       if (emptyLabels.length > 0) {
         nextErrors.push("Pilihan ganda wajib mengisi opsi A, B, C, dan D.");
       }
-
-      if (!correct) {
-        nextErrors.push("Pilih satu jawaban benar.");
+      if (!correct) nextErrors.push("Pilih satu jawaban benar.");
+      if (correct === "E" && !options.E.trim()) {
+        nextErrors.push("Opsi E wajib diisi jika dipilih sebagai jawaban benar.");
       }
     }
 
@@ -273,7 +274,7 @@ export function QuestionForm({
   return (
     <form
       action={saveQuestionAction}
-      className="grid gap-4"
+      className="grid gap-5"
       onSubmit={(event) => {
         if (!validate()) {
           event.preventDefault();
@@ -283,179 +284,188 @@ export function QuestionForm({
       <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
       <input type="hidden" name="school_id" value={schoolId} />
       <input type="hidden" name="status" value="draft" />
+      <input type="hidden" name="stimulus_mode" value={stimulusMode} />
 
       <ErrorList errors={errors} />
 
-      <Section
-        title="Informasi Soal"
-        description="Pilih mapel, kategori, tipe soal, tingkat kesulitan, dan poin."
-      >
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Mapel</span>
-            <select
-              name="subject_id"
-              value={subjectId}
-              onChange={(event) => {
-                setSubjectId(event.target.value);
-                setStimulusId("");
-                setStimulusMode("none");
-              }}
-              className="rounded-md border px-3 py-2 text-sm"
-              required
+      <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
+        <div className="grid gap-2 sm:grid-cols-5">
+          {steps.map((label, index) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setStep(index)}
+              className={cn(
+                "rounded-xl border px-3 py-2 text-left text-sm transition",
+                step === index
+                  ? "border-[#2563EB] bg-[#2563EB] text-white"
+                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC]",
+              )}
             >
-              <option value="">Pilih mapel</option>
-              {subjects.map((subject) => (
-                <option key={subject.value} value={subject.value}>
-                  {subject.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Kategori</span>
-            <select
-              name="category_id"
-              defaultValue={editable?.category_id ?? defaultCategoryId ?? ""}
-              className="rounded-md border px-3 py-2 text-sm"
-            >
-              <option value="">Tanpa kategori</option>
-              {filteredCategories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Tipe Soal</span>
-            <select
-              name="type"
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              className="rounded-md border px-3 py-2 text-sm"
-            >
-              <option value="multiple_choice">Pilihan ganda</option>
-              <option value="essay">Essay</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Difficulty</span>
-            <select
-              name="difficulty"
-              defaultValue={editable?.difficulty ?? "medium"}
-              className="rounded-md border px-3 py-2 text-sm"
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium">Poin</span>
-            <input
-              name="point"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={point}
-              onChange={(event) => setPoint(event.target.value)}
-              className="rounded-md border px-3 py-2 text-sm"
-              required
-            />
-          </label>
+              <span className="block text-xs opacity-80">Step {index + 1}</span>
+              <span className="font-medium">{label}</span>
+            </button>
+          ))}
         </div>
-      </Section>
+      </div>
 
-      <Section title="Pertanyaan" description="Tulis pertanyaan dengan jelas.">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setShowMathHelper((current) => !current)}
-            className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-          >
-            Tambah Rumus
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Mendukung contoh seperti $$x^2$$, \frac{"{a}"}{"{b}"}, dan \sqrt
-            {"{x}"}.
-          </span>
-        </div>
-        {showMathHelper ? <MathHelper /> : null}
-        <textarea
-          name="content"
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          placeholder="Tulis konten soal"
-          className="min-h-36 w-full rounded-md border px-3 py-2 text-sm"
-          required
-        />
-      </Section>
-
-      {isMultipleChoice ? (
-        <Section
-          title="Pilihan Jawaban"
-          description="Isi semua opsi A-D dan pilih satu jawaban benar."
+      <div className={step === 0 ? "block" : "hidden"}>
+        <Panel
+          title="Informasi Soal"
+          description="Pilih metadata utama soal sebelum menulis pertanyaan."
         >
-          <div className="mb-3 grid gap-1 text-sm md:max-w-xs">
-            <span className="font-medium">Jawaban benar</span>
-            <select
-              name="correct_option"
-              value={correct}
-              onChange={(event) => setCorrect(event.target.value)}
-              className="rounded-md border px-3 py-2 text-sm"
-              required
-            >
-              <option value="">Pilih jawaban benar</option>
-              {labels.map((label) => (
-                <option key={label} value={label}>
-                  Jawaban {label}
-                </option>
-              ))}
-            </select>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <FieldLabel label="Mapel">
+              <select
+                name="subject_id"
+                value={subjectId}
+                onChange={(event) => {
+                  setSubjectId(event.target.value);
+                  setStimulusId("");
+                  setStimulusMode("none");
+                }}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="">Pilih mapel</option>
+                {subjects.map((subject) => (
+                  <option key={subject.value} value={subject.value}>
+                    {subject.label}
+                  </option>
+                ))}
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Kategori">
+              <select
+                name="category_id"
+                defaultValue={editable?.category_id ?? defaultCategoryId ?? ""}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="">Tanpa kategori</option>
+                {filteredCategories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Tipe Soal">
+              <select
+                name="type"
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="multiple_choice">Pilihan ganda</option>
+                <option value="essay">Essay</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Difficulty">
+              <select
+                name="difficulty"
+                defaultValue={editable?.difficulty ?? "medium"}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Poin">
+              <input
+                name="point"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={point}
+                onChange={(event) => setPoint(event.target.value)}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              />
+            </FieldLabel>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {labels.map((label) => (
-              <label key={label} className="flex gap-2 text-sm">
-                <span className="mt-2 w-5 font-semibold">{label}</span>
-                <textarea
-                  name={`option_${label}`}
-                  value={options[label]}
-                  onChange={(event) =>
-                    setOptions((current) => ({
-                      ...current,
-                      [label]: event.target.value,
-                    }))
-                  }
-                  placeholder={`Opsi ${label}`}
-                  className="min-h-20 flex-1 rounded-md border px-3 py-2 text-sm"
-                  required
-                />
-              </label>
-            ))}
-          </div>
-        </Section>
-      ) : null}
+        </Panel>
+      </div>
 
-      <Section
-        title="Stimulus / Bacaan / Pengantar Soal"
-        description="Opsional. Gunakan untuk soal berbasis bacaan, gambar, audio, video, atau pengantar bersama."
-      >
-        <details className="rounded-md border bg-card p-3">
-          <summary className="cursor-pointer text-sm font-medium">
-            Atur stimulus
-          </summary>
-          <input type="hidden" name="stimulus_mode" value={stimulusMode} />
-          <div className="mt-4 grid gap-4">
+      <div className={step === 1 ? "block" : "hidden"}>
+        <Panel title="Pertanyaan" description="Editor utama dibuat besar agar fokus ke isi soal.">
+          <textarea
+            name="content"
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Tulis konten soal"
+            className="min-h-72 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
+          />
+        </Panel>
+      </div>
+
+      <div className={step === 2 ? "block" : "hidden"}>
+        <Panel
+          title="Jawaban"
+          description={
+            isMultipleChoice
+              ? "Isi opsi A-D. Opsi E tersedia jika dibutuhkan."
+              : "Soal essay tidak membutuhkan pilihan jawaban."
+          }
+        >
+          {isMultipleChoice ? (
+            <div className="grid gap-4">
+              <FieldLabel label="Jawaban Benar">
+                <select
+                  name="correct_option"
+                  value={correct}
+                  onChange={(event) => setCorrect(event.target.value)}
+                  className="max-w-sm rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                >
+                  <option value="">Pilih jawaban benar</option>
+                  {labels.map((label) => (
+                    <option key={label} value={label}>
+                      Jawaban {label}
+                    </option>
+                  ))}
+                </select>
+              </FieldLabel>
+              <div className="grid gap-3 md:grid-cols-2">
+                {labels.map((label) => (
+                  <label key={label} className="flex gap-3 text-sm">
+                    <span className="mt-3 w-6 font-semibold text-[#2563EB]">
+                      {label}
+                    </span>
+                    <textarea
+                      name={`option_${label}`}
+                      value={options[label]}
+                      onChange={(event) =>
+                        setOptions((current) => ({
+                          ...current,
+                          [label]: event.target.value,
+                        }))
+                      }
+                      placeholder={`Opsi ${label}${label === "E" ? " (opsional)" : ""}`}
+                      className="min-h-24 flex-1 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
+              Jawaban essay akan dinilai melalui alur koreksi. Gunakan pembahasan
+              atau catatan koreksi di pengaturan lanjutan jika diperlukan.
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      <div className={step === 3 ? "block" : "hidden"}>
+        <Accordion title="Stimulus dan Media">
+          <div className="grid gap-5">
             <div className="grid gap-2 text-sm md:grid-cols-3">
               {[
                 ["none", "Tanpa stimulus"],
-                ["existing", "Pilih stimulus yang sudah ada"],
+                ["existing", "Pilih stimulus"],
                 ["new", "Buat stimulus baru"],
               ].map(([value, label]) => (
                 <label
                   key={value}
-                  className="flex items-center gap-2 rounded-md border px-3 py-2"
+                  className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2"
                 >
                   <input
                     type="radio"
@@ -464,11 +474,8 @@ export function QuestionForm({
                     checked={stimulusMode === value}
                     onChange={() => {
                       const nextMode = value as StimulusMode;
-
                       setStimulusMode(nextMode);
-                      if (nextMode !== "existing") {
-                        setStimulusId("");
-                      }
+                      if (nextMode !== "existing") setStimulusId("");
                     }}
                   />
                   {label}
@@ -477,40 +484,21 @@ export function QuestionForm({
             </div>
 
             {stimulusMode === "existing" ? (
-              <div className="grid gap-3">
-                <label className="grid gap-1 text-sm">
-                  <span className="font-medium">Stimulus yang sudah ada</span>
-                  <select
-                    name="stimulus_id"
-                    value={stimulusId}
-                    onChange={(event) => setStimulusId(event.target.value)}
-                    className="rounded-md border px-3 py-2 text-sm"
-                    required
-                  >
-                    <option value="">Pilih stimulus</option>
-                    {filteredStimuli.map((stimulus) => (
-                      <option key={stimulus.value} value={stimulus.value}>
-                        {stimulus.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {selectedStimulus ? (
-                  <div className="rounded-md border border-dashed p-3 text-sm">
-                    <div className="font-medium">{selectedStimulus.label}</div>
-                    <QuestionMathRenderer
-                      content={selectedStimulus.content}
-                      className="mt-2 text-muted-foreground"
-                    />
-                    <QuestionMediaPreview
-                      mediaType={selectedStimulus.media_type}
-                      url={selectedStimulus.media_url}
-                      title={selectedStimulus.label}
-                      className="mt-3"
-                    />
-                  </div>
-                ) : null}
-              </div>
+              <FieldLabel label="Stimulus">
+                <select
+                  name="stimulus_id"
+                  value={stimulusId}
+                  onChange={(event) => setStimulusId(event.target.value)}
+                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                >
+                  <option value="">Pilih stimulus</option>
+                  {filteredStimuli.map((stimulus) => (
+                    <option key={stimulus.value} value={stimulus.value}>
+                      {stimulus.label}
+                    </option>
+                  ))}
+                </select>
+              </FieldLabel>
             ) : null}
 
             {stimulusMode === "new" ? (
@@ -520,14 +508,13 @@ export function QuestionForm({
                   value={newStimulusTitle}
                   onChange={(event) => setNewStimulusTitle(event.target.value)}
                   placeholder="Judul stimulus baru"
-                  className="rounded-md border px-3 py-2 text-sm"
-                  required
+                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
                 />
                 <select
                   name="new_stimulus_media_type"
                   value={newStimulusMediaType}
                   onChange={(event) => setNewStimulusMediaType(event.target.value)}
-                  className="rounded-md border px-3 py-2 text-sm"
+                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
                 >
                   <option value="">Text</option>
                   <option value="image">Image</option>
@@ -541,175 +528,202 @@ export function QuestionForm({
                   value={newStimulusMediaUrl}
                   onChange={(event) => setNewStimulusMediaUrl(event.target.value)}
                   placeholder="URL media stimulus"
-                  className="rounded-md border px-3 py-2 text-sm md:col-span-2"
+                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
                 />
                 <textarea
                   name="new_stimulus_content"
                   value={newStimulusContent}
                   onChange={(event) => setNewStimulusContent(event.target.value)}
                   placeholder="Teks stimulus atau bacaan"
-                  className="min-h-24 rounded-md border px-3 py-2 text-sm md:col-span-2"
+                  className="min-h-28 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
                 />
               </div>
             ) : null}
-          </div>
-        </details>
-      </Section>
 
-      <Section title="Media" description="Tambahkan satu link media pendukung soal.">
-        <div className="grid gap-3 md:grid-cols-2">
-          <select
-            name="attachment_media_type"
-            value={attachmentMediaType}
-            onChange={(event) => setAttachmentMediaType(event.target.value)}
-            className="rounded-md border px-3 py-2 text-sm"
-          >
-            <option value="image">Image</option>
-            <option value="audio">Audio</option>
-            <option value="video">Video</option>
-            <option value="file">File/PDF</option>
-            <option value="link">Link</option>
-          </select>
-          <input
-            name="attachment_file_name"
-            defaultValue={attachment?.file_name ?? ""}
-            placeholder="Nama file/link"
-            className="rounded-md border px-3 py-2 text-sm"
-          />
-          <input
-            name="attachment_url"
-            value={attachmentUrl}
-            onChange={(event) => setAttachmentUrl(event.target.value)}
-            placeholder="https://..."
-            className="rounded-md border px-3 py-2 text-sm md:col-span-2"
-          />
-          <input
-            name="attachment_caption"
-            value={attachmentCaption}
-            onChange={(event) => setAttachmentCaption(event.target.value)}
-            placeholder="Caption media"
-            className="rounded-md border px-3 py-2 text-sm md:col-span-2"
-          />
-        </div>
-      </Section>
-
-      <Section title="Pengaturan Lanjutan">
-        <div className="grid gap-3">
-          <textarea
-            name="explanation"
-            value={explanation}
-            onChange={(event) => setExplanation(event.target.value)}
-            placeholder="Pembahasan atau catatan koreksi"
-            className="min-h-24 rounded-md border px-3 py-2 text-sm"
-          />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              name="is_active"
-              type="checkbox"
-              defaultChecked={editable?.is_active ?? true}
-            />
-            Aktif
-          </label>
-        </div>
-      </Section>
-
-      <Section
-        title="Preview Soal"
-        description="Preview ini mengikuti isi form sebelum guru menyimpan."
-      >
-        <div className="space-y-3 rounded-md border bg-card p-4 text-sm">
-          {stimulusMode !== "none" &&
-          (selectedStimulusLabel || newStimulusTitle || newStimulusContent) ? (
-            <div className="rounded-md border border-dashed p-3">
-              <div className="font-medium">
-                {newStimulusTitle || selectedStimulusLabel || "Stimulus/Bacaan"}
-              </div>
-              {stimulusMode === "new" && newStimulusContent ? (
-                <QuestionMathRenderer
-                  content={newStimulusContent}
-                  className="mt-2 text-muted-foreground"
-                />
-              ) : selectedStimulus?.content ? (
-                <QuestionMathRenderer
-                  content={selectedStimulus.content}
-                  className="mt-2 text-muted-foreground"
-                />
-              ) : null}
-              <QuestionMediaPreview
-                mediaType={
-                  stimulusMode === "new"
-                    ? newStimulusMediaType
-                    : selectedStimulus?.media_type
-                }
-                url={
-                  stimulusMode === "new"
-                    ? newStimulusMediaUrl
-                    : selectedStimulus?.media_url
-                }
-                title={newStimulusTitle || selectedStimulusLabel}
-                className="mt-3"
+            <div className="grid gap-3 border-t border-[#E2E8F0] pt-5 md:grid-cols-2">
+              <select
+                name="attachment_media_type"
+                value={attachmentMediaType}
+                onChange={(event) => setAttachmentMediaType(event.target.value)}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="image">Gambar</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+                <option value="file">File/PDF</option>
+                <option value="link">Link</option>
+              </select>
+              <input
+                name="attachment_file_name"
+                defaultValue={attachment?.file_name ?? ""}
+                placeholder="Nama file/link"
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+              />
+              <input
+                name="attachment_url"
+                value={attachmentUrl}
+                onChange={(event) => setAttachmentUrl(event.target.value)}
+                placeholder="https://..."
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
+              />
+              <input
+                name="attachment_caption"
+                value={attachmentCaption}
+                onChange={(event) => setAttachmentCaption(event.target.value)}
+                placeholder="Caption media"
+                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
               />
             </div>
-          ) : null}
-
-          {content ? (
-            <QuestionMathRenderer content={content} className="leading-7" />
-          ) : (
-            <div className="text-muted-foreground">
-              Pertanyaan akan tampil di sini.
-            </div>
-          )}
-
-          {attachmentUrl ? (
-            <QuestionMediaPreview
-              mediaType={attachmentMediaType}
-              url={attachmentUrl}
-              caption={attachmentCaption}
-            />
-          ) : null}
-
-          {isMultipleChoice ? (
-            <div className="grid gap-2">
-              {labels.map((label) => (
-                <div
-                  key={label}
-                  className="flex gap-2 rounded-md border px-3 py-2"
-                >
-                  <span className="font-semibold">{label}.</span>
-                  <span className="flex-1">
-                    {options[label] ? (
-                      <QuestionMathRenderer content={options[label]} />
-                    ) : (
-                      `Opsi ${label}`
-                    )}
-                  </span>
-                  {correct === label ? (
-                    <span className="text-xs font-medium text-emerald-700">
-                      Benar
-                    </span>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md bg-muted p-3 text-muted-foreground">
-              Soal essay tidak memakai pilihan jawaban.
-            </div>
-          )}
-
-          {explanation ? (
-            <div className="rounded-md bg-muted p-3 text-muted-foreground">
-              <QuestionMathRenderer content={explanation} />
-            </div>
-          ) : null}
-        </div>
-      </Section>
-
-      <div className="flex justify-end">
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          {editable ? "Simpan sebagai Draft" : "Simpan Draft"}
-        </button>
+          </div>
+        </Accordion>
       </div>
+
+      <div className={step === 4 ? "block" : "hidden"}>
+        <Accordion title="Pengaturan Lanjutan">
+          <div className="grid gap-4">
+            <textarea
+              name="explanation"
+              value={explanation}
+              onChange={(event) => setExplanation(event.target.value)}
+              placeholder="Pembahasan atau catatan koreksi"
+              className="min-h-32 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                name="is_active"
+                type="checkbox"
+                defaultChecked={editable?.is_active ?? true}
+              />
+              Status Aktif
+            </label>
+          </div>
+        </Accordion>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setStep((current) => Math.max(0, current - 1))}
+            disabled={step === 0}
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+          >
+            Sebelumnya
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}
+            disabled={step === steps.length - 1}
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+          >
+            Berikutnya
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC]"
+          >
+            <Eye className="size-4" />
+            Preview
+          </button>
+          <button className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]">
+            <Save className="size-4" />
+            {editable ? "Simpan Draft" : "Simpan Draft"}
+          </button>
+        </div>
+      </div>
+
+      {showPreview ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-[#0F172A]">Preview Soal</h2>
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="space-y-4 text-sm">
+              {stimulusMode !== "none" ? (
+                <div className="rounded-xl border border-dashed border-[#E2E8F0] p-4">
+                  <div className="font-medium">
+                    {newStimulusTitle || selectedStimulus?.label || "Stimulus/Bacaan"}
+                  </div>
+                  <QuestionMathRenderer
+                    content={
+                      stimulusMode === "new"
+                        ? newStimulusContent
+                        : selectedStimulus?.content
+                    }
+                    className="mt-2 text-[#64748B]"
+                  />
+                  <QuestionMediaPreview
+                    mediaType={
+                      stimulusMode === "new"
+                        ? newStimulusMediaType
+                        : selectedStimulus?.media_type
+                    }
+                    url={
+                      stimulusMode === "new"
+                        ? newStimulusMediaUrl
+                        : selectedStimulus?.media_url
+                    }
+                    title={newStimulusTitle || selectedStimulus?.label}
+                    className="mt-3"
+                  />
+                </div>
+              ) : null}
+              {content ? (
+                <QuestionMathRenderer content={content} className="leading-7" />
+              ) : (
+                <div className="text-[#64748B]">Pertanyaan akan tampil di sini.</div>
+              )}
+              {attachmentUrl ? (
+                <QuestionMediaPreview
+                  mediaType={attachmentMediaType}
+                  url={attachmentUrl}
+                  caption={attachmentCaption}
+                />
+              ) : null}
+              {isMultipleChoice ? (
+                <div className="grid gap-2">
+                  {labels
+                    .filter((label) => label !== "E" || options.E.trim())
+                    .map((label) => (
+                      <div
+                        key={label}
+                        className="flex gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2"
+                      >
+                        <span className="font-semibold">{label}.</span>
+                        <span className="flex-1">
+                          {options[label] ? (
+                            <QuestionMathRenderer content={options[label]} />
+                          ) : (
+                            `Opsi ${label}`
+                          )}
+                        </span>
+                        {correct === label ? (
+                          <span className="text-xs font-medium text-[#22C55E]">
+                            Benar
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-[#F8FAFC] p-3 text-[#64748B]">
+                  Soal essay tidak memakai pilihan jawaban.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

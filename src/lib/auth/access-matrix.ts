@@ -226,32 +226,25 @@ const teacherQuestionBankMenu: AccessMenuItem = {
   permission: "question_bank.view",
   children: [
     {
-      label: "Soal",
+      label: "Semua Soal",
       href: "/dashboard/question-bank/questions",
       icon: "book-open",
       roles: ["teacher"],
       permission: "question_bank.view",
     },
     {
-      label: "Kategori",
+      label: "Tambah Soal",
+      href: "/dashboard/question-bank/questions/create",
+      icon: "file-text",
+      roles: ["teacher"],
+      permission: "questions.create",
+    },
+    {
+      label: "Kategori Soal",
       href: "/dashboard/question-bank/categories",
       icon: "list-checks",
       roles: ["teacher"],
       permission: "question_bank.view",
-    },
-    {
-      label: "Stimulus",
-      href: "/dashboard/question-bank/stimuli",
-      icon: "file-text",
-      roles: ["teacher"],
-      permission: "question_bank.view",
-    },
-    {
-      label: "Import Soal",
-      href: "/dashboard/question-bank/import-excel",
-      icon: "download",
-      roles: ["teacher"],
-      permission: "question_bank.manage",
     },
   ],
 };
@@ -283,9 +276,23 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ...examMenu,
         children: [
           {
-            label: "Bank Soal",
-            href: "/dashboard/question-bank",
+            label: "Semua Soal",
+            href: "/dashboard/question-bank/questions",
             icon: "book-open",
+            roles: ["super_admin"],
+            permission: "question_bank.view",
+          },
+          {
+            label: "Tambah Soal",
+            href: "/dashboard/question-bank/questions/create",
+            icon: "file-text",
+            roles: ["super_admin"],
+            permission: "questions.create",
+          },
+          {
+            label: "Kategori Soal",
+            href: "/dashboard/question-bank/categories",
+            icon: "list-checks",
             roles: ["super_admin"],
             permission: "question_bank.view",
           },
@@ -395,11 +402,18 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "question_bank.view",
         children: [
           {
-            label: "Bank Soal",
+            label: "Semua Soal",
             href: "/dashboard/question-bank/questions",
             icon: "book-open",
             roles: ["admin"],
             permission: "question_bank.view",
+          },
+          {
+            label: "Tambah Soal",
+            href: "/dashboard/question-bank/questions/create",
+            icon: "file-text",
+            roles: ["admin"],
+            permission: "questions.create",
           },
           {
             label: "Kategori Soal",

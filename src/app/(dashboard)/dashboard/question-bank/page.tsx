@@ -1,74 +1,56 @@
 import Link from "next/link";
+import { FolderTree, ListChecks, Plus } from "lucide-react";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 const modules = [
   {
     title: "Semua Soal",
     href: "/dashboard/question-bank/questions",
-    description:
-      "Kelola soal pilihan ganda dan essay berdasarkan mapel, kategori, difficulty, dan status.",
+    icon: ListChecks,
+    description: "Lihat, filter, edit, dan kelola status soal dari tabel ringkas.",
+  },
+  {
+    title: "Tambah Soal",
+    href: "/dashboard/question-bank/questions/create",
+    icon: Plus,
+    description: "Buat soal melalui wizard sederhana dengan preview sesuai kebutuhan.",
   },
   {
     title: "Kategori Soal",
     href: "/dashboard/question-bank/categories",
-    description:
-      "Kelola kategori soal per mata pelajaran untuk membantu penyusunan paket ujian.",
-  },
-  {
-    title: "Stimulus / Bacaan",
-    href: "/dashboard/question-bank/stimuli",
-    description:
-      "Kelola bacaan, gambar, audio, video, atau pengantar yang bisa dipakai oleh banyak soal.",
-  },
-  {
-    title: "Import Word",
-    href: "/dashboard/question-bank/import-word",
-    description:
-      "Preview dan import soal dari template Word resmi ke bank soal.",
-  },
-  {
-    title: "Import Excel / CSV",
-    href: "/dashboard/question-bank/import-excel",
-    description:
-      "Preview dan import soal dari template Excel/CSV ke bank soal.",
+    icon: FolderTree,
+    description: "Tambah, edit, nonaktifkan, atau arsipkan kategori soal.",
   },
 ];
 
 export default async function QuestionBankPage() {
-  const user = await requirePermission("question_bank.view");
-  const canUseImportCenter = hasPermission(user, "import_export.view");
-  const visibleModules = canUseImportCenter
-    ? [
-        ...modules.slice(0, 3),
-        {
-          title: "Import / Export Center",
-          href: "/dashboard/import-export?tab=import",
-          description:
-            "Import Word, Excel/CSV, template, export, dan riwayat dipusatkan di halaman resmi admin.",
-        },
-      ]
-    : modules;
+  await requirePermission("question_bank.view");
 
   return (
     <div>
       <DashboardPageHeader
-        title="Question Bank"
-        description="Fondasi bank soal CBT untuk guru dan admin. Target kelas akan ditangani pada sprint paket ujian dan jadwal ujian."
+        title="Bank Soal"
+        description="Pilih workflow yang dibutuhkan. Import dan export soal dikelola terpusat melalui Import Export Center."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleModules.map((module) => (
-          <Link key={module.href} href={module.href}>
-            <DashboardCard
-              title={module.title}
-              description={module.description}
-              className="h-full transition hover:border-primary/40 hover:shadow-md"
-            />
-          </Link>
-        ))}
+        {modules.map((module) => {
+          const Icon = module.icon;
+
+          return (
+            <Link key={module.href} href={module.href}>
+              <DashboardCard
+                title={module.title}
+                description={module.description}
+                className="h-full rounded-xl border-[#E2E8F0] bg-white shadow-sm transition hover:border-[#2563EB]/40 hover:shadow-md"
+              >
+                <Icon className="mb-4 size-5 text-[#2563EB]" />
+              </DashboardCard>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

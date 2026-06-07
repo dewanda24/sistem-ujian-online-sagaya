@@ -21,17 +21,17 @@ export function QuestionBankFilters({
   includeQuestionFilters = false,
 }: QuestionBankFiltersProps) {
   return (
-    <form className="grid gap-3 rounded-lg border bg-card p-4 shadow-sm md:grid-cols-3 xl:grid-cols-6">
+    <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-6">
       <input
         name="q"
         defaultValue={defaults.q}
         placeholder="Cari"
-        className="rounded-md border px-3 py-2 text-sm"
+        className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
       />
       <select
         name="subject_id"
         defaultValue={defaults.subject_id ?? ""}
-        className="rounded-md border px-3 py-2 text-sm"
+        className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
       >
         <option value="">Semua mapel</option>
         {subjects.map((subject) => (
@@ -45,7 +45,7 @@ export function QuestionBankFilters({
           <select
             name="category_id"
             defaultValue={defaults.category_id ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           >
             <option value="">Semua kategori</option>
             {categories.map((category) => (
@@ -57,26 +57,16 @@ export function QuestionBankFilters({
           <select
             name="type"
             defaultValue={defaults.type ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           >
             <option value="">Semua tipe</option>
             <option value="multiple_choice">Pilihan ganda</option>
             <option value="essay">Essay</option>
           </select>
           <select
-            name="difficulty"
-            defaultValue={defaults.difficulty ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
-          >
-            <option value="">Semua difficulty</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-          <select
             name="status"
             defaultValue={defaults.status ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           >
             <option value="">Semua status</option>
             <option value="draft">Draft</option>
@@ -85,7 +75,7 @@ export function QuestionBankFilters({
           </select>
         </>
       ) : null}
-      <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+      <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8]">
         Filter
       </button>
     </form>
