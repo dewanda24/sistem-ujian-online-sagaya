@@ -221,7 +221,7 @@ export async function getPublishedQuestionOptions(subjectId?: string) {
 
   let query = supabase
     .from("questions")
-    .select("id, content, point, type, difficulty, subject_id, subjects(code, name)")
+    .select("id, content, point, type, difficulty, subject_id, subjects(code, name), question_categories(id, name)")
     .is("deleted_at", null)
     .eq("is_active", true)
     .eq("status", "published")
