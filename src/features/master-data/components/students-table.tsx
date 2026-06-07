@@ -38,7 +38,12 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
-        <EmptyState title="Belum ada siswa" description="Tambahkan siswa dari halaman tambah siswa." />
+        <EmptyState
+          title="Belum ada siswa"
+          description="Tambahkan siswa pertama atau import data siswa."
+          actionHref="/dashboard/master-data/students/create"
+          actionLabel="Tambah Siswa"
+        />
       </div>
     );
   }

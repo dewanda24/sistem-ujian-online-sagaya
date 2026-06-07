@@ -37,10 +37,10 @@ export function ConfirmLinkButton({
           setIsOpen(true);
         }}
         className={cn(
-          "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition",
+          "inline-flex h-9 items-center justify-center rounded-xl px-3 text-sm font-medium transition",
           variant === "default" &&
-            "bg-primary text-primary-foreground hover:bg-primary/90",
-          variant === "outline" && "border hover:bg-muted",
+            "bg-[#2563EB] text-white hover:bg-blue-700",
+          variant === "outline" && "border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]",
           isLoading && "pointer-events-none opacity-60",
           className,
         )}

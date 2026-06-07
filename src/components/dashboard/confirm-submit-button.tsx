@@ -61,12 +61,12 @@ export function ConfirmSubmitButton({
           }
         }}
         className={cn(
-          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
           variant === "default" &&
-            "bg-primary font-medium text-primary-foreground hover:bg-primary/90",
+            "bg-[#2563EB] text-white hover:bg-blue-700",
           variant === "danger" &&
-            "border border-destructive/40 text-destructive hover:bg-destructive/10",
-          variant === "outline" && "border hover:bg-muted",
+            "border border-[#EF4444]/35 text-[#EF4444] hover:bg-red-50",
+          variant === "outline" && "border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]",
           className,
         )}
       >

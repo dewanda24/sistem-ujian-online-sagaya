@@ -3,24 +3,22 @@ import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { requirePermission } from "@/lib/auth/require-permission";
-import type { RoleName } from "@/types/auth";
 
 const modules = [
   {
-    title: "Sekolah",
-    href: "/dashboard/master-data/schools",
-    description: "Single-school saat ini, multi-school ready lewat school_id.",
-    roles: ["super_admin"] as RoleName[],
-  },
-  {
     title: "Tahun Ajaran",
     href: "/dashboard/master-data/academic-years",
-    description: "Kelola tahun ajaran aktif per sekolah.",
+    description: "Kelola tahun ajaran dan semester aktif.",
   },
   {
-    title: "Semester",
-    href: "/dashboard/master-data/semesters",
-    description: "Kelola semester aktif dalam tahun ajaran.",
+    title: "Siswa",
+    href: "/dashboard/master-data/students",
+    description: "Data siswa dan kelas aktif.",
+  },
+  {
+    title: "Guru",
+    href: "/dashboard/master-data/teachers",
+    description: "Data guru, mapel, dan pengawas ujian.",
   },
   {
     title: "Kelas",
@@ -32,49 +30,23 @@ const modules = [
     href: "/dashboard/master-data/subjects",
     description: "Kode dan nama mata pelajaran untuk CBT.",
   },
-  {
-    title: "Guru",
-    href: "/dashboard/master-data/teachers",
-    description: "Data guru dan assignment mapel-kelas.",
-  },
-  {
-    title: "Admin Sekolah",
-    href: "/dashboard/master-data/admins",
-    description: "Akun admin operasional sekolah.",
-    roles: ["super_admin"] as RoleName[],
-  },
-  {
-    title: "Proctor / Pengawas",
-    href: "/dashboard/master-data/proctors",
-    description: "Akun pengawas untuk monitoring pelaksanaan ujian.",
-  },
-  {
-    title: "Siswa",
-    href: "/dashboard/master-data/students",
-    description: "Data siswa dan riwayat class_members.",
-  },
 ] satisfies Array<{
   title: string;
   href: string;
   description: string;
-  roles?: RoleName[];
 }>;
 
 export default async function MasterDataPage() {
-  const currentUser = await requirePermission("master_data.view");
-  const roleName = currentUser.roles?.name;
-  const visibleModules = modules.filter(
-    (module) => !module.roles || (roleName && module.roles.includes(roleName)),
-  );
+  await requirePermission("master_data.view");
 
   return (
     <div>
       <DashboardPageHeader
         title="Master Data"
-        description="Fondasi data akademik untuk CBT sekolah: sekolah, periode akademik, kelas, mata pelajaran, guru, dan siswa."
+        description="Fondasi data akademik untuk CBT sekolah: tahun ajaran, siswa, guru, kelas, dan mapel."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleModules.map((module) => (
+        {modules.map((module) => (
           <Link key={module.href} href={module.href}>
             <DashboardCard
               title={module.title}

@@ -20,15 +20,15 @@ export function DashboardCard({
   return (
     <section
       className={cn(
-        "rounded-lg border bg-card p-5 text-card-foreground shadow-sm",
+        "rounded-xl border border-[#E2E8F0] bg-white p-4 text-[#0F172A] shadow-sm sm:p-5",
         className,
       )}
     >
       <div className="space-y-1">
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-        {value ? <p className="text-2xl font-semibold">{value}</p> : null}
+        <h3 className="line-clamp-1 text-sm font-medium text-[#64748B]">{title}</h3>
+        {value ? <p className="truncate text-2xl font-semibold">{value}</p> : null}
         {description ? (
-          <p className="text-sm leading-6 text-muted-foreground">
+          <p className="line-clamp-2 text-sm leading-6 text-[#64748B]">
             {description}
           </p>
         ) : null}

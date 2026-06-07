@@ -89,6 +89,8 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
         <EmptyState
           title="Belum ada paket ujian"
           description="Buat paket ujian dari soal published terlebih dahulu."
+          actionHref="/dashboard/exams/packages/create"
+          actionLabel="Buat Paket"
         />
       </div>
     );

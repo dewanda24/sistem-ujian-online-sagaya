@@ -45,7 +45,7 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
         </div>
       </form>
 
-      <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
+      <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
             <tr className="h-10">
@@ -88,7 +88,35 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
             })}
           </tbody>
         </table>
-        {rows.length === 0 ? <div className="p-8"><EmptyState title="Belum ada tahun ajaran" description="Tambahkan tahun ajaran sebelum membuat kelas." /></div> : null}
+        {rows.length === 0 ? <div className="p-8"><EmptyState title="Belum ada tahun ajaran" description="Tambahkan tahun ajaran sebelum membuat kelas." actionHref="/dashboard/master-data/academic-years/create" actionLabel="Tambah Tahun Ajaran" /></div> : null}
+      </div>
+
+      <div className="grid gap-2 md:hidden">
+        {rows.length ? rows.map((year) => {
+          const yearSemesters = semesters.filter((semester) => semester.academic_year_id === year.id);
+          const activeSemester = yearSemesters.find((semester) => semester.is_active);
+
+          return (
+            <article key={year.id} className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{year.name}</div>
+                  <div className="mt-0.5 line-clamp-1 text-xs text-[#64748B]">
+                    {activeSemester?.name ?? (yearSemesters.map((item) => item.name).join(", ") || "-")}
+                  </div>
+                </div>
+                <StatusBadge active={Boolean(year.is_active)} />
+              </div>
+              <div className="mt-2 flex items-center gap-1.5">
+                <Link href={`/dashboard/master-data/academic-years/${year.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+              </div>
+            </article>
+          );
+        }) : (
+          <div className="rounded-xl border border-[#E2E8F0] bg-white p-8">
+            <EmptyState title="Belum ada tahun ajaran" description="Tambahkan tahun ajaran sebelum membuat kelas." actionHref="/dashboard/master-data/academic-years/create" actionLabel="Tambah Tahun Ajaran" />
+          </div>
+        )}
       </div>
     </div>
   );

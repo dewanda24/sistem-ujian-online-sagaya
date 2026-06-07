@@ -17,6 +17,12 @@ const modules = [
     href: "/dashboard/reports/classes",
     icon: Activity,
   },
+  {
+    title: "Kartu Login Siswa",
+    description: "Unduh kartu login siswa per kelas atau semua kelas.",
+    href: "/dashboard/reports/login-cards",
+    icon: FileText,
+  },
 ];
 
 export default async function ReportsPage() {

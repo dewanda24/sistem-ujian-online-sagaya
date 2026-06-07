@@ -137,6 +137,8 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         <EmptyState
           title="Belum ada soal"
           description="Tambahkan soal pilihan ganda atau essay untuk mapel yang tersedia."
+          actionHref="/dashboard/question-bank/questions/create"
+          actionLabel="Tambah Soal"
         />
       </div>
     );

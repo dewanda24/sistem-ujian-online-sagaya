@@ -43,29 +43,29 @@ export function ConfirmDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="rounded-lg border bg-background p-6 shadow-lg backdrop:bg-black/50"
+      className="w-[calc(100vw-2rem)] max-w-md rounded-xl border border-[#E2E8F0] bg-white p-5 text-[#0F172A] shadow-xl backdrop:bg-[#0F172A]/50"
       onCancel={onCancel}
     >
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-2 text-sm leading-6 text-[#64748B]">{description}</p>
         </div>
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`rounded-md px-4 py-2 text-sm font-medium text-primary-foreground transition disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
               isDangerous
-                ? "bg-destructive hover:bg-destructive/90"
-                : "bg-primary hover:bg-primary/90"
+                ? "bg-[#EF4444] hover:bg-red-600"
+                : "bg-[#2563EB] hover:bg-blue-700"
             }`}
           >
             {isLoading ? (

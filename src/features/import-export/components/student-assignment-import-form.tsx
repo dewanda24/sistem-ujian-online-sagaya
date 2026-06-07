@@ -243,7 +243,7 @@ export function StudentAssignmentImportForm() {
               </div>
             </div>
 
-            <div className="max-h-96 overflow-auto rounded-md border">
+            <div className="hidden max-h-96 overflow-auto rounded-md border md:block">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 border-b bg-muted/60">
                   <tr>
@@ -293,6 +293,44 @@ export function StudentAssignmentImportForm() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="grid max-h-96 gap-2 overflow-y-auto md:hidden">
+              {previewRows.map((row) => (
+                <article
+                  key={row.row_number}
+                  className={`rounded-xl border p-3 text-sm ${
+                    row.isValid ? "bg-background" : "bg-destructive/5"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="line-clamp-1 font-medium">
+                        {row.student_email}
+                      </div>
+                      <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                        {row.class_name} - {row.academic_year}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-md border px-1.5 py-0.5 text-xs">
+                      #{row.row_number}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs">
+                    {row.isValid ? (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
+                        Valid
+                      </span>
+                    ) : (
+                      <div className="space-y-0.5 text-destructive">
+                        {row.errors.slice(0, 2).map((err, i) => (
+                          <div key={i}>{err}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         )}

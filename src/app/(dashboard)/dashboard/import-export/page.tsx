@@ -120,13 +120,13 @@ export default async function ImportExportPage({ searchParams }: PageProps) {
         description="Pusat operasional resmi untuk import data, export data, riwayat, dan status environment."
       />
 
-      <nav className="flex gap-2 overflow-x-auto rounded-lg border bg-card p-2 shadow-sm">
+      <nav className="grid gap-2 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-sm sm:grid-cols-2 lg:flex lg:flex-wrap">
         {getTabs(isSuperAdmin).map((tab) => (
           <Link
             key={tab.value}
             href={`/dashboard/import-export?tab=${tab.value}`}
             className={cn(
-              "whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition",
+              "min-w-0 rounded-xl px-3 py-2 text-center text-sm font-medium transition",
               activeTab === tab.value
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",

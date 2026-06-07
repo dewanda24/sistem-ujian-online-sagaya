@@ -109,7 +109,7 @@ export default async function ClassesPage({ searchParams }: PageProps) {
               </div>
             </article>
           );
-        }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada kelas" description="Tambahkan kelas dari halaman tambah kelas." /></div>}
+        }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada kelas" description="Tambahkan kelas pertama untuk mulai mengelompokkan siswa." actionHref="/dashboard/master-data/classes/create" actionLabel="Tambah Kelas" /></div>}
       </div>
     </div>
   );

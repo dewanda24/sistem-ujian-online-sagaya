@@ -71,10 +71,10 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         />
         <div className="flex gap-2">
           <Link
-            href="/dashboard/master-data/students/login-cards"
+            href="/dashboard/reports/login-cards"
             className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC]"
           >
-            Kartu Login
+            Cetak Kartu Login
           </Link>
           <Link
             href="/dashboard/master-data/students/create"

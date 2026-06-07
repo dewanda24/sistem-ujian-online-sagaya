@@ -306,6 +306,13 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             roles: ["super_admin"],
             permission: "reports.view",
           },
+          {
+            label: "Kartu Login Siswa",
+            href: "/dashboard/reports/login-cards",
+            icon: "file-text",
+            roles: ["super_admin"],
+            permission: "students.view",
+          },
         ],
       },
       {
@@ -483,6 +490,13 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             icon: "activity",
             roles: ["admin"],
             permission: "reports.view",
+          },
+          {
+            label: "Kartu Login Siswa",
+            href: "/dashboard/reports/login-cards",
+            icon: "file-text",
+            roles: ["admin"],
+            permission: "students.view",
           },
         ],
       },

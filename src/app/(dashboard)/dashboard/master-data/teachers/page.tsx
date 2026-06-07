@@ -108,7 +108,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
               <Link href={`/dashboard/master-data/teachers/${teacher.id}/edit`} className="mt-2 inline-flex rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs">Edit</Link>
             </article>
           );
-        }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada guru" description="Tambahkan guru dari halaman tambah guru." /></div>}
+        }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada guru" description="Tambahkan guru pertama atau import data guru." actionHref="/dashboard/master-data/teachers/create" actionLabel="Tambah Guru" /></div>}
       </div>
     </div>
   );

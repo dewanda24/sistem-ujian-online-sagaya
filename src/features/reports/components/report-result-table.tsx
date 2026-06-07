@@ -90,8 +90,10 @@ export function ReportResultTable({
     return (
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
         <EmptyState
-          title="Belum ada data"
+          title={mode === "results" ? "Belum ada hasil ujian" : "Belum ada rekap nilai"}
           description="Hasil ujian akan tampil setelah peserta submit ujian."
+          actionHref="/dashboard/exams/schedules"
+          actionLabel="Lihat Jadwal"
         />
       </div>
     );

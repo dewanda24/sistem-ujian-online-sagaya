@@ -88,6 +88,8 @@ export function ExamScheduleTable({
         <EmptyState
           title="Belum ada jadwal ujian"
           description="Buat jadwal dari paket ujian published."
+          actionHref="/dashboard/exams/schedules/create"
+          actionLabel="Buat Jadwal"
         />
       </div>
     );

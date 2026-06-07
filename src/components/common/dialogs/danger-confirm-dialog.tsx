@@ -54,17 +54,17 @@ export function DangerConfirmDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="rounded-lg border bg-background p-6 shadow-lg backdrop:bg-black/50"
+      className="w-[calc(100vw-2rem)] max-w-md rounded-xl border border-[#E2E8F0] bg-white p-5 text-[#0F172A] shadow-xl backdrop:bg-[#0F172A]/50"
       onCancel={handleCancel}
     >
-      <div className="max-w-md space-y-4">
+      <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-destructive">{title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          <h2 className="text-lg font-semibold text-[#EF4444]">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-[#64748B]">{description}</p>
         </div>
 
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
-          <p className="text-xs font-medium text-destructive">
+        <div className="rounded-xl border border-[#EF4444]/30 bg-red-50 p-3">
+          <p className="text-xs font-medium text-[#DC2626]">
             Aksi ini tidak dapat dibatalkan. Ketik &quot;{confirmationText}
             &quot; di bawah untuk melanjutkan.
           </p>
@@ -81,22 +81,22 @@ export function DangerConfirmDialog({
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isLoading}
             placeholder={`Ketik: ${confirmationText}`}
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+            className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             onClick={handleCancel}
             disabled={isLoading}
-            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isLoading || !isConfirmed}
-            className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl bg-[#EF4444] px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <div className="flex items-center gap-2">

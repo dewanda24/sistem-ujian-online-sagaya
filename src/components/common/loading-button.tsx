@@ -25,16 +25,16 @@ export function LoadingButton({
   ...props
 }: LoadingButtonProps) {
   const baseClasses =
-    "rounded-md px-4 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2";
+    "rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2";
 
   const variantClasses = {
-    default: "bg-primary text-primary-foreground hover:bg-primary/90",
+    default: "bg-[#2563EB] text-white hover:bg-blue-700",
     destructive:
-      "bg-destructive text-primary-foreground hover:bg-destructive/90",
-    outline: "border hover:bg-muted",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-    ghost: "hover:bg-muted",
-    link: "text-primary underline-offset-4 hover:underline",
+      "bg-[#EF4444] text-white hover:bg-red-600",
+    outline: "border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]",
+    secondary: "bg-[#F8FAFC] text-[#0F172A] hover:bg-slate-100",
+    ghost: "text-[#0F172A] hover:bg-[#F8FAFC]",
+    link: "text-[#2563EB] underline-offset-4 hover:underline",
   };
 
   return (
