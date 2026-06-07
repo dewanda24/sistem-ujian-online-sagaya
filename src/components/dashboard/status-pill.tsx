@@ -9,6 +9,8 @@ const toneByValue: Record<string, string> = {
   submitted: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   finalized: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   published: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  ready: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  aktif: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   scheduled: "bg-sky-50 text-sky-700 ring-sky-600/20",
   in_progress: "bg-sky-50 text-sky-700 ring-sky-600/20",
   auto_scored: "bg-sky-50 text-sky-700 ring-sky-600/20",
@@ -19,7 +21,9 @@ const toneByValue: Record<string, string> = {
   expired: "bg-amber-50 text-amber-700 ring-amber-600/20",
   archived: "bg-zinc-100 text-zinc-700 ring-zinc-300",
   cancelled: "bg-red-50 text-red-700 ring-red-600/20",
+  dibatalkan: "bg-red-50 text-red-700 ring-red-600/20",
   finished: "bg-zinc-100 text-zinc-700 ring-zinc-300",
+  selesai: "bg-zinc-100 text-zinc-700 ring-zinc-300",
 };
 
 export function StatusPill({ value }: StatusPillProps) {

@@ -226,7 +226,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
               <th className="w-40 px-3 py-2 font-medium">Mapel</th>
               <th className="w-24 px-3 py-2 font-medium">Tipe</th>
               <th className="w-28 px-3 py-2 font-medium">Status</th>
-              <th className="w-44 px-3 py-2 font-medium">Aksi</th>
+              <th className="w-28 px-3 py-2 font-medium">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
@@ -282,17 +282,19 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     <button
                       type="button"
                       onClick={() => setPreviewQuestion(question)}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
+                      title="Preview"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Eye className="size-3.5" />
-                      Preview
+                      <span className="sr-only">Preview</span>
                     </button>
                     <Link
                       href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
+                      title="Edit"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Pencil className="size-3.5" />
-                      Edit
+                      <span className="sr-only">Edit</span>
                     </Link>
                     <MoreMenu question={question} />
                   </div>
@@ -392,7 +394,7 @@ function MoreMenu({
       <summary
         className={cn(
           "inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC]",
-          compact ? "h-7 px-2 text-xs" : "h-8 w-8",
+          compact ? "h-7 px-2 text-xs" : "h-7 w-7",
         )}
         aria-label="More"
       >

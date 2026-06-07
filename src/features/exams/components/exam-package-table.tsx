@@ -104,7 +104,7 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
               <th className="w-44 px-3 py-2 font-medium">Mapel</th>
               <th className="w-52 px-3 py-2 font-medium">Ringkasan</th>
               <th className="w-28 px-3 py-2 font-medium">Status</th>
-              <th className="w-56 px-3 py-2 font-medium">Aksi</th>
+              <th className="w-36 px-3 py-2 font-medium">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
@@ -141,24 +141,27 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
                     <button
                       type="button"
                       onClick={() => setPreviewPackage(examPackage)}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
+                      title="Preview"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Eye className="size-3.5" />
-                      Preview
+                      <span className="sr-only">Preview</span>
                     </button>
                     <Link
                       href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
+                      title="Edit"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Pencil className="size-3.5" />
-                      Edit
+                      <span className="sr-only">Edit</span>
                     </Link>
                     <Link
                       href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2.5 text-xs hover:bg-[#F8FAFC]"
+                      title="Jadwalkan"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <CalendarPlus className="size-3.5" />
-                      Jadwalkan
+                      <span className="sr-only">Jadwalkan</span>
                     </Link>
                     <MoreMenu examPackage={examPackage} />
                   </div>
@@ -257,7 +260,7 @@ function MoreMenu({
     <details className="relative">
       <summary
         className={`inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC] ${
-          compact ? "h-7 px-2 text-xs" : "h-8 w-8"
+          compact ? "h-7 px-2 text-xs" : "h-7 w-7"
         }`}
       >
         <MoreHorizontal className="size-3.5" />
