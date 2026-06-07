@@ -1,29 +1,21 @@
 import Link from "next/link";
+import { Activity, FileText } from "lucide-react";
 
-import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 const modules = [
   {
-    title: "Per Ujian",
-    href: "/dashboard/reports/exams",
-    description: "Rata-rata nilai, completion, submitted, dan expired per ujian.",
-  },
-  {
-    title: "Per Kelas",
-    href: "/dashboard/reports/classes",
-    description: "Ringkasan performa peserta berdasarkan kelas.",
-  },
-  {
-    title: "Per Mapel",
-    href: "/dashboard/reports/subjects",
-    description: "Agregasi hasil ujian berdasarkan mata pelajaran.",
-  },
-  {
-    title: "Per Siswa",
+    title: "Hasil Ujian",
+    description: "Pantau submit, nilai, status grading, dan detail jawaban siswa.",
     href: "/dashboard/reports/students",
-    description: "Daftar nilai individual peserta dan status grading.",
+    icon: FileText,
+  },
+  {
+    title: "Rekap Nilai",
+    description: "Lihat rekap nilai siswa per tahun ajaran, kelas, mapel, dan jadwal.",
+    href: "/dashboard/reports/classes",
+    icon: Activity,
   },
 ];
 
@@ -31,21 +23,37 @@ export default async function ReportsPage() {
   await requirePermission("reports.view");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <DashboardPageHeader
-        title="Reports"
-        description="Fondasi laporan CBT untuk kepala sekolah, admin, dan guru."
+        title="Laporan"
+        description="Akses ringkas untuk hasil ujian dan rekap nilai."
       />
-      <div className="grid gap-4 md:grid-cols-2">
-        {modules.map((module) => (
-          <Link key={module.href} href={module.href}>
-            <DashboardCard
-              title={module.title}
-              description={module.description}
-              className="h-full transition hover:border-primary/40 hover:shadow-md"
-            />
-          </Link>
-        ))}
+      <div className="grid gap-3 md:grid-cols-2">
+        {modules.map((module) => {
+          const Icon = module.icon;
+
+          return (
+            <Link
+              key={module.href}
+              href={module.href}
+              className="group rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm hover:border-[#2563EB]/40 hover:bg-[#F8FAFC]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
+                  <Icon className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="line-clamp-1 font-semibold text-[#0F172A]">
+                    {module.title}
+                  </h2>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#64748B]">
+                    {module.description}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

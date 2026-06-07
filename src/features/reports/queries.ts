@@ -421,6 +421,7 @@ export async function getReportsByStudent(filters: ReportFilters = {}) {
     return {
       id: attempt.id,
       studentName: profile?.full_name ?? student?.username ?? "-",
+      username: student?.username ?? "-",
       nis: profile?.nis ?? "-",
       examTitle: schedule?.title ?? "-",
       subject: subject?.code ?? "-",
@@ -429,10 +430,14 @@ export async function getReportsByStudent(filters: ReportFilters = {}) {
       percent: attempt.grading_status === "finalized" ? percent : 0,
       status: attempt.status,
       gradingStatus: attempt.grading_status ?? "-",
+      submittedAt: attempt.submitted_at,
       scheduleId: schedule?.id ?? "",
       classId: firstRelation(attempt.exam_participants)?.classes
         ? firstRelation(firstRelation(attempt.exam_participants)?.classes as Relation<{ id: string; name: string }>)?.id ?? ""
         : "",
+      className: firstRelation(attempt.exam_participants)?.classes
+        ? firstRelation(firstRelation(attempt.exam_participants)?.classes as Relation<{ id: string; name: string }>)?.name ?? "-"
+        : "-",
       subjectId: firstRelation(
         (firstRelation(schedule?.exam_packages as Relation<{ subjects?: Relation<{ id: string; code: string; name: string }> }>)?.subjects),
       )?.id ?? "",

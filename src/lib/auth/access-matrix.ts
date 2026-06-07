@@ -136,13 +136,6 @@ const masterDataMenu: AccessMenuItem = {
       permission: "academic_years.view",
     },
     {
-      label: "Semester",
-      href: "/dashboard/master-data/semesters",
-      icon: "calendar-days",
-      roles: ["super_admin"],
-      permission: "semesters.view",
-    },
-    {
       label: "Kelas",
       href: "/dashboard/master-data/classes",
       icon: "list-checks",
@@ -169,13 +162,6 @@ const masterDataMenu: AccessMenuItem = {
       icon: "graduation-cap",
       roles: adminSchoolRoles,
       permission: "students.view",
-    },
-    {
-      label: "Proctor",
-      href: "/dashboard/master-data/proctors",
-      icon: "users",
-      roles: ["super_admin"],
-      permission: "users.view",
     },
   ],
 };
@@ -305,6 +291,22 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "activity",
         roles: ["super_admin"],
         permission: "reports.view",
+        children: [
+          {
+            label: "Hasil Ujian",
+            href: "/dashboard/reports/students",
+            icon: "file-text",
+            roles: ["super_admin"],
+            permission: "reports.view",
+          },
+          {
+            label: "Rekap Nilai",
+            href: "/dashboard/reports/classes",
+            icon: "activity",
+            roles: ["super_admin"],
+            permission: "reports.view",
+          },
+        ],
       },
       {
         label: "Import Export",
@@ -364,6 +366,13 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         roles: ["admin"],
         permission: "master_data.view",
         children: [
+          {
+            label: "Tahun Ajaran",
+            href: "/dashboard/master-data/academic-years",
+            icon: "calendar-days",
+            roles: ["admin"],
+            permission: "academic_years.view",
+          },
           {
             label: "Siswa",
             href: "/dashboard/master-data/students",
@@ -463,7 +472,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         children: [
           {
             label: "Hasil Ujian",
-            href: "/dashboard/reports/exams",
+            href: "/dashboard/reports/students",
             icon: "file-text",
             roles: ["admin"],
             permission: "reports.view",
@@ -527,6 +536,22 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "activity",
         roles: ["principal"],
         permission: "reports.view",
+        children: [
+          {
+            label: "Hasil Ujian",
+            href: "/dashboard/reports/students",
+            icon: "file-text",
+            roles: ["principal"],
+            permission: "reports.view",
+          },
+          {
+            label: "Rekap Nilai",
+            href: "/dashboard/reports/classes",
+            icon: "activity",
+            roles: ["principal"],
+            permission: "reports.view",
+          },
+        ],
       },
       profileItem("principal"),
     ],
@@ -610,6 +635,22 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "activity",
         roles: ["teacher"],
         permission: "reports.view",
+        children: [
+          {
+            label: "Hasil Ujian",
+            href: "/dashboard/reports/students",
+            icon: "file-text",
+            roles: ["teacher"],
+            permission: "reports.view",
+          },
+          {
+            label: "Rekap Nilai",
+            href: "/dashboard/reports/classes",
+            icon: "activity",
+            roles: ["teacher"],
+            permission: "reports.view",
+          },
+        ],
       },
       profileItem("teacher"),
     ],

@@ -1,140 +1,80 @@
+import Link from "next/link";
+
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
-import { DataTable } from "@/components/master-data/data-table";
-import { FormSection } from "@/components/master-data/form-section";
-import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import {
-  saveSubjectAction,
-  toggleSubjectAction,
-} from "@/lib/actions/master-data-actions";
+import { toggleSubjectAction } from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { getSchoolOptions, getSubjects } from "@/lib/master-data/queries";
+import { getSubjects } from "@/lib/master-data/queries";
 
 type PageProps = {
-  searchParams: Promise<{
-    q?: string;
-    edit?: string;
-    status?: string;
-    message?: string;
-  }>;
+  searchParams: Promise<{ q?: string; status?: string; message?: string }>;
 };
 
 export default async function SubjectsPage({ searchParams }: PageProps) {
   await requirePermission("subjects.view");
   const params = await searchParams;
-  const [subjects, schools] = await Promise.all([
-    getSubjects(params.q),
-    getSchoolOptions(),
-  ]);
-  const editable = subjects.find((subject) => subject.id === params.edit);
+  const subjects = (await getSubjects(params.q)).filter((subject) =>
+    params.status ? String(Boolean(subject.is_active)) === params.status : true,
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionToast status={params.status} message={params.message} />
-      <DashboardPageHeader
-        title="Mata Pelajaran"
-        description="Kelola subject code dan nama mata pelajaran sebagai referensi bank soal dan ujian."
-      />
-
-      <FormSection
-        title={editable ? "Edit Mata Pelajaran" : "Tambah Mata Pelajaran"}
-        description="Kode mata pelajaran wajib agar integrasi question bank lebih stabil."
-      >
-        <form action={saveSubjectAction} className="grid gap-4 md:grid-cols-2">
-          <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
-          <select
-            name="school_id"
-            defaultValue={editable?.school_id ?? schools[0]?.value ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          >
-            {schools.map((school) => (
-              <option key={school.value} value={school.value}>
-                {school.label}
-              </option>
-            ))}
-          </select>
-          <input
-            name="code"
-            defaultValue={editable?.code ?? ""}
-            placeholder="MTK"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <input
-            name="name"
-            defaultValue={editable?.name ?? ""}
-            placeholder="Matematika"
-            className="rounded-md border px-3 py-2 text-sm md:col-span-2"
-            required
-          />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              name="is_active"
-              type="checkbox"
-              defaultChecked={editable?.is_active ?? true}
-            />
-            Aktif
-          </label>
-          <div className="flex justify-end md:col-span-2">
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-              Simpan Mata Pelajaran
-            </button>
-          </div>
-        </form>
-      </FormSection>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 className="text-base font-semibold">Daftar Mata Pelajaran</h2>
-        <SearchForm placeholder="Cari mata pelajaran" defaultValue={params.q} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <DashboardPageHeader title="Mapel" description="Kelola kode dan nama mata pelajaran." />
+        <Link href="/dashboard/master-data/subjects/create" className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">Tambah Mapel</Link>
       </div>
 
-      <DataTable
-        columns={["Kode", "Nama", "Sekolah", "Status", "Aksi"]}
-        isEmpty={subjects.length === 0}
-        empty={
-          <EmptyState
-            title="Belum ada mata pelajaran"
-            description="Tambahkan subject sebelum membuat assignment guru dan bank soal."
-          />
-        }
-      >
-        {subjects.map((subject) => (
-          <tr key={subject.id}>
-            <td className="px-4 py-3 font-medium">{subject.code}</td>
-            <td className="px-4 py-3">{subject.name}</td>
-            <td className="px-4 py-3 text-muted-foreground">
-              {subject.schools?.name ?? "-"}
-            </td>
-            <td className="px-4 py-3">
-              <StatusBadge active={Boolean(subject.is_active)} />
-            </td>
-            <td className="px-4 py-3">
-              <div className="flex gap-2">
-                <a
-                  href={`/dashboard/master-data/subjects?edit=${subject.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                >
-                  Edit
-                </a>
-                <form action={toggleSubjectAction}>
-                  <input type="hidden" name="id" value={subject.id} />
-                  <input
-                    type="hidden"
-                    name="is_active"
-                    value={subject.is_active ? "false" : "true"}
-                  />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                    {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </DataTable>
+      <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.5fr_1fr_auto]">
+        <input name="q" defaultValue={params.q ?? ""} placeholder="Cari mapel" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
+        <select name="status" defaultValue={params.status ?? ""} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+          <option value="">Semua status</option>
+          <option value="true">Aktif</option>
+          <option value="false">Nonaktif</option>
+        </select>
+        <div className="flex gap-2">
+          <Link href="/dashboard/master-data/subjects" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]">Reset</Link>
+          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Filter</button>
+        </div>
+      </form>
+
+      <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
+        <table className="w-full table-fixed text-left text-sm">
+          <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
+            <tr className="h-10">
+              <th className="px-3 py-2 font-medium">Nama Mapel</th>
+              <th className="w-32 px-3 py-2 font-medium">Kode</th>
+              <th className="w-28 px-3 py-2 font-medium">Status</th>
+              <th className="w-36 px-3 py-2 font-medium">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E2E8F0]">
+            {subjects.map((subject) => (
+              <tr key={subject.id} className="h-14 hover:bg-[#F8FAFC]">
+                <td className="min-w-0 px-3 py-2"><div className="line-clamp-1 font-medium text-[#0F172A]">{subject.name}</div></td>
+                <td className="truncate px-3 py-2">{subject.code}</td>
+                <td className="px-3 py-2"><StatusBadge active={Boolean(subject.is_active)} /></td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <Link href={`/dashboard/master-data/subjects/${subject.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                    <form action={toggleSubjectAction}>
+                      <input type="hidden" name="id" value={subject.id} />
+                      <input type="hidden" name="is_active" value={subject.is_active ? "false" : "true"} />
+                      <ConfirmSubmitButton confirmMessage={`${subject.is_active ? "Nonaktifkan" : "Aktifkan"} ${subject.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                        {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
+                      </ConfirmSubmitButton>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {subjects.length === 0 ? <div className="p-8"><EmptyState title="Belum ada mapel" description="Tambahkan mapel sebelum assignment guru dan bank soal." /></div> : null}
+      </div>
     </div>
   );
 }

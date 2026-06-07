@@ -1,9 +1,7 @@
 import Link from "next/link";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { EmptyState } from "@/components/dashboard/empty-state";
-import { StatusPill } from "@/components/dashboard/status-pill";
-import { DataTable } from "@/components/master-data/data-table";
+import { ReportResultTable } from "@/features/reports/components/report-result-table";
 import {
   filterStudentReportRows,
   getReportFilterOptions,
@@ -24,6 +22,36 @@ type PageProps = {
   }>;
 };
 
+function buildExportHref(params: Awaited<PageProps["searchParams"]>) {
+  const exportParams = new URLSearchParams({ type: "students" });
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) exportParams.set(key, value);
+  }
+
+  return `/api/reports/export?${exportParams.toString()}`;
+}
+
+function getSummary(rows: Awaited<ReturnType<typeof getReportsByStudent>>) {
+  const submitted = rows.filter((row) => row.status === "submitted").length;
+  const finalized = rows.filter((row) => row.gradingStatus === "finalized");
+  const average =
+    finalized.length > 0
+      ? finalized.reduce((total, row) => total + row.percent, 0) / finalized.length
+      : 0;
+  const highest =
+    finalized.length > 0
+      ? Math.max(...finalized.map((row) => Math.round(row.percent)))
+      : 0;
+
+  return {
+    participants: rows.length,
+    submitted,
+    average: Math.round(average),
+    highest,
+  };
+}
+
 export default async function StudentReportsPage({ searchParams }: PageProps) {
   await requirePermission("reports.view");
   const params = await searchParams;
@@ -32,53 +60,30 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
     getReportFilterOptions(),
   ]);
   const rows = filterStudentReportRows(allRows, params);
+  const summary = getSummary(rows);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <DashboardPageHeader
-          title="Report Per Siswa"
-          description="Daftar nilai individual peserta dan status grading."
+          title="Hasil Ujian"
+          description="Lihat status submit, nilai siswa, dan hasil yang perlu dikoreksi."
         />
         <Link
-          href="/api/reports/export?type=students"
-          className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+          href={buildExportHref(params)}
+          className="inline-flex rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC]"
         >
           Export CSV
         </Link>
       </div>
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-8">
-        <input
-          name="q"
-          defaultValue={params.q ?? ""}
-          placeholder="Cari siswa, NIS, ujian, mapel"
-          className="rounded-md border px-3 py-2 text-sm"
-        />
-        <select
-          name="status"
-          defaultValue={params.status ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="">Semua attempt</option>
-          <option value="submitted">Submitted</option>
-          <option value="expired">Expired</option>
-        </select>
-        <select
-          name="grading_status"
-          defaultValue={params.grading_status ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="">Semua grading</option>
-          <option value="auto_scored">Auto scored</option>
-          <option value="needs_manual_grading">Perlu koreksi</option>
-          <option value="finalized">Finalized</option>
-        </select>
+
+      <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.4fr_1fr_1fr_1.2fr_auto]">
         <select
           name="schedule_id"
           defaultValue={params.schedule_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
         >
-          <option value="">Semua ujian</option>
+          <option value="">Semua jadwal ujian</option>
           {options.schedules.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -88,7 +93,7 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
         <select
           name="class_id"
           defaultValue={params.class_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
         >
           <option value="">Semua kelas</option>
           {options.classes.map((option) => (
@@ -98,87 +103,39 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
           ))}
         </select>
         <select
-          name="subject_id"
-          defaultValue={params.subject_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          name="status"
+          defaultValue={params.status ?? ""}
+          className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
         >
-          <option value="">Semua mapel</option>
-          {options.subjects.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          <option value="">Semua status</option>
+          <option value="submitted">Submit</option>
+          <option value="expired">Expired</option>
         </select>
-        <select
-          name="academic_year_id"
-          defaultValue={params.academic_year_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="">Semua tahun</option>
-          {options.academicYears.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <select
-          name="semester_id"
-          defaultValue={params.semester_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="">Semua semester</option>
-          {options.semesters.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-2 md:col-span-8 md:justify-end">
-          <a
+        <input
+          name="q"
+          defaultValue={params.q ?? ""}
+          placeholder="Cari nama siswa"
+          className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+        />
+        <div className="flex gap-2">
+          <Link
             href="/dashboard/reports/students"
-            className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+            className="inline-flex items-center rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
           >
             Reset
-          </a>
-          <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
+          </Link>
+          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             Filter
           </button>
         </div>
       </form>
-      <DataTable
-        columns={["Siswa", "NIS", "Ujian", "Mapel", "Skor", "Persen", "Status", "Grading", "Detail"]}
-        isEmpty={rows.length === 0}
-        empty={<EmptyState title="Belum ada data" description="Laporan muncul setelah peserta submit ujian." />}
-      >
-        {rows.map((row) => (
-          <tr key={row.id}>
-            <td className="px-4 py-3 font-medium">{row.studentName}</td>
-            <td className="px-4 py-3">{row.nis}</td>
-            <td className="px-4 py-3">{row.examTitle}</td>
-            <td className="px-4 py-3">{row.subject}</td>
-            <td className="px-4 py-3">
-              {row.gradingStatus === "finalized"
-                ? `${row.score} / ${row.maxScore}`
-                : "Belum final"}
-            </td>
-            <td className="px-4 py-3">{row.percent.toFixed(2)}%</td>
-            <td className="px-4 py-3">
-              <StatusPill value={row.status} />
-            </td>
-            <td className="px-4 py-3">
-              <StatusPill value={row.gradingStatus} />
-            </td>
-            <td className="px-4 py-3">
-              <a
-                href={`/dashboard/exam-results/${row.id}`}
-                className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-              >
-                Attempt
-              </a>
-            </td>
-          </tr>
-        ))}
-      </DataTable>
+
+      <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-medium text-[#0F172A] shadow-sm">
+        Peserta {summary.participants} · Submit {summary.submitted} · Rata-rata{" "}
+        {summary.average} · Tertinggi {summary.highest}
+      </div>
+
+      <ReportResultTable rows={rows} />
     </div>
   );
 }

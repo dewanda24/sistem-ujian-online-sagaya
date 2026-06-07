@@ -1,298 +1,116 @@
 import Link from "next/link";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
-import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
-import { DataTable } from "@/components/master-data/data-table";
-import { FormSection } from "@/components/master-data/form-section";
-import { SearchForm } from "@/components/master-data/search-form";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import {
-  saveClassAction,
-  toggleClassAction,
-} from "@/lib/actions/master-data-actions";
+import { toggleClassAction } from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
-import {
-  getAcademicYearOptions,
-  getClasses,
-  getSchoolOptions,
-  getTeacherOptions,
-} from "@/lib/master-data/queries";
+import { getClasses } from "@/lib/master-data/queries";
 
 type PageProps = {
-  searchParams: Promise<{
-    q?: string;
-    edit?: string;
-    status?: string;
-    message?: string;
-  }>;
+  searchParams: Promise<{ q?: string; status?: string; message?: string }>;
 };
 
 export default async function ClassesPage({ searchParams }: PageProps) {
   await requirePermission("classes.view");
   const params = await searchParams;
-  const [classes, schools, academicYears, teachers] = await Promise.all([
-    getClasses(params.q),
-    getSchoolOptions(),
-    getAcademicYearOptions(),
-    getTeacherOptions(),
-  ]);
-  const editable = classes.find((item) => item.id === params.edit);
-  const activeClasses = classes.filter((item) => item.is_active).length;
-  const withoutHomeroom = classes.filter(
-    (item) => item.is_active && !item.homeroom_teacher_id,
-  ).length;
-  const withoutActiveMembers = classes.filter((item) => {
-    const members = Array.isArray(item.class_members)
-      ? item.class_members
-      : [];
-
-    return (
-      item.is_active &&
-      !members.some((member: { left_at?: string | null }) => !member.left_at)
-    );
-  }).length;
-  const totalActiveMembers = classes.reduce((total, item) => {
-    const members = Array.isArray(item.class_members)
-      ? item.class_members
-      : [];
-
-    return (
-      total +
-      members.filter((member: { left_at?: string | null }) => !member.left_at)
-        .length
-    );
-  }, 0);
+  const classes = (await getClasses(params.q)).filter((item) =>
+    params.status ? String(Boolean(item.is_active)) === params.status : true,
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ActionToast status={params.status} message={params.message} />
-      <DashboardPageHeader
-        title="Kelas"
-        description="Kelas terikat ke tahun ajaran. Riwayat siswa disimpan melalui class_members, bukan overwrite field kelas di user."
-      />
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <DashboardCard
-          title="Total Kelas"
-          value={String(classes.length)}
-          description="Kelas sesuai filter saat ini."
-        />
-        <DashboardCard
-          title="Kelas / Anggota Aktif"
-          value={`${activeClasses}/${totalActiveMembers}`}
-          description="Jumlah kelas aktif dan anggota aktif."
-        />
-        <DashboardCard
-          title="Tanpa Siswa"
-          value={String(withoutActiveMembers)}
-          description="Kelas aktif tanpa anggota aktif."
-        />
-        <DashboardCard
-          title="Tanpa Wali"
-          value={String(withoutHomeroom)}
-          description="Kelas aktif tanpa wali kelas."
-        />
-      </section>
-
-      <FormSection
-        title="Import / Export"
-        description="Template dan proses import kelas dipusatkan di dashboard Import/Export."
-      >
-        <Link
-          href="/dashboard/import-export"
-          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-        >
-          Buka Dashboard Import/Export
-        </Link>
-      </FormSection>
-
-      <FormSection
-        title={editable ? "Edit Kelas" : "Tambah Kelas"}
-        description="Wali kelas bersifat opsional dan dapat diisi dari user role teacher."
-      >
-        <form action={saveClassAction} className="grid gap-4 md:grid-cols-2">
-          <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
-          <select
-            name="school_id"
-            defaultValue={editable?.school_id ?? schools[0]?.value ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          >
-            {schools.map((school) => (
-              <option key={school.value} value={school.value}>
-                {school.label}
-              </option>
-            ))}
-          </select>
-          <select
-            name="academic_year_id"
-            defaultValue={
-              editable?.academic_year_id ?? academicYears[0]?.value ?? ""
-            }
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          >
-            {academicYears.map((year) => (
-              <option key={year.value} value={year.value}>
-                {year.label}
-              </option>
-            ))}
-          </select>
-          <input
-            name="name"
-            defaultValue={editable?.name ?? ""}
-            placeholder="VII A"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <input
-            name="grade_level"
-            type="number"
-            min="1"
-            max="12"
-            defaultValue={editable?.grade_level ?? 7}
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <select
-            name="homeroom_teacher_id"
-            defaultValue={editable?.homeroom_teacher_id ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
-          >
-            <option value="">Tanpa wali kelas</option>
-            {teachers.map((teacher) => (
-              <option key={teacher.value} value={teacher.value}>
-                {teacher.label}
-              </option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              name="is_active"
-              type="checkbox"
-              defaultChecked={editable?.is_active ?? true}
-            />
-            Aktif
-          </label>
-          <div className="flex justify-end md:col-span-2">
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-              Simpan Kelas
-            </button>
-          </div>
-        </form>
-      </FormSection>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 className="text-base font-semibold">Daftar Kelas</h2>
-        <SearchForm placeholder="Cari kelas" defaultValue={params.q} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <DashboardPageHeader title="Kelas" description="Kelola kelas, wali kelas, dan jumlah siswa aktif." />
+        <Link href="/dashboard/master-data/classes/create" className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">Tambah Kelas</Link>
       </div>
 
-      <DataTable
-        columns={[
-          "Kelas",
-          "Tingkat",
-          "Tahun Ajaran",
-          "Wali Kelas",
-          "Anggota",
-          "Status",
-          "Aksi",
-        ]}
-        isEmpty={classes.length === 0}
-        empty={
-          <EmptyState
-            title="Belum ada kelas"
-            description="Tambahkan kelas sebelum memasukkan siswa ke class_members."
-          />
-        }
-      >
-        {classes.map((classItem) => {
-          const homeroomProfile = Array.isArray(classItem.users?.user_profiles)
-            ? classItem.users?.user_profiles[0]
-            : classItem.users?.user_profiles;
-          const members = Array.isArray(classItem.class_members)
-            ? classItem.class_members
-            : [];
-          const activeMembers = members.filter(
-            (member: { left_at?: string | null }) => !member.left_at,
-          );
-          const readinessWarnings = [
-            classItem.is_active && activeMembers.length === 0
-              ? "Belum ada siswa aktif"
-              : "",
-            classItem.is_active && !classItem.homeroom_teacher_id
-              ? "Wali kelas kosong"
-              : "",
-          ].filter(Boolean);
+      <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.5fr_1fr_auto]">
+        <input name="q" defaultValue={params.q ?? ""} placeholder="Cari kelas" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
+        <select name="status" defaultValue={params.status ?? ""} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+          <option value="">Semua status</option>
+          <option value="true">Aktif</option>
+          <option value="false">Nonaktif</option>
+        </select>
+        <div className="flex gap-2">
+          <Link href="/dashboard/master-data/classes" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]">Reset</Link>
+          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Filter</button>
+        </div>
+      </form>
 
-          return (
-            <tr key={classItem.id}>
-              <td className="px-4 py-3">
-                <div className="font-medium">{classItem.name}</div>
-                {readinessWarnings.length > 0 ? (
-                  <div className="mt-2 space-y-1">
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                      Perlu dicek
-                    </span>
-                    <ul className="space-y-1 text-xs text-amber-700">
-                      {readinessWarnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-                    Ready
-                  </span>
-                )}
-              </td>
-              <td className="px-4 py-3">{classItem.grade_level}</td>
-              <td className="px-4 py-3">
-                {classItem.academic_years?.name ?? "-"}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {homeroomProfile?.full_name ?? classItem.users?.username ?? "-"}
-              </td>
-              <td className="px-4 py-3">
-                <div className="font-medium">{activeMembers.length} aktif</div>
-                <div className="text-xs text-muted-foreground">
-                  {members.length} total riwayat
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge active={Boolean(classItem.is_active)} />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex gap-2">
-                  <a
-                    href={`/dashboard/master-data/classes?edit=${classItem.id}`}
-                    className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                  >
-                    Edit
-                  </a>
-                  <form action={toggleClassAction}>
-                    <input type="hidden" name="id" value={classItem.id} />
-                    <input
-                      type="hidden"
-                      name="is_active"
-                      value={classItem.is_active ? "false" : "true"}
-                    />
-                    <ConfirmSubmitButton
-                      confirmMessage={`${
-                        classItem.is_active ? "Nonaktifkan" : "Aktifkan"
-                      } kelas ${classItem.name}?`}
-                    >
-                      {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
-                    </ConfirmSubmitButton>
-                  </form>
-                </div>
-              </td>
+      <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
+        <table className="w-full table-fixed text-left text-sm">
+          <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
+            <tr className="h-10">
+              <th className="px-3 py-2 font-medium">Nama Kelas</th>
+              <th className="w-48 px-3 py-2 font-medium">Wali Kelas</th>
+              <th className="w-32 px-3 py-2 font-medium">Jumlah Siswa</th>
+              <th className="w-28 px-3 py-2 font-medium">Status</th>
+              <th className="w-40 px-3 py-2 font-medium">Aksi</th>
             </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E2E8F0]">
+            {classes.map((classItem) => {
+              const homeroomProfile = Array.isArray(classItem.users?.user_profiles)
+                ? classItem.users?.user_profiles[0]
+                : classItem.users?.user_profiles;
+              const members = Array.isArray(classItem.class_members) ? classItem.class_members : [];
+              const activeMembers = members.filter((member: { left_at?: string | null }) => !member.left_at);
+
+              return (
+                <tr key={classItem.id} className="h-14 hover:bg-[#F8FAFC]">
+                  <td className="min-w-0 px-3 py-2">
+                    <div className="line-clamp-1 font-medium text-[#0F172A]">{classItem.name}</div>
+                    <div className="line-clamp-1 text-xs text-[#64748B]">{classItem.academic_years?.name ?? "-"}</div>
+                  </td>
+                  <td className="truncate px-3 py-2">{homeroomProfile?.full_name ?? classItem.users?.username ?? "-"}</td>
+                  <td className="px-3 py-2">{activeMembers.length} siswa</td>
+                  <td className="px-3 py-2"><StatusBadge active={Boolean(classItem.is_active)} /></td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <details className="relative">
+                        <summary className="inline-flex h-7 cursor-pointer list-none items-center rounded-lg border border-[#E2E8F0] px-2 text-xs hover:bg-[#F8FAFC]">Detail</summary>
+                        <div className="absolute right-0 z-30 mt-2 grid min-w-52 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs shadow-lg">
+                          <div>Wali: {homeroomProfile?.full_name ?? classItem.users?.username ?? "-"}</div>
+                          <div>Jumlah siswa aktif: {activeMembers.length}</div>
+                          <div>Total riwayat siswa: {members.length}</div>
+                        </div>
+                      </details>
+                      <Link href={`/dashboard/master-data/classes/${classItem.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                      <form action={toggleClassAction}>
+                        <input type="hidden" name="id" value={classItem.id} />
+                        <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
+                        <ConfirmSubmitButton confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                          {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid gap-2 md:hidden">
+        {classes.length ? classes.map((classItem) => {
+          const members = Array.isArray(classItem.class_members) ? classItem.class_members : [];
+          const activeMembers = members.filter((member: { left_at?: string | null }) => !member.left_at);
+          return (
+            <article key={classItem.id} className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
+              <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{classItem.name}</div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#64748B]">
+                <span>{activeMembers.length} siswa</span>
+                <StatusBadge active={Boolean(classItem.is_active)} />
+              </div>
+            </article>
           );
-        })}
-      </DataTable>
+        }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada kelas" description="Tambahkan kelas dari halaman tambah kelas." /></div>}
+      </div>
     </div>
   );
 }
