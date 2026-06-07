@@ -1,9 +1,19 @@
 import Link from "next/link";
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  School,
+  Upload,
+  Users,
+} from "lucide-react";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { getRoleDashboardStats } from "@/features/dashboard/queries";
+import { getAcademicYears } from "@/lib/master-data/queries";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
 type RoleDashboardContent = {
@@ -184,6 +194,22 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
   const displayName = user.user_profiles?.full_name ?? user.username;
   const stats = await getRoleDashboardStats(role, user);
 
+  if (role === "admin") {
+    const academicYears = await getAcademicYears();
+    const activeAcademicYear =
+      academicYears.find((academicYear) => Boolean(academicYear.is_active)) ??
+      academicYears[0];
+
+    return (
+      <AdminDashboardOverview
+        displayName={displayName}
+        schoolName={user.school_name}
+        academicYearName={activeAcademicYear?.name ?? null}
+        stats={stats}
+      />
+    );
+  }
+
   return (
     <div>
       <DashboardPageHeader
@@ -219,10 +245,9 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
       </div>
 
       <div className="mt-6">
-        {role === "admin" ? <AdminOperationalWorkbench /> : null}
         {role === "teacher" ? <TeacherOperationalWorkbench /> : null}
         {role === "proctor" ? <ProctorOperationalWorkbench /> : null}
-        {role !== "admin" && role !== "teacher" && role !== "proctor" ? (
+        {role !== "teacher" && role !== "proctor" ? (
             <EmptyState
               title={content.workbenchTitle}
               description={content.workbenchDescription}
@@ -233,51 +258,189 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
   );
 }
 
+interface AdminDashboardOverviewProps {
+  displayName: string;
+  schoolName: string | null;
+  academicYearName: string | null;
+  stats: Array<{
+    title: string;
+    value: string;
+    description: string;
+    href?: string;
+  }>;
+}
+
+function AdminDashboardOverview({
+  displayName,
+  schoolName,
+  academicYearName,
+  stats,
+}: AdminDashboardOverviewProps) {
+  const primaryStats = ["Siswa", "Guru", "Kelas", "Jadwal Active"]
+    .map((title) => stats.find((stat) => stat.title === title))
+    .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
+    .map((stat) =>
+      stat.title === "Jadwal Active"
+        ? {
+            ...stat,
+            title: "Ujian Aktif",
+            description: "Ujian yang sedang berjalan.",
+          }
+        : stat,
+    );
+  const hasDataIssue = stats.some((stat) =>
+    ["Tanpa Peserta", "Kelas Tanpa Siswa", "Kelas Tanpa Wali"].includes(
+      stat.title,
+    ) && Number(stat.value) > 0,
+  );
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 text-[#0F172A]">
+      <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-sm md:p-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0 space-y-4">
+            <div>
+              <p className="text-sm font-medium text-[#2563EB]">
+                Dashboard Admin Sekolah
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-normal md:text-3xl">
+                Selamat Datang, {displayName}
+              </h1>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-normal text-[#64748B]">
+                  Sekolah
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold">
+                  {schoolName ?? "Sekolah belum dipilih"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-normal text-[#64748B]">
+                  Tahun Ajaran Aktif
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold">
+                  {academicYearName ?? "Belum ada tahun ajaran aktif"}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex size-20 shrink-0 items-center justify-center rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#2563EB] md:size-24">
+            <School className="size-10 md:size-12" />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {primaryStats.map((stat) => (
+          <Link key={stat.title} href={stat.href ?? "/dashboard/admin"}>
+            <div className="h-full rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-5 shadow-sm transition hover:border-[#2563EB] hover:shadow-md">
+              <p className="text-sm font-medium text-[#64748B]">{stat.title}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-normal">
+                {stat.value}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#64748B]">
+                {stat.description}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      <AdminOperationalWorkbench />
+
+      <section
+        className={`rounded-xl border bg-[#FFFFFF] p-4 shadow-sm ${
+          hasDataIssue ? "border-[#F59E0B]/40" : "border-[#E2E8F0]"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`mt-1 size-2.5 shrink-0 rounded-full ${
+              hasDataIssue ? "bg-[#F59E0B]" : "bg-[#22C55E]"
+            }`}
+          />
+          <div>
+            <h2 className="text-sm font-semibold">Informasi Penting</h2>
+            <p className="mt-1 text-sm leading-6 text-[#64748B]">
+              {hasDataIssue
+                ? "Ada data yang perlu dilengkapi sebelum ujian berjalan."
+                : "Semua data utama sudah lengkap dan siap digunakan."}
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function AdminOperationalWorkbench() {
   const actions = [
     {
-      title: "Lengkapi Master Data",
-      description: "Sekolah, tahun ajaran, kelas, mapel, guru, dan siswa.",
-      href: "/dashboard/master-data",
+      title: "Tambah Siswa",
+      description: "Kelola data dan akun siswa.",
+      href: "/dashboard/master-data/students",
+      icon: GraduationCap,
     },
     {
-      title: "Siapkan Paket Ujian",
-      description: "Cek readiness paket sebelum dipakai pada jadwal.",
+      title: "Tambah Guru",
+      description: "Kelola data dan akun guru.",
+      href: "/dashboard/master-data/teachers",
+      icon: Users,
+    },
+    {
+      title: "Buat Paket Ujian",
+      description: "Siapkan paket soal ujian.",
       href: "/dashboard/exams/packages",
+      icon: BookOpen,
     },
     {
-      title: "Atur Jadwal & Peserta",
-      description: "Pastikan kelas target, peserta, token, dan konflik waktu aman.",
+      title: "Buat Jadwal Ujian",
+      description: "Atur waktu dan peserta ujian.",
       href: "/dashboard/exams/schedules",
-    },
-    {
-      title: "Pantau Ujian",
-      description: "Monitoring peserta, progress, event, lock, dan tindakan darurat.",
-      href: "/dashboard/admin/monitoring",
-    },
-    {
-      title: "Review Laporan",
-      description: "Lihat rekap ujian, kelas, mapel, siswa, dan export CSV.",
-      href: "/dashboard/reports",
+      icon: CalendarDays,
     },
     {
       title: "Import Data",
-      description: "Ambil template CSV dan validasi staging sebelum commit data.",
+      description: "Unggah data master sekaligus.",
       href: "/dashboard/import-export",
+      icon: Upload,
     },
   ];
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {actions.map((action) => (
-        <Link key={action.href} href={action.href}>
-          <DashboardCard
-            title={action.title}
-            description={action.description}
-            className="h-full transition hover:border-primary/40 hover:shadow-md"
-          />
-        </Link>
-      ))}
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-base font-semibold">Aksi Cepat</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Jalur cepat untuk pekerjaan utama admin sekolah.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {actions.map((action) => {
+          const Icon = action.icon;
+
+          return (
+            <Link key={action.href} href={action.href}>
+              <div className="flex h-full min-h-32 flex-col justify-between rounded-xl border border-[#E2E8F0] bg-[#FFFFFF] p-4 shadow-sm transition hover:border-[#2563EB] hover:shadow-md">
+                <div>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#2563EB]/10 text-[#2563EB]">
+                      <Icon className="size-5" />
+                    </div>
+                    <ArrowRight className="size-4 shrink-0 text-[#64748B]" />
+                  </div>
+                  <h3 className="text-sm font-semibold">{action.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#64748B]">
+                    {action.description}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </section>
   );
 }

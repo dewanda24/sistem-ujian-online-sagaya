@@ -351,10 +351,41 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
       {
-        ...masterDataMenu,
-        children: (masterDataMenu.children ?? []).filter((item) =>
-          item.roles.includes("admin"),
-        ),
+        label: "Master Data",
+        href: "/dashboard/master-data",
+        icon: "database",
+        roles: ["admin"],
+        permission: "master_data.view",
+        children: [
+          {
+            label: "Siswa",
+            href: "/dashboard/master-data/students",
+            icon: "graduation-cap",
+            roles: ["admin"],
+            permission: "students.view",
+          },
+          {
+            label: "Guru",
+            href: "/dashboard/master-data/teachers",
+            icon: "users",
+            roles: ["admin"],
+            permission: "teachers.view",
+          },
+          {
+            label: "Kelas",
+            href: "/dashboard/master-data/classes",
+            icon: "list-checks",
+            roles: ["admin"],
+            permission: "classes.view",
+          },
+          {
+            label: "Mapel",
+            href: "/dashboard/master-data/subjects",
+            icon: "book-open",
+            roles: ["admin"],
+            permission: "subjects.view",
+          },
+        ],
       },
       {
         label: "Bank Soal",
@@ -362,14 +393,75 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "book-open",
         roles: ["admin"],
         permission: "question_bank.view",
+        children: [
+          {
+            label: "Bank Soal",
+            href: "/dashboard/question-bank/questions",
+            icon: "book-open",
+            roles: ["admin"],
+            permission: "question_bank.view",
+          },
+          {
+            label: "Kategori Soal",
+            href: "/dashboard/question-bank/categories",
+            icon: "list-checks",
+            roles: ["admin"],
+            permission: "question_bank.view",
+          },
+        ],
       },
-      examMenu,
+      {
+        label: "Ujian",
+        href: "/dashboard/exams",
+        icon: "file-text",
+        roles: ["admin"],
+        permission: "exams.view",
+        children: [
+          {
+            label: "Paket Ujian",
+            href: "/dashboard/exams/packages",
+            icon: "book-open",
+            roles: ["admin"],
+            permission: "exam_packages.view",
+          },
+          {
+            label: "Jadwal Ujian",
+            href: "/dashboard/exams/schedules",
+            icon: "calendar-days",
+            roles: ["admin"],
+            permission: "exam_schedules.view",
+          },
+          {
+            label: "Monitoring",
+            href: "/dashboard/admin/monitoring",
+            icon: "list-checks",
+            roles: ["admin"],
+            permission: "exam_monitoring.view",
+          },
+        ],
+      },
       {
         label: "Laporan",
         href: "/dashboard/reports",
         icon: "activity",
         roles: ["admin"],
         permission: "reports.view",
+        children: [
+          {
+            label: "Hasil Ujian",
+            href: "/dashboard/reports/exams",
+            icon: "file-text",
+            roles: ["admin"],
+            permission: "reports.view",
+          },
+          {
+            label: "Rekap Nilai",
+            href: "/dashboard/reports/classes",
+            icon: "activity",
+            roles: ["admin"],
+            permission: "reports.view",
+          },
+        ],
       },
       {
         label: "Import Export",
@@ -377,8 +469,37 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "download",
         roles: ["admin"],
         permission: "import_export.view",
+        children: [
+          {
+            label: "Import Data",
+            href: "/dashboard/import-export?mode=import",
+            icon: "download",
+            roles: ["admin"],
+            permission: "import_export.view",
+          },
+          {
+            label: "Export Data",
+            href: "/dashboard/import-export?mode=export",
+            icon: "download",
+            roles: ["admin"],
+            permission: "import_export.view",
+          },
+        ],
       },
-      profileItem("admin"),
+      {
+        label: "Lainnya",
+        href: "/dashboard/profile",
+        icon: "users",
+        roles: ["admin"],
+        children: [
+          {
+            label: "Profil Saya",
+            href: "/dashboard/profile?section=me",
+            icon: "users",
+            roles: ["admin"],
+          },
+        ],
+      },
     ],
   },
   principal: {
