@@ -138,7 +138,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
   if (!(file instanceof File) || file.size === 0) {
     return {
       ok: false,
-      message: "File CSV assignment guru-mapel-kelas wajib diunggah.",
+      message: "File CSV penugasan guru-mapel-kelas wajib diunggah.",
     };
   }
 
@@ -345,7 +345,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
   return {
     ok: isSuccess,
     message: isSuccess
-      ? `Import berhasil! ${success} assignment guru-mapel-kelas telah diproses${skipped > 0 ? `, ${skipped} duplikat dilewati` : ""}.`
+      ? `Import berhasil! ${success} penugasan guru-mapel-kelas telah diproses${skipped > 0 ? `, ${skipped} duplikat dilewati` : ""}.`
       : `Import selesai dengan ${errors.length} error dari ${lines.length - 1} baris.`,
     summary: {
       total: lines.length - 1,

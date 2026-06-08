@@ -179,9 +179,9 @@ function Pagination({ currentPage, pageCount, total, rowsPerPage, onPage }: { cu
     <div className="flex flex-col gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#64748B] shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <span>{(currentPage - 1) * rowsPerPage + 1}-{Math.min(total, currentPage * rowsPerPage)} dari {total} data</span>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => onPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:opacity-50"><ChevronLeft className="size-3.5" />Prev</button>
+        <button type="button" onClick={() => onPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:opacity-50"><ChevronLeft className="size-3.5" />Sebelumnya</button>
         <span className="text-xs">{currentPage} / {pageCount}</span>
-        <button type="button" onClick={() => onPage(Math.min(pageCount, currentPage + 1))} disabled={currentPage >= pageCount} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:opacity-50">Next<ChevronRight className="size-3.5" /></button>
+        <button type="button" onClick={() => onPage(Math.min(pageCount, currentPage + 1))} disabled={currentPage >= pageCount} className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:opacity-50">Berikutnya<ChevronRight className="size-3.5" /></button>
       </div>
     </div>
   );

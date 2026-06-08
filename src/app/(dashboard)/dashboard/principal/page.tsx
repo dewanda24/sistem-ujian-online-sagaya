@@ -56,7 +56,7 @@ export default async function PrincipalDashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Principal Dashboard"
+        title="Beranda Kepala Sekolah"
         description={`Ringkasan performa ujian sekolah. Selamat datang, ${
           user.user_profiles?.full_name ?? user.username
         }.`}
@@ -65,31 +65,31 @@ export default async function PrincipalDashboardPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Link href="/dashboard/reports/exams">
           <DashboardCard
-            title="Completion"
+            title="Penyelesaian"
             value={formatPercent(completionPercent)}
-            description={`${summary.submitted}/${summary.totalParticipants} peserta sudah submit.`}
+            description={`${summary.submitted}/${summary.totalParticipants} peserta sudah selesai.`}
             className="h-full transition hover:border-primary/40 hover:shadow-md"
           />
         </Link>
         <Link href="/dashboard/reports">
           <DashboardCard
-            title="Average Final"
+            title="Rata-rata Nilai"
             value={`${summary.averagePercent.toFixed(2)}%`}
-            description="Rata-rata nilai dari attempt finalized."
+            description="Rata-rata dari nilai final."
             className="h-full transition hover:border-primary/40 hover:shadow-md"
           />
         </Link>
         <Link href="/dashboard/reports?grading_status=needs_manual_grading">
           <DashboardCard
-            title="Pending Grading"
+            title="Perlu Koreksi"
             value={String(summary.pending)}
-            description={`${formatPercent(pendingPercent)} dari total attempt.`}
+            description={`${formatPercent(pendingPercent)} dari total pengerjaan.`}
             className="h-full transition hover:border-primary/40 hover:shadow-md"
           />
         </Link>
         <Link href="/dashboard/reports/exams">
           <DashboardCard
-            title="Absent"
+            title="Tidak Hadir"
             value={String(summary.absent)}
             description={`${formatPercent(absentPercent)} dari peserta terjadwal.`}
             className="h-full transition hover:border-primary/40 hover:shadow-md"
@@ -104,23 +104,23 @@ export default async function PrincipalDashboardPage() {
         >
           <div className="space-y-4">
             <ProgressLine
-              label="Submitted"
+              label="Sudah Selesai"
               value={completionPercent}
               caption={`${summary.submitted}/${summary.totalParticipants} peserta`}
             />
             <ProgressLine
-              label="Finalized"
+              label="Nilai Final"
               value={finalizedPercent}
-              caption={`${summary.finalized}/${summary.totalAttempts} attempt`}
+              caption={`${summary.finalized}/${summary.totalAttempts} pengerjaan`}
             />
             <ProgressLine
-              label="Pending Grading"
+              label="Perlu Koreksi"
               value={pendingPercent}
-              caption={`${summary.pending} attempt perlu koreksi`}
+              caption={`${summary.pending} pengerjaan perlu koreksi`}
               tone="warning"
             />
             <ProgressLine
-              label="Absent"
+              label="Tidak Hadir"
               value={absentPercent}
               caption={`${summary.absent} peserta tidak hadir`}
               tone="danger"
@@ -142,14 +142,14 @@ export default async function PrincipalDashboardPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Ujian Dengan Completion Terendah</h2>
+        <h2 className="text-base font-semibold">Ujian Dengan Penyelesaian Terendah</h2>
         <DataTable
-          columns={["Ujian", "Peserta", "Submitted", "Pending", "Absent", "Rata-rata", "Aksi"]}
+          columns={["Ujian", "Peserta", "Selesai", "Perlu Koreksi", "Tidak Hadir", "Rata-rata", "Aksi"]}
           isEmpty={lowCompletionExams.length === 0}
           empty={
             <EmptyState
               title="Belum ada data ujian"
-              description="Data akan tampil setelah jadwal memiliki peserta atau attempt."
+              description="Data akan tampil setelah jadwal memiliki peserta atau pengerjaan."
             />
           }
         >
@@ -168,7 +168,7 @@ export default async function PrincipalDashboardPage() {
                   href={`/dashboard/reports/students?schedule_id=${row.scheduleId}`}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                 >
-                  Detail
+                  Rincian
                 </Link>
               </td>
             </tr>
@@ -179,7 +179,7 @@ export default async function PrincipalDashboardPage() {
       <section className="grid gap-4 xl:grid-cols-2">
         <DashboardCard
           title="Top Kelas"
-          description="Kelas dengan rata-rata finalized tertinggi."
+          description="Kelas dengan rata-rata nilai final tertinggi."
         >
           <RankingList
             rows={topClasses.map((row) => ({
@@ -188,18 +188,18 @@ export default async function PrincipalDashboardPage() {
               value: `${row.averagePercent.toFixed(1)}%`,
               href: `/dashboard/reports/students?class_id=${row.classId}`,
             }))}
-            empty="Belum ada nilai finalized per kelas."
+            empty="Belum ada nilai final per kelas."
           />
         </DashboardCard>
         <DashboardCard
           title="Kelas Perlu Perhatian"
-          description="Diprioritaskan dari pending, absent, dan peserta belum submit."
+          description="Diprioritaskan dari nilai yang perlu koreksi, tidak hadir, dan peserta belum selesai."
         >
           <RankingList
             rows={needsAttentionClasses.map((row) => ({
               key: row.classId || row.name,
               label: row.name,
-              value: `${row.pending} pending / ${row.absent} absent`,
+              value: `${row.pending} perlu koreksi / ${row.absent} tidak hadir`,
               href: `/dashboard/reports/students?class_id=${row.classId}`,
             }))}
             empty="Belum ada kelas yang perlu perhatian khusus."
@@ -210,12 +210,12 @@ export default async function PrincipalDashboardPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Mapel Dengan Rata-rata Terendah</h2>
         <DataTable
-          columns={["Mapel", "Peserta", "Submitted", "Finalized", "Pending", "Absent", "Rata-rata", "Aksi"]}
+          columns={["Mapel", "Peserta", "Selesai", "Nilai Final", "Perlu Koreksi", "Tidak Hadir", "Rata-rata", "Aksi"]}
           isEmpty={subjectPerformance.length === 0}
           empty={
             <EmptyState
               title="Belum ada data mapel"
-              description="Data mapel akan tampil setelah ada attempt finalized."
+              description="Data mapel akan tampil setelah ada nilai final."
             />
           }
         >
@@ -236,7 +236,7 @@ export default async function PrincipalDashboardPage() {
                   href={`/dashboard/reports/students?subject_id=${row.subjectId}`}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                 >
-                  Detail
+                  Rincian
                 </Link>
               </td>
             </tr>

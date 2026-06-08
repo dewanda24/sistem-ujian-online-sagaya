@@ -1,3 +1,4 @@
+import { UI_LABELS } from "@/constants/ui-labels";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
 export type DashboardIconName =
@@ -59,54 +60,54 @@ const reportRoles: RoleName[] = ["super_admin", "admin", "principal", "teacher"]
 const commonPermissions = ["dashboard.view"];
 
 const superAdminSystemMenu: AccessMenuItem = {
-  label: "System",
+  label: UI_LABELS.navigation.system,
   href: "/dashboard/admin/users",
   icon: "shield-check",
   roles: ["super_admin"],
   children: [
     {
-      label: "Users",
+      label: UI_LABELS.navigation.users,
       href: "/dashboard/admin/users",
       icon: "users",
       roles: ["super_admin"],
       permission: "users.view",
     },
     {
-      label: "Roles",
+      label: UI_LABELS.navigation.roles,
       href: "/dashboard/admin/roles",
       icon: "shield-check",
       roles: ["super_admin"],
       permission: "roles.view",
     },
     {
-      label: "Permissions",
+      label: UI_LABELS.navigation.permissions,
       href: "/dashboard/admin/permissions",
       icon: "lock-keyhole",
       roles: ["super_admin"],
       permission: "roles.manage",
     },
     {
-      label: "Audit Logs",
+      label: UI_LABELS.navigation.auditLogs,
       href: "/dashboard/admin/audit-logs",
       icon: "scroll-text",
       roles: ["super_admin"],
       permission: "audit_logs.view",
     },
     {
-      label: "Readiness",
+      label: UI_LABELS.navigation.readiness,
       href: "/dashboard/super-admin/readiness",
       icon: "shield-check",
       roles: ["super_admin"],
       permission: "users.view",
     },
     {
-      label: "Settings",
+      label: UI_LABELS.navigation.settings,
       href: "/dashboard/super-admin/settings",
       icon: "settings",
       roles: ["super_admin"],
     },
     {
-      label: "Backup",
+      label: UI_LABELS.navigation.backup,
       href: "/dashboard/super-admin/backup-recovery",
       icon: "hard-drive",
       roles: ["super_admin"],
@@ -115,7 +116,7 @@ const superAdminSystemMenu: AccessMenuItem = {
 };
 
 const masterDataMenu: AccessMenuItem = {
-  label: "Master Data",
+  label: UI_LABELS.navigation.masterData,
   href: "/dashboard/master-data",
   icon: "database",
   roles: adminSchoolRoles,
@@ -174,28 +175,28 @@ const examMenu: AccessMenuItem = {
   permission: "exams.view",
   children: [
     {
-      label: "Paket",
+      label: UI_LABELS.navigation.examPackages,
       href: "/dashboard/exams/packages",
       icon: "book-open",
       roles: examManagerRoles,
       permission: "exam_packages.view",
     },
     {
-      label: "Jadwal",
+      label: UI_LABELS.navigation.examSchedules,
       href: "/dashboard/exams/schedules",
       icon: "calendar-days",
       roles: examManagerRoles,
       permission: "exam_schedules.view",
     },
     {
-      label: "Monitoring",
+      label: UI_LABELS.navigation.examMonitoring,
       href: "/dashboard/admin/monitoring",
       icon: "list-checks",
       roles: ["admin"],
       permission: "exam_monitoring.view",
     },
     {
-      label: "Monitoring",
+      label: UI_LABELS.navigation.examMonitoring,
       href: "/dashboard/super-admin/monitoring",
       icon: "list-checks",
       roles: ["super_admin"],
@@ -205,21 +206,21 @@ const examMenu: AccessMenuItem = {
 };
 
 const teacherQuestionBankMenu: AccessMenuItem = {
-  label: "Bank Soal",
+  label: UI_LABELS.navigation.questionBank,
   href: "/dashboard/question-bank",
   icon: "book-open",
   roles: ["teacher"],
   permission: "question_bank.view",
   children: [
     {
-      label: "Semua Soal",
+      label: UI_LABELS.navigation.allQuestions,
       href: "/dashboard/question-bank/questions",
       icon: "book-open",
       roles: ["teacher"],
       permission: "question_bank.view",
     },
     {
-      label: "Tambah Soal",
+      label: UI_LABELS.navigation.addQuestion,
       href: "/dashboard/question-bank/questions/create",
       icon: "file-text",
       roles: ["teacher"],
@@ -229,7 +230,7 @@ const teacherQuestionBankMenu: AccessMenuItem = {
 };
 
 const dashboardItem = (role: RoleName, href: string): AccessMenuItem => ({
-  label: "Dashboard",
+  label: UI_LABELS.navigation.home,
   href,
   icon: "layout-dashboard",
   roles: [role],
@@ -237,7 +238,7 @@ const dashboardItem = (role: RoleName, href: string): AccessMenuItem => ({
 });
 
 const profileItem = (role: RoleName): AccessMenuItem => ({
-  label: "Profil",
+  label: UI_LABELS.navigation.profile,
   href: "/dashboard/profile",
   icon: "users",
   roles: [role],
@@ -279,7 +280,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Laporan",
+        label: UI_LABELS.navigation.reports,
         href: "/dashboard/reports",
         icon: "activity",
         roles: ["super_admin"],
@@ -309,7 +310,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Import Export",
+        label: UI_LABELS.navigation.importExport,
         href: "/dashboard/import-export",
         icon: "download",
         roles: ["super_admin"],
@@ -360,7 +361,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
       {
-        label: "Master Data",
+        label: UI_LABELS.navigation.masterData,
         href: "/dashboard/master-data",
         icon: "database",
         roles: ["admin"],
@@ -455,7 +456,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             permission: "exam_schedules.view",
           },
           {
-            label: "Monitoring",
+            label: UI_LABELS.navigation.examMonitoring,
             href: "/dashboard/admin/monitoring",
             icon: "list-checks",
             roles: ["admin"],
@@ -464,7 +465,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Laporan",
+        label: UI_LABELS.navigation.reports,
         href: "/dashboard/reports",
         icon: "activity",
         roles: ["admin"],
@@ -494,21 +495,21 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Import Export",
+        label: UI_LABELS.navigation.importExport,
         href: "/dashboard/import-export",
         icon: "download",
         roles: ["admin"],
         permission: "import_export.view",
         children: [
           {
-            label: "Import Data",
+            label: UI_LABELS.navigation.importData,
             href: "/dashboard/import-export?mode=import",
             icon: "download",
             roles: ["admin"],
             permission: "import_export.view",
           },
           {
-            label: "Export Data",
+            label: UI_LABELS.navigation.exportData,
             href: "/dashboard/import-export?mode=export",
             icon: "download",
             roles: ["admin"],
@@ -538,7 +539,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("principal", "/dashboard/principal"),
       {
-        label: "Laporan",
+        label: UI_LABELS.navigation.reports,
         href: "/dashboard/reports",
         icon: "activity",
         roles: ["principal"],
@@ -668,7 +669,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("student", "/dashboard/student"),
       {
-        label: "Ujian Aktif",
+        label: UI_LABELS.navigation.activeExams,
         href: "/dashboard/student/active-exams",
         icon: "graduation-cap",
         roles: ["student"],

@@ -11,14 +11,14 @@ export default async function BackupRecoveryPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Backup / Recovery"
-        description="Kontrol kesiapan backup dan prosedur recovery produksi."
+        title="Cadangan & Pemulihan"
+        description="Kontrol kesiapan cadangan data dan prosedur pemulihan produksi."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
           title="Status Backup"
-          description="Ringkasan kesiapan backup manual sebelum automation dibuat."
+          description="Ringkasan kesiapan cadangan manual sebelum otomatisasi dibuat."
         >
           <div className="space-y-3 text-sm">
             <ReadinessRow
@@ -27,13 +27,13 @@ export default async function BackupRecoveryPage() {
               ready={readyEnvCount === envStatus.length}
             />
             <ReadinessRow
-              label="Service role server"
+              label="Kunci layanan server"
               value={
                 envStatus.find(
                   (item) => item.key === "SUPABASE_SERVICE_ROLE_KEY",
                 )?.configured
-                  ? "Ready"
-                  : "Missing"
+                  ? "Siap"
+                  : "Belum Siap"
               }
               ready={Boolean(
                 envStatus.find(
@@ -41,28 +41,28 @@ export default async function BackupRecoveryPage() {
                 )?.configured,
               )}
             />
-            <ReadinessRow label="Backup otomatis" value="Belum aktif" />
+            <ReadinessRow label="Cadangan otomatis" value="Belum aktif" />
           </div>
         </DashboardCard>
 
         <DashboardCard
           title="Jadwal Rekomendasi"
-          description="Baseline SOP sampai automation backup disiapkan."
+          description="SOP dasar sampai cadangan otomatis disiapkan."
         >
           <div className="space-y-3 text-sm">
-            <ReadinessRow label="Sebelum migration" value="Wajib backup" ready />
-            <ReadinessRow label="Sebelum simulasi besar" value="Wajib backup" ready />
-            <ReadinessRow label="Harian production" value="Manual/Supabase" />
+            <ReadinessRow label="Sebelum migrasi" value="Wajib cadangkan" ready />
+            <ReadinessRow label="Sebelum simulasi besar" value="Wajib cadangkan" ready />
+            <ReadinessRow label="Harian produksi" value="Manual/Supabase" />
           </div>
         </DashboardCard>
 
         <DashboardCard
-          title="Recovery Target"
+          title="Target Pemulihan"
           description="Target operasional untuk pemulihan data."
         >
           <div className="space-y-3 text-sm">
             <ReadinessRow label="RPO awal" value="24 jam" />
-            <ReadinessRow label="RTO awal" value="Best effort" />
+            <ReadinessRow label="RTO awal" value="Upaya terbaik" />
             <ReadinessRow label="Runbook" value="Tersedia di halaman ini" ready />
           </div>
         </DashboardCard>
@@ -70,40 +70,40 @@ export default async function BackupRecoveryPage() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <DashboardCard
-          title="Checklist Backup"
-          description="Lakukan ini sebelum migration, demo besar, atau ujian produksi."
+          title="Daftar Cek Cadangan"
+          description="Lakukan ini sebelum migrasi, demo besar, atau ujian produksi."
         >
-          <ChecklistItem done label="Pastikan semua user keluar dari sesi admin mutasi data." />
-          <ChecklistItem done label="Export/backup database dari Supabase dashboard." />
-          <ChecklistItem done label="Catat timestamp backup dan operator." />
-          <ChecklistItem done label="Jalankan migration hanya setelah backup berhasil." />
-          <ChecklistItem label="Simpan file backup di storage internal sekolah." />
-          <ChecklistItem label="Uji restore di project staging secara berkala." />
+          <ChecklistItem done label="Pastikan semua pengguna keluar dari sesi perubahan data." />
+          <ChecklistItem done label="Unduh/cadangkan database dari Supabase dashboard." />
+          <ChecklistItem done label="Catat waktu cadangan dan nama operator." />
+          <ChecklistItem done label="Jalankan migrasi hanya setelah cadangan berhasil." />
+          <ChecklistItem label="Simpan file cadangan di penyimpanan internal sekolah." />
+          <ChecklistItem label="Uji pemulihan di proyek uji coba secara berkala." />
         </DashboardCard>
 
         <DashboardCard
-          title="Runbook Recovery"
-          description="Langkah darurat jika migration/import merusak data."
+          title="Panduan Pemulihan"
+          description="Langkah darurat jika migrasi/import merusak data."
         >
           <ol className="space-y-3 text-sm leading-6 text-muted-foreground">
-            <li>1. Hentikan sementara aktivitas mutasi data dari dashboard.</li>
+            <li>1. Hentikan sementara aktivitas perubahan data dari beranda.</li>
             <li>2. Identifikasi waktu kejadian dan modul yang terdampak.</li>
-            <li>3. Cek Audit Logs untuk action terakhir sebelum insiden.</li>
-            <li>4. Restore backup terakhir ke staging untuk verifikasi.</li>
-            <li>5. Jika data valid, lakukan restore production sesuai SOP Supabase.</li>
-            <li>6. Setelah recovery, jalankan smoke test login, master data, ujian, dan report.</li>
+            <li>3. Cek Catatan Aktivitas untuk aksi terakhir sebelum insiden.</li>
+            <li>4. Pulihkan cadangan terakhir ke proyek uji coba untuk verifikasi.</li>
+            <li>5. Jika data valid, lakukan pemulihan produksi sesuai SOP Supabase.</li>
+            <li>6. Setelah pemulihan, uji login, data sekolah, ujian, dan laporan.</li>
           </ol>
         </DashboardCard>
       </section>
 
       <DashboardCard
         title="Catatan"
-        description="Halaman ini belum menjalankan backup otomatis dari aplikasi."
+        description="Halaman ini belum menjalankan cadangan otomatis dari aplikasi."
       >
         <p className="text-sm leading-6 text-muted-foreground">
-          Backup database tetap dilakukan dari Supabase dashboard atau pipeline
-          operasional yang disetujui. Integrasi automation backup sebaiknya
-          dibuat setelah RLS dan security hardening final agar akses produksi
+          Cadangan database tetap dilakukan dari Supabase dashboard atau alur
+          operasional yang disetujui. Integrasi cadangan otomatis sebaiknya
+          dibuat setelah RLS dan penguatan keamanan final agar akses produksi
           tidak terlalu luas.
         </p>
       </DashboardCard>

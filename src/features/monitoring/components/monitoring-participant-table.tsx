@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   Eye,
   MoreHorizontal,
   RotateCcw,
@@ -10,7 +12,9 @@ import {
   Unlock,
 } from "lucide-react";
 
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { UI_LABELS } from "@/constants/ui-labels";
 import {
   forceSubmitAttemptAction,
   lockAttemptAction,
@@ -89,13 +93,13 @@ function formatDateTime(value?: string | null) {
 }
 
 function statusLabel(status?: string | null, locked?: boolean) {
-  if (locked) return "bermasalah";
-  if (status === "assigned") return "belum mulai";
-  if (status === "in_progress") return "mengerjakan";
-  if (status === "submitted") return "selesai";
-  if (status === "expired" || status === "cancelled") return "keluar";
-  if (status === "absent") return "tidak hadir";
-  return status ?? "belum mulai";
+  if (locked) return "locked";
+  if (status === "assigned") return "assigned";
+  if (status === "in_progress") return "in_progress";
+  if (status === "submitted") return "submitted";
+  if (status === "expired" || status === "cancelled") return status;
+  if (status === "absent") return "absent";
+  return status ?? "assigned";
 }
 
 export function MonitoringParticipantTable({
@@ -105,6 +109,8 @@ export function MonitoringParticipantTable({
   searchQuery = "",
 }: MonitoringParticipantTableProps) {
   const [detail, setDetail] = useState<MonitoringParticipant | null>(null);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const filteredParticipants = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -124,18 +130,22 @@ export function MonitoringParticipantTable({
         .join(" ")
         .toLowerCase()
         .includes(query);
-    });
+      });
   }, [participants, searchQuery]);
+  const pageCount = Math.max(1, Math.ceil(filteredParticipants.length / rowsPerPage));
+  const currentPage = Math.min(page, pageCount);
+  const pagedParticipants = filteredParticipants.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
 
   if (filteredParticipants.length === 0) {
     return (
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
-        <div className="text-center">
-          <div className="font-medium text-[#0F172A]">Tidak ada peserta</div>
-          <p className="mt-1 text-sm text-[#64748B]">
-            Peserta akan tampil setelah jadwal memiliki peserta atau filter cocok.
-          </p>
-        </div>
+        <EmptyState
+          title="Tidak ada peserta"
+          description="Peserta akan tampil setelah jadwal memiliki peserta atau filter cocok."
+        />
       </div>
     );
   }
@@ -155,7 +165,7 @@ export function MonitoringParticipantTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
-            {filteredParticipants.map((participant) => (
+            {pagedParticipants.map((participant) => (
               <ParticipantRow
                 key={participant.id}
                 participant={participant}
@@ -169,7 +179,7 @@ export function MonitoringParticipantTable({
       </div>
 
       <div className="grid gap-2 md:hidden">
-        {filteredParticipants.map((participant) => (
+        {pagedParticipants.map((participant) => (
           <ParticipantCard
             key={participant.id}
             participant={participant}
@@ -180,6 +190,14 @@ export function MonitoringParticipantTable({
         ))}
       </div>
 
+      <TablePagination
+        currentPage={currentPage}
+        pageCount={pageCount}
+        rowsPerPage={rowsPerPage}
+        total={filteredParticipants.length}
+        onPageChange={setPage}
+      />
+
       {detail ? (
         <DetailDrawer
           participant={detail}
@@ -188,6 +206,54 @@ export function MonitoringParticipantTable({
           onClose={() => setDetail(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+function TablePagination({
+  currentPage,
+  pageCount,
+  rowsPerPage,
+  total,
+  onPageChange,
+}: {
+  currentPage: number;
+  pageCount: number;
+  rowsPerPage: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const start = total === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const end = Math.min(total, currentPage * rowsPerPage);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#64748B] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        {start}-{end} dari {total} peserta
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage <= 1}
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronLeft className="size-3.5" />
+          {UI_LABELS.actions.previous}
+        </button>
+        <span className="text-xs">
+          {currentPage} / {pageCount}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
+          disabled={currentPage >= pageCount}
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {UI_LABELS.actions.next}
+          <ChevronRight className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -349,10 +415,10 @@ function ActionForms({
           <MonitoringActionButton
             className="w-full justify-start rounded-lg border-0 px-2"
             disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
-            confirmMessage="Force submit attempt siswa ini? Jawaban yang tersimpan akan dinilai."
+            confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
           >
             <Send className="size-3.5" />
-            Submit Manual
+            Selesaikan Manual
           </MonitoringActionButton>
         </form>
         {attempt.locked_at ? (
@@ -361,10 +427,10 @@ function ActionForms({
             <input type="hidden" name="return_to" value={returnTo} />
             <MonitoringActionButton
               className="w-full justify-start rounded-lg border-0 px-2"
-              confirmMessage="Buka lock attempt siswa ini? Siswa bisa lanjut mengerjakan."
+              confirmMessage="Buka kunci pengerjaan siswa ini? Siswa bisa lanjut mengerjakan."
             >
               <Unlock className="size-3.5" />
-              Unlock
+              Buka Kunci
             </MonitoringActionButton>
           </form>
         ) : (
@@ -374,12 +440,12 @@ function ActionForms({
             <input
               type="hidden"
               name="lock_reason"
-              value="Dikunci dari monitoring ujian."
+              value="Dikunci dari pengawasan ujian."
             />
             <MonitoringActionButton
               className="w-full justify-start rounded-lg border-0 px-2"
               disabled={attempt.status !== "in_progress"}
-              confirmMessage="Kunci attempt siswa ini? Siswa tidak bisa menyimpan jawaban atau submit sampai dibuka."
+              confirmMessage="Kunci pengerjaan siswa ini? Siswa tidak bisa menyimpan jawaban atau menyelesaikan ujian sampai dibuka."
             >
               <ShieldAlert className="size-3.5" />
               Catatan Pengawas
@@ -393,10 +459,10 @@ function ActionForms({
             className="w-full justify-start rounded-lg border-0 px-2"
             variant="danger"
             disabled={attempt.status === "cancelled"}
-            confirmMessage="Reset attempt siswa ini? Attempt lama ditandai cancelled dan siswa bisa mulai ulang."
+            confirmMessage="Reset pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai ulang."
           >
             <RotateCcw className="size-3.5" />
-            Reset Attempt
+            {UI_LABELS.actions.resetAttempt}
           </MonitoringActionButton>
         </form>
       </>
@@ -441,7 +507,7 @@ function DetailDrawer({
     <div className="fixed inset-0 z-50">
       <button
         type="button"
-        aria-label="Tutup detail monitoring"
+        aria-label="Tutup detail pengawasan"
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
@@ -466,7 +532,7 @@ function DetailDrawer({
             <DetailItem label="Status" value={info.status} badge />
             <DetailItem label="Waktu mulai" value={formatDateTime(attempt?.started_at ?? participant.started_at)} />
             <DetailItem label="Waktu selesai" value={formatDateTime(attempt?.submitted_at ?? participant.submitted_at)} />
-            <DetailItem label="Last Save" value={formatDateTime(attempt?.last_saved_at)} />
+            <DetailItem label="Terakhir tersimpan" value={formatDateTime(attempt?.last_saved_at)} />
             <DetailItem label="Progres" value={`${info.answerCount} jawaban tersimpan`} />
           </div>
 
@@ -481,7 +547,7 @@ function DetailDrawer({
             <h3 className="font-semibold text-[#0F172A]">Riwayat Pelanggaran</h3>
             <div className="mt-3 grid gap-2">
               {events.length === 0 ? (
-                <p className="text-sm text-[#64748B]">Tidak ada event.</p>
+                <p className="text-sm text-[#64748B]">Tidak ada kejadian.</p>
               ) : (
                 events.slice(0, 8).map((event) => (
                   <div
@@ -489,7 +555,7 @@ function DetailDrawer({
                     className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm"
                   >
                     <div className="font-medium text-[#0F172A]">
-                      {event.event_type ?? "event"}
+                      {event.event_type ?? "Kejadian"}
                     </div>
                     <div className="text-xs text-[#64748B]">
                       {formatDateTime(event.created_at)}

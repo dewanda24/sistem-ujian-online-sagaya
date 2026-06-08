@@ -280,7 +280,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      parsed.error.issues[0]?.message ?? "Attempt tidak valid.",
+      parsed.error.issues[0]?.message ?? "Pengerjaan ujian tidak valid.",
     );
   }
 

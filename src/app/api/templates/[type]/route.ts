@@ -16,14 +16,14 @@ export async function GET(
   const user = await requireAuth();
 
   if (!hasPermission(user, "import_export.view")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
   const { type } = await params;
   const template = getTemplate(type);
 
   if (!template) {
-    return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    return NextResponse.json({ error: "Template tidak ditemukan" }, { status: 404 });
   }
 
   const csv = templateToCsv(type as TemplateType);

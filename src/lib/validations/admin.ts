@@ -15,7 +15,7 @@ export const adminUserSchema = z
     username: z.string().min(3, "Username minimal 3 karakter"),
     password: z.string().optional().default(""),
     full_name: z.string().min(2, "Nama lengkap wajib diisi"),
-    role_id: z.string().uuid("Role wajib dipilih"),
+    role_id: z.string().uuid("Hak akses wajib dipilih"),
     school_id: optionalUuidField,
     status: z.enum(["active", "inactive"]).default("active"),
   })
@@ -49,8 +49,8 @@ export type AdminUserPasswordResetInput = z.infer<
 >;
 
 export const adminRoleLabelSchema = z.object({
-  id: z.string().uuid("Role tidak valid"),
-  label: z.string().min(2, "Label role wajib diisi"),
+  id: z.string().uuid("Hak akses tidak valid"),
+  label: z.string().min(2, "Label hak akses wajib diisi"),
 });
 
 export type AdminRoleLabelInput = z.infer<typeof adminRoleLabelSchema>;

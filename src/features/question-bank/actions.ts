@@ -257,7 +257,7 @@ async function assertQuestionPublishable(
   if (!question.is_active) {
     redirectTo(QUESTION_PATH, {
       ok: false,
-      message: "Soal nonaktif tidak bisa dipublish.",
+      message: "Soal nonaktif tidak bisa diterbitkan.",
     });
   }
 
@@ -291,7 +291,7 @@ async function assertQuestionPublishable(
       ok: false,
       message:
         parsed.error.issues[0]?.message ??
-        "Soal belum memenuhi syarat untuk dipublish.",
+        "Soal belum memenuhi syarat untuk diterbitkan.",
     });
   }
 }
@@ -347,7 +347,7 @@ function getQuestionPublishIssue(question: PublishableQuestion) {
   return parsed.success
     ? null
     : (parsed.error.issues[0]?.message ??
-        "soal belum memenuhi syarat publish");
+        "soal belum memenuhi syarat untuk diterbitkan");
 }
 
 async function assertStimulusInScope(
@@ -1267,7 +1267,7 @@ export async function publishAllQuestionsAction() {
     if (subjectIds.length === 0) {
       redirectTo(QUESTION_PATH, {
         ok: false,
-        message: "Tidak ada mapel yang dapat dipublish untuk akun ini.",
+      message: "Tidak ada mapel yang dapat diterbitkan untuk akun ini.",
       });
     }
 
@@ -1288,7 +1288,7 @@ export async function publishAllQuestionsAction() {
   if (questions.length === 0) {
     redirectTo(QUESTION_PATH, {
       ok: true,
-      message: "Tidak ada soal draft yang perlu dipublish.",
+      message: "Tidak ada soal belum diterbitkan yang perlu diterbitkan.",
     });
   }
 
@@ -1347,8 +1347,8 @@ export async function publishAllQuestionsAction() {
     ok: publishableIds.length > 0,
     message:
       publishableIds.length > 0
-        ? `Publish massal selesai: ${publishableIds.length} soal berhasil dipublish.${skippedMessage}`
-        : `Tidak ada soal yang bisa dipublish. ${skipped.length} soal draft belum valid atau nonaktif.`,
+        ? `Terbitkan massal selesai: ${publishableIds.length} soal berhasil diterbitkan.${skippedMessage}`
+        : `Tidak ada soal yang bisa diterbitkan. ${skipped.length} soal belum diterbitkan belum valid atau nonaktif.`,
   });
 }
 

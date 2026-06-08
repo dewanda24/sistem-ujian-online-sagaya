@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const examEventSchema = z.object({
-  attempt_id: z.string().uuid("Attempt tidak valid."),
+  attempt_id: z.string().uuid("Pengerjaan ujian tidak valid."),
   event_type: z.enum([
     "tab_blur",
     "tab_focus",

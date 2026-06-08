@@ -100,7 +100,7 @@ export async function finalizeAttemptAction(formData: FormData) {
     redirectToResult(
       formString(formData, "attempt_id"),
       false,
-      parsed.error.issues[0]?.message ?? "Attempt tidak valid.",
+      parsed.error.issues[0]?.message ?? "Pengerjaan ujian tidak valid.",
     );
   }
 

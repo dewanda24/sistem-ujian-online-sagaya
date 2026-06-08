@@ -15,6 +15,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { UI_LABELS } from "@/constants/ui-labels";
 import {
   archiveExamScheduleAction,
   regenerateExamTokenAction,
@@ -87,7 +88,7 @@ export function ExamScheduleTable({
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
         <EmptyState
           title="Belum ada jadwal ujian"
-          description="Buat jadwal dari paket ujian published."
+          description="Buat jadwal dari paket ujian yang sudah diterbitkan."
           actionHref="/dashboard/exams/schedules/create"
           actionLabel="Buat Jadwal"
         />
@@ -152,27 +153,29 @@ export function ExamScheduleTable({
                       <button
                         type="button"
                         onClick={() => setPreviewSchedule(schedule)}
-                        title="Preview"
+                        title={UI_LABELS.actions.preview}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                       >
                         <Eye className="size-3.5" />
-                        <span className="sr-only">Preview</span>
+                        <span className="sr-only">{UI_LABELS.actions.preview}</span>
                       </button>
                       <Link
                         href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
-                        title="Edit"
+                        title={UI_LABELS.actions.update}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                       >
                         <Pencil className="size-3.5" />
-                        <span className="sr-only">Edit</span>
+                        <span className="sr-only">{UI_LABELS.actions.update}</span>
                       </Link>
                       <Link
                         href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
-                        title="Monitoring"
+                        title={UI_LABELS.navigation.examMonitoring}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                       >
                         <ScreenShare className="size-3.5" />
-                        <span className="sr-only">Monitoring</span>
+                        <span className="sr-only">
+                          {UI_LABELS.navigation.examMonitoring}
+                        </span>
                       </Link>
                       <MoreMenu schedule={schedule} />
                     </div>
@@ -203,13 +206,13 @@ export function ExamScheduleTable({
                 onClick={() => setPreviewSchedule(schedule)}
                 className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
               >
-                Preview
+                {UI_LABELS.actions.preview}
               </button>
               <Link
                 href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
                 className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
               >
-                Edit
+                {UI_LABELS.actions.update}
               </Link>
               <MoreMenu schedule={schedule} compact />
             </div>
@@ -257,7 +260,7 @@ function MoreMenu({
           className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Clipboard className="size-3.5" />
-          Copy Token
+          {UI_LABELS.actions.copyToken}
         </button>
         <form action={regenerateExamTokenAction}>
           <input type="hidden" name="id" value={schedule.id} />
@@ -265,7 +268,7 @@ function MoreMenu({
             confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi."
             className="w-full justify-start rounded-lg border-0 px-2"
           >
-            Generate Token
+            {UI_LABELS.actions.generateToken}
           </ConfirmSubmitButton>
         </form>
         <form action={toggleExamScheduleActiveAction}>
@@ -305,7 +308,7 @@ function MoreMenu({
             className="w-full justify-start rounded-lg border-0 px-2"
           >
             <Archive className="size-3.5" />
-            Hapus
+            {UI_LABELS.actions.archive}
           </ConfirmSubmitButton>
         </form>
       </div>

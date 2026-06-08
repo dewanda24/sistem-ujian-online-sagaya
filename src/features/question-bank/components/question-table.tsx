@@ -16,6 +16,7 @@ import {
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { UI_LABELS } from "@/constants/ui-labels";
 import {
   bulkQuestionAction,
   updateQuestionStatusAction,
@@ -54,17 +55,17 @@ type Density = "compact" | "comfortable";
 const bulkActions = [
   {
     value: "publish",
-    label: "Publish",
+    label: UI_LABELS.actions.publish,
     icon: Send,
     message:
-      "Publish semua soal yang dipilih? Soal harus aktif dan memenuhi syarat publish.",
+      "Terbitkan semua soal yang dipilih? Soal harus aktif dan memenuhi syarat.",
     variant: "default" as const,
   },
   {
     value: "unpublish",
-    label: "Unpublish",
+    label: UI_LABELS.actions.unpublish,
     icon: Undo2,
-    message: "Ubah semua soal yang dipilih menjadi draft?",
+    message: "Ubah semua soal yang dipilih menjadi belum diterbitkan?",
     variant: "outline" as const,
   },
   {
@@ -164,7 +165,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     : "text-[#64748B] hover:text-[#0F172A]",
                 )}
               >
-                {item}
+                {item === "compact" ? "Ringkas" : "Nyaman"}
               </button>
             ))}
           </div>
@@ -221,7 +222,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                   type="checkbox"
                   checked={allVisibleSelected}
                   onChange={toggleVisible}
-                  aria-label="Select All"
+                  aria-label="Pilih semua"
                 />
               </th>
               <th className="px-3 py-2 font-medium">Soal</th>
@@ -284,19 +285,19 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     <button
                       type="button"
                       onClick={() => setPreviewQuestion(question)}
-                      title="Preview"
+                      title={UI_LABELS.actions.preview}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Eye className="size-3.5" />
-                      <span className="sr-only">Preview</span>
+                      <span className="sr-only">{UI_LABELS.actions.preview}</span>
                     </button>
                     <Link
                       href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                      title="Edit"
+                      title={UI_LABELS.actions.update}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Pencil className="size-3.5" />
-                      <span className="sr-only">Edit</span>
+                      <span className="sr-only">{UI_LABELS.actions.update}</span>
                     </Link>
                     <MoreMenu question={question} />
                   </div>
@@ -314,7 +315,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
             checked={allVisibleSelected}
             onChange={toggleVisible}
           />
-          Select All
+          Pilih Semua
         </label>
         {pagedQuestions.map((question) => (
           <article
@@ -350,13 +351,13 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     onClick={() => setPreviewQuestion(question)}
                     className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
                   >
-                    Preview
+                    {UI_LABELS.actions.preview}
                   </button>
                   <Link
                     href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
                     className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
                   >
-                    Edit
+                    {UI_LABELS.actions.update}
                   </Link>
                   <MoreMenu question={question} compact />
                 </div>
@@ -413,13 +414,15 @@ function MoreMenu({
           <ConfirmSubmitButton
             confirmMessage={
               question.status === "published"
-                ? "Ubah soal ini menjadi draft?"
-                : "Publish soal ini?"
+                ? "Ubah soal ini menjadi belum diterbitkan?"
+                : "Terbitkan soal ini?"
             }
             variant="outline"
             className="w-full justify-start rounded-lg border-0 px-2"
           >
-            {question.status === "published" ? "Unpublish" : "Publish"}
+            {question.status === "published"
+              ? UI_LABELS.actions.unpublish
+              : UI_LABELS.actions.publish}
           </ConfirmSubmitButton>
         </form>
         <form action={updateQuestionStatusAction}>
@@ -467,7 +470,7 @@ function Pagination({
           className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronLeft className="size-3.5" />
-          Prev
+          {UI_LABELS.actions.previous}
         </button>
         <span className="text-xs">
           {currentPage} / {pageCount}
@@ -478,7 +481,7 @@ function Pagination({
           disabled={currentPage >= pageCount}
           className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Next
+          {UI_LABELS.actions.next}
           <ChevronRight className="size-3.5" />
         </button>
       </div>
@@ -502,7 +505,9 @@ function PreviewModal({
       <div className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0F172A]">Preview Soal</h2>
+            <h2 className="text-lg font-semibold text-[#0F172A]">
+              Pratinjau Soal
+            </h2>
             <div className="mt-1 flex flex-wrap gap-1 text-xs text-[#64748B]">
               <span>{question.subjects?.code ?? "Mapel"}</span>
               <span>-</span>

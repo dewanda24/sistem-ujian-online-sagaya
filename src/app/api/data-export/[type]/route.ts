@@ -49,7 +49,7 @@ const exportConfig: Record<
   "teacher-assignments": {
     permission: "teachers.view",
     filename: "assignment-guru.csv",
-    label: "Assignment Guru",
+    label: "Penugasan Guru",
   },
 };
 
@@ -61,13 +61,13 @@ export async function GET(
   const { type } = await params;
 
   if (!isExportType(type)) {
-    return NextResponse.json({ error: "Export type not found" }, { status: 404 });
+    return NextResponse.json({ error: "Jenis unduhan tidak ditemukan" }, { status: 404 });
   }
 
   const config = exportConfig[type];
 
   if (!hasPermission(user, config.permission)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
   const rows = await buildRows(type);

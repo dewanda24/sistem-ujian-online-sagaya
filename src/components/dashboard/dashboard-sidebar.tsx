@@ -101,7 +101,7 @@ export function DashboardSidebar({
             Sistem Ujian Online
           </p>
           <p className="truncate text-xs text-[#64748B]">
-            Dashboard Sekolah
+            Beranda Sekolah
           </p>
         </Link>
       </div>

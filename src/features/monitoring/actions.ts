@@ -74,11 +74,11 @@ export async function forceSubmitAttemptAction(formData: FormData) {
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol attempt ditolak.");
+    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
   }
 
   const supabase = await createClient();
@@ -91,15 +91,15 @@ export async function forceSubmitAttemptAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
   }
 
   if (attempt.status === "submitted") {
-    redirectBack(formData, false, "Attempt sudah disubmit.");
+    redirectBack(formData, false, "Pengerjaan ujian sudah dikumpulkan.");
   }
 
   if (attempt.status === "cancelled") {
-    redirectBack(formData, false, "Attempt sudah dibatalkan.");
+    redirectBack(formData, false, "Pengerjaan ujian sudah dibatalkan.");
   }
 
   const schedule = Array.isArray(attempt.exam_schedules)
@@ -159,7 +159,7 @@ export async function forceSubmitAttemptAction(formData: FormData) {
   revalidatePath("/dashboard/admin/monitoring");
   revalidatePath("/dashboard/super-admin/monitoring");
   revalidatePath("/dashboard/teacher/monitoring");
-  redirectBack(formData, true, "Attempt berhasil di-force submit.");
+  redirectBack(formData, true, "Pengerjaan ujian berhasil diselesaikan.");
 }
 
 export async function resetAttemptAction(formData: FormData) {
@@ -167,11 +167,11 @@ export async function resetAttemptAction(formData: FormData) {
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol attempt ditolak.");
+    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
   }
 
   const supabase = await createClient();
@@ -182,11 +182,11 @@ export async function resetAttemptAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
   }
 
   if (attempt.status === "cancelled") {
-    redirectBack(formData, false, "Attempt sudah pernah di-reset.");
+    redirectBack(formData, false, "Pengerjaan ujian sudah pernah direset.");
   }
 
   const now = new Date().toISOString();
@@ -228,7 +228,7 @@ export async function resetAttemptAction(formData: FormData) {
   revalidatePath("/dashboard/admin/monitoring");
   revalidatePath("/dashboard/super-admin/monitoring");
   revalidatePath("/dashboard/teacher/monitoring");
-  redirectBack(formData, true, "Attempt berhasil di-reset. Siswa bisa mulai ulang.");
+  redirectBack(formData, true, "Pengerjaan ujian berhasil direset. Siswa bisa mulai ulang.");
 }
 
 export async function lockAttemptAction(formData: FormData) {
@@ -238,11 +238,11 @@ export async function lockAttemptAction(formData: FormData) {
     formString(formData, "lock_reason").trim() || "Dikunci oleh pengawas.";
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol attempt ditolak.");
+    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
   }
 
   const supabase = await createClient();
@@ -253,15 +253,15 @@ export async function lockAttemptAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
   }
 
   if (attempt.status !== "in_progress") {
-    redirectBack(formData, false, "Hanya attempt aktif yang bisa dikunci.");
+    redirectBack(formData, false, "Hanya pengerjaan aktif yang bisa dikunci.");
   }
 
   if (attempt.locked_at) {
-    redirectBack(formData, false, "Attempt sudah terkunci.");
+    redirectBack(formData, false, "Pengerjaan ujian sudah terkunci.");
   }
 
   const now = new Date().toISOString();
@@ -294,7 +294,7 @@ export async function lockAttemptAction(formData: FormData) {
   revalidatePath("/dashboard/admin/monitoring");
   revalidatePath("/dashboard/super-admin/monitoring");
   revalidatePath("/dashboard/teacher/monitoring");
-  redirectBack(formData, true, "Attempt berhasil dikunci.");
+  redirectBack(formData, true, "Pengerjaan ujian berhasil dikunci.");
 }
 
 export async function unlockAttemptAction(formData: FormData) {
@@ -302,11 +302,11 @@ export async function unlockAttemptAction(formData: FormData) {
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol attempt ditolak.");
+    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
   }
 
   const supabase = await createClient();
@@ -317,11 +317,11 @@ export async function unlockAttemptAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
   }
 
   if (!attempt.locked_at) {
-    redirectBack(formData, false, "Attempt tidak sedang terkunci.");
+    redirectBack(formData, false, "Pengerjaan ujian tidak sedang terkunci.");
   }
 
   const now = new Date().toISOString();
@@ -356,7 +356,7 @@ export async function unlockAttemptAction(formData: FormData) {
   revalidatePath("/dashboard/admin/monitoring");
   revalidatePath("/dashboard/super-admin/monitoring");
   revalidatePath("/dashboard/teacher/monitoring");
-  redirectBack(formData, true, "Attempt berhasil dibuka kembali.");
+  redirectBack(formData, true, "Pengerjaan ujian berhasil dibuka kembali.");
 }
 
 export async function markParticipantAbsentAction(formData: FormData) {

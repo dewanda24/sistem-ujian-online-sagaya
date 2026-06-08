@@ -60,7 +60,7 @@ export function ImportResultSummary({
                 errorCount > 0 ? "text-[#DC2626]" : "text-[#16A34A]"
               }`}
             >
-              {errorCount > 0 ? "Gagal" : "Tidak ada error"}
+              {errorCount > 0 ? "Gagal" : "Tidak ada kesalahan"}
             </div>
             <div
               className={`mt-1 text-2xl font-bold ${
@@ -77,7 +77,7 @@ export function ImportResultSummary({
       {totalRows > 0 && (
         <div>
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium">Progress</span>
+            <span className="font-medium">Progres</span>
             <span className="text-xs text-[#64748B]">
               {successPercentage}% selesai
             </span>
@@ -124,7 +124,7 @@ export function ImportResultSummary({
           </div>
           {hiddenErrorsCount > 0 && (
             <p className="mt-2 text-xs text-[#64748B]">
-              ...dan {hiddenErrorsCount} baris error lainnya
+              ...dan {hiddenErrorsCount} baris dengan kesalahan lainnya
             </p>
           )}
         </div>

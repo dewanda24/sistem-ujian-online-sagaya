@@ -114,7 +114,7 @@ export async function previewWordImportAction(
 
   return {
     ok: questions.some((question) => question.errors.length === 0),
-    message: `Preview selesai: ${questions.length} kandidat soal ditemukan.`,
+    message: `Pratinjau selesai: ${questions.length} kandidat soal ditemukan.`,
     questions,
     meta: emptyMeta,
   };

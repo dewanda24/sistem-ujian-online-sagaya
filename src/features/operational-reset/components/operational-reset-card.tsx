@@ -99,8 +99,8 @@ export function OperationalResetCard() {
             <h2 className="text-base font-semibold">Reset Data Operasional</h2>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">
-            Pilih kategori data yang ingin dikosongkan. Akun Super Admin, role,
-            permission, konfigurasi, dan template tetap dipertahankan.
+            Pilih kategori data yang ingin dikosongkan. Akun Super Admin, hak
+            akses, izin akses, konfigurasi, dan template tetap dipertahankan.
           </p>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -192,14 +192,14 @@ export function OperationalResetCard() {
 
       {summary ? (
         <div className="mt-5 rounded-md border bg-muted/30 p-4">
-          <p className="text-sm font-medium">Summary reset terakhir</p>
+          <p className="text-sm font-medium">Ringkasan reset terakhir</p>
           <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
             <SummaryItem
               label="Akun aplikasi"
               value={String(summary.operationalUsersDeleted)}
             />
             <SummaryItem
-              label="Akun auth"
+              label="Akun login"
               value={String(summary.authUsersDeleted)}
             />
             <SummaryItem
@@ -223,7 +223,7 @@ export function OperationalResetCard() {
         title="Reset Data Terpilih"
         description={`Aksi ini akan menghapus kategori: ${selectedDefinitions
           .map((scope) => scope.label)
-          .join(", ")}. Jika Master sekolah & akademik atau Bank Soal dipilih, data yang bergantung seperti ujian/assignment ikut dibersihkan agar relasi database tetap aman. Akun Super Admin, Role, Permission, konfigurasi sistem, dan template tetap aman.`}
+          .join(", ")}. Jika data sekolah & akademik atau Bank Soal dipilih, data yang bergantung seperti ujian dan penugasan ikut dibersihkan agar relasi data tetap aman. Akun Super Admin, hak akses, izin akses, konfigurasi sistem, dan template tetap aman.`}
         confirmationText={OPERATIONAL_RESET_CONFIRMATION}
         confirmationHint={`Ketik "${OPERATIONAL_RESET_CONFIRMATION}" untuk menjalankan reset`}
         confirmLabel="Reset Data Terpilih"

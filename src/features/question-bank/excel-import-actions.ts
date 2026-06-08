@@ -64,7 +64,7 @@ export async function previewExcelImportAction(
 
   return {
     ok: validCount > 0,
-    message: `Preview selesai: ${rows.length} baris, ${validCount} valid.`,
+    message: `Pratinjau selesai: ${rows.length} baris, ${validCount} valid.`,
     rows,
   };
 }

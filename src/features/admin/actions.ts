@@ -145,7 +145,7 @@ export async function saveAdminUserAction(formData: FormData) {
     redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
       ok: false,
       message:
-        "Role guru dan siswa dikelola dari Master Data. Pilih role operasional.",
+        "Guru dan siswa dikelola dari Data Sekolah. Pilih peran operasional.",
     });
   }
 
@@ -162,7 +162,7 @@ export async function saveAdminUserAction(formData: FormData) {
       redirectTo(redirectPath, {
         ok: false,
         message:
-          "SUPABASE_SERVICE_ROLE_KEY belum tersedia. User auth tidak dapat dibuat.",
+          "Kunci layanan Supabase belum tersedia. Akun login tidak dapat dibuat.",
       });
     }
 
@@ -401,7 +401,7 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     redirectTo(redirectPath, {
       ok: false,
       message:
-        "SUPABASE_SERVICE_ROLE_KEY belum tersedia. Password auth tidak dapat diubah.",
+        "Kunci layanan Supabase belum tersedia. Password login tidak dapat diubah.",
     });
   }
 
@@ -446,14 +446,14 @@ export async function updateRolePermissionAction(formData: FormData) {
   if (!roleName || !permissionCode) {
     redirectTo("/dashboard/admin/permissions", {
       ok: false,
-      message: "Role atau permission tidak ditemukan.",
+      message: "Hak akses atau izin akses tidak ditemukan.",
     });
   }
 
   if (roleName === "super_admin") {
     redirectTo("/dashboard/admin/permissions", {
       ok: false,
-      message: "Permission super admin tidak dapat diubah dari matrix.",
+      message: "Izin akses Super Admin tidak dapat diubah dari tabel ini.",
     });
   }
 
@@ -497,7 +497,7 @@ export async function updateRolePermissionAction(formData: FormData) {
   revalidatePath("/dashboard/admin/permissions");
   redirectTo("/dashboard/admin/permissions", {
     ok: !error,
-    message: error ? error.message : "Matrix permission berhasil diperbarui.",
+    message: error ? error.message : "Izin akses berhasil diperbarui.",
   });
 }
 
@@ -512,7 +512,7 @@ export async function updateRoleLabelAction(formData: FormData) {
   if (!parsed.success) {
     redirectTo("/dashboard/admin/roles", {
       ok: false,
-      message: parsed.error.issues[0]?.message ?? "Label role tidak valid.",
+      message: parsed.error.issues[0]?.message ?? "Label hak akses tidak valid.",
     });
   }
 
@@ -552,6 +552,6 @@ export async function updateRoleLabelAction(formData: FormData) {
   revalidatePath("/dashboard/admin/roles");
   redirectTo("/dashboard/admin/roles", {
     ok: !error,
-    message: error ? error.message : "Label role berhasil diperbarui.",
+    message: error ? error.message : "Label hak akses berhasil diperbarui.",
   });
 }

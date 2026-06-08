@@ -39,14 +39,14 @@ export function DashboardTopbar({ user, onOpenSidebar }: DashboardTopbarProps) {
           <button
             type="button"
             className="hidden size-9 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] sm:inline-flex"
-            aria-label="Search"
+            aria-label="Cari"
           >
             <Search className="size-4" />
           </button>
           <button
             type="button"
             className="hidden size-9 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] sm:inline-flex"
-            aria-label="Notifications"
+            aria-label="Notifikasi"
           >
             <Bell className="size-4" />
           </button>

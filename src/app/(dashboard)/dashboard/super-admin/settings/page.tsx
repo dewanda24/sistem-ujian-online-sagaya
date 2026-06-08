@@ -18,8 +18,8 @@ export default async function SystemSettingsPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Settings Sistem"
-        description="Konfigurasi runtime dan readiness production. Nilai rahasia tidak ditampilkan."
+        title="Pengaturan Sistem"
+        description="Konfigurasi runtime dan kesiapan produksi. Nilai rahasia tidak ditampilkan."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -29,7 +29,7 @@ export default async function SystemSettingsPage() {
         >
           <div className="space-y-3 text-sm">
             <SettingRow label="Nama aplikasi" value={appName} />
-            <SettingRow label="Environment" value={appEnvironment} />
+            <SettingRow label="Lingkungan" value={appEnvironment} />
             <SettingRow
               label="Maintenance"
               value={maintenanceMode ? "Aktif" : "Nonaktif"}
@@ -39,15 +39,15 @@ export default async function SystemSettingsPage() {
         </DashboardCard>
 
         <DashboardCard
-          title="Environment"
-          description="Status variable wajib untuk Supabase SSR dan admin auth."
+          title="Lingkungan Sistem"
+          description="Status variabel wajib untuk Supabase dan akun admin."
         >
           <div className="space-y-2 text-sm">
             {envStatus.map((item) => (
               <SettingRow
                 key={item.key}
                 label={item.key}
-                value={item.configured ? "Ready" : "Missing"}
+                value={item.configured ? "Siap" : "Belum Siap"}
                 tone={item.configured ? "success" : "danger"}
               />
             ))}
@@ -55,17 +55,17 @@ export default async function SystemSettingsPage() {
         </DashboardCard>
 
         <DashboardCard
-          title="Readiness"
+          title="Kesiapan"
           description="Ringkasan kesiapan konfigurasi server."
         >
           <div className="space-y-3 text-sm">
             <SettingRow
-              label="Required env"
+              label="Variabel wajib"
               value={`${configuredCount}/${envStatus.length}`}
               tone={configuredCount === envStatus.length ? "success" : "danger"}
             />
             <SettingRow
-              label="Auth admin API"
+              label="API akun admin"
               value={
                 envStatus.find(
                   (item) => item.key === "SUPABASE_SERVICE_ROLE_KEY",
@@ -81,36 +81,36 @@ export default async function SystemSettingsPage() {
                   : "danger"
               }
             />
-            <SettingRow label="RLS" value="Belum sprint hardening" />
+            <SettingRow label="RLS" value="Belum tahap penguatan" />
           </div>
         </DashboardCard>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <DashboardCard
-          title="Security Checklist"
-          description="Checklist operasional sebelum deployment production."
+          title="Daftar Cek Keamanan"
+          description="Daftar cek operasional sebelum rilis produksi."
         >
-          <ChecklistItem done label="Auth/RBAC middleware aktif" />
-          <ChecklistItem done label="Audit logs foundation tersedia" />
-          <ChecklistItem done label="Service role hanya server-side" />
-          <ChecklistItem done={configuredCount === envStatus.length} label="Environment wajib lengkap" />
-          <ChecklistItem label="RLS production hardening belum dieksekusi" />
+          <ChecklistItem done label="Login dan hak akses aktif" />
+          <ChecklistItem done label="Catatan aktivitas tersedia" />
+          <ChecklistItem done label="Kunci layanan hanya dipakai di server" />
+          <ChecklistItem done={configuredCount === envStatus.length} label="Variabel wajib lengkap" />
+          <ChecklistItem label="Penguatan RLS produksi belum dieksekusi" />
           <ChecklistItem label="Backup otomatis belum diaktifkan" />
         </DashboardCard>
 
         <DashboardCard
           title="Catatan Konfigurasi"
-          description="Settings saat ini sengaja read-only agar tidak membutuhkan schema baru."
+          description="Pengaturan saat ini sengaja hanya-baca agar tidak membutuhkan struktur database baru."
         >
           <div className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Untuk mengubah nama aplikasi, environment, atau maintenance flag,
-              gunakan environment variable di Vercel/server.
+              Untuk mengubah nama aplikasi, lingkungan, atau mode perawatan,
+              gunakan variabel lingkungan di Vercel/server.
             </p>
             <p>
-              Persistent settings seperti logo sekolah, aturan anti-cheat global,
-              dan kebijakan ujian sebaiknya memakai tabel settings khusus pada
+              Pengaturan permanen seperti logo sekolah, aturan keamanan ujian global,
+              dan kebijakan ujian sebaiknya memakai tabel pengaturan khusus pada
               sprint terpisah.
             </p>
           </div>
@@ -120,7 +120,7 @@ export default async function SystemSettingsPage() {
       <section className="space-y-3">
         <div>
           <h2 className="text-base font-semibold text-destructive">
-            Danger Zone
+            Area Berisiko
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Operasi berisiko tinggi untuk maintenance data sistem.

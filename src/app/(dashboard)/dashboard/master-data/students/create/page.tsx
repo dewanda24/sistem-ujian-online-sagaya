@@ -11,7 +11,7 @@ export default async function CreateStudentPage() {
     <div className="mx-auto max-w-4xl space-y-5">
       <DashboardPageHeader
         title="Tambah Siswa"
-        description="Isi data dasar siswa dan simpan. Assignment kelas dapat dilakukan setelah siswa dibuat."
+        description="Isi data dasar siswa dan simpan. Penempatan kelas dapat dilakukan setelah siswa dibuat."
       />
       <StudentForm classes={classes} />
     </div>

@@ -59,7 +59,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       href: "/dashboard/master-data/admins",
     },
     {
-      title: "User Operasional Tanpa Scope",
+      title: "Pengguna Operasional Tanpa Sekolah",
       status: operationalUsersWithoutSchool === 0 ? "ready" : "warning",
       value: String(operationalUsersWithoutSchool),
       description:
@@ -67,46 +67,46 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       href: "/dashboard/admin/users",
     },
     {
-      title: "Supabase Service Role",
+      title: "Kunci Layanan Supabase",
       status: serviceRoleAvailable ? "ready" : "warning",
-      value: serviceRoleAvailable ? "Ready" : "Missing",
+      value: serviceRoleAvailable ? "Siap" : "Belum Siap",
       description:
-        "Dibutuhkan untuk membuat auth user dan reset password dari dashboard.",
+        "Dibutuhkan untuk membuat akun login dan reset password dari beranda.",
     },
     {
       title: "Audit Logs Table",
       status: auditLogsAvailable ? "ready" : "missing",
-      value: auditLogsAvailable ? "Ready" : "Missing",
+      value: auditLogsAvailable ? "Siap" : "Belum Siap",
       description: "Wajib untuk jejak audit action sensitif.",
       href: "/dashboard/admin/audit-logs",
     },
     {
       title: "Attempt Lock Fields",
       status: lockFieldsAvailable ? "ready" : "missing",
-      value: lockFieldsAvailable ? "Ready" : "Missing",
+      value: lockFieldsAvailable ? "Siap" : "Belum Siap",
       description:
         "Wajib untuk fitur lock/unlock attempt dari monitoring pengawas.",
       href: "/dashboard/proctor/monitoring",
     },
     {
-      title: "User Tanpa Auth",
+      title: "Pengguna Tanpa Akun Login",
       status: usersWithoutAuth === 0 ? "ready" : "warning",
       value: String(usersWithoutAuth),
-      description: "User internal tanpa mapping Supabase Auth tidak bisa login.",
+      description: "Pengguna internal tanpa akun login Supabase tidak bisa masuk.",
       href: "/dashboard/admin/users",
     },
     {
-      title: "User Tanpa Role",
+      title: "Pengguna Tanpa Hak Akses",
       status: usersWithoutRole === 0 ? "ready" : "missing",
       value: String(usersWithoutRole),
-      description: "User tanpa role akan gagal redirect/akses dashboard.",
+      description: "Pengguna tanpa hak akses tidak bisa masuk ke beranda.",
       href: "/dashboard/admin/users",
     },
     {
-      title: "Inactive Users",
+      title: "Pengguna Tidak Aktif",
       status: inactiveUsers === 0 ? "ready" : "warning",
       value: String(inactiveUsers),
-      description: "Pastikan user inactive memang disengaja.",
+      description: "Pastikan pengguna tidak aktif memang disengaja.",
       href: "/dashboard/admin/users?user_status=inactive",
     },
     {

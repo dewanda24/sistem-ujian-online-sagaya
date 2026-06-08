@@ -1,3 +1,5 @@
+import { getStatusLabel } from "@/constants/ui-labels";
+
 interface QuestionStatusBadgeProps {
   status: string;
 }
@@ -15,7 +17,7 @@ export function QuestionStatusBadge({ status }: QuestionStatusBadgeProps) {
         styles[status as keyof typeof styles] ?? styles.draft
       }`}
     >
-      {status}
+      {getStatusLabel(status)}
     </span>
   );
 }

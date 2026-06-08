@@ -15,6 +15,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { UI_LABELS, getStatusLabel } from "@/constants/ui-labels";
 import {
   archiveExamPackageAction,
   toggleExamPackageActiveAction,
@@ -88,9 +89,9 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
         <EmptyState
           title="Belum ada paket ujian"
-          description="Buat paket ujian dari soal published terlebih dahulu."
+          description="Buat paket ujian dari soal yang sudah diterbitkan terlebih dahulu."
           actionHref="/dashboard/exams/packages/create"
-          actionLabel="Buat Paket"
+          actionLabel="Buat Paket Ujian"
         />
       </div>
     );
@@ -143,19 +144,19 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
                     <button
                       type="button"
                       onClick={() => setPreviewPackage(examPackage)}
-                      title="Preview"
+                      title={UI_LABELS.actions.preview}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Eye className="size-3.5" />
-                      <span className="sr-only">Preview</span>
+                      <span className="sr-only">{UI_LABELS.actions.preview}</span>
                     </button>
                     <Link
                       href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-                      title="Edit"
+                      title={UI_LABELS.actions.update}
                       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                     >
                       <Pencil className="size-3.5" />
-                      <span className="sr-only">Edit</span>
+                      <span className="sr-only">{UI_LABELS.actions.update}</span>
                     </Link>
                     <Link
                       href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
@@ -196,13 +197,13 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
                 onClick={() => setPreviewPackage(examPackage)}
                 className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
               >
-                Preview
+                {UI_LABELS.actions.preview}
               </button>
               <Link
                 href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
                 className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
               >
-                Edit
+                {UI_LABELS.actions.update}
               </Link>
               <MoreMenu examPackage={examPackage} compact />
             </div>
@@ -224,7 +225,7 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
             className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ChevronLeft className="size-3.5" />
-            Prev
+            {UI_LABELS.actions.previous}
           </button>
           <span className="text-xs">
             {currentPage} / {pageCount}
@@ -235,7 +236,7 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
             disabled={currentPage >= pageCount}
             className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Next
+            {UI_LABELS.actions.next}
             <ChevronRight className="size-3.5" />
           </button>
         </div>
@@ -273,10 +274,10 @@ function MoreMenu({
             <input type="hidden" name="id" value={examPackage.id} />
             <input type="hidden" name="status" value={status} />
             <ConfirmSubmitButton
-              confirmMessage={`Ubah status paket menjadi ${status}?`}
+              confirmMessage={`Ubah status paket menjadi ${getStatusLabel(status)}?`}
               className="w-full justify-start rounded-lg border-0 px-2"
             >
-              {status}
+              {getStatusLabel(status)}
             </ConfirmSubmitButton>
           </form>
         ))}

@@ -1,3 +1,4 @@
+import { getStatusLabel } from "@/constants/ui-labels";
 import { cn } from "@/lib/utils";
 
 interface StatusPillProps {
@@ -6,6 +7,7 @@ interface StatusPillProps {
 
 const toneByValue: Record<string, string> = {
   active: "bg-emerald-50 text-[#16A34A] ring-[#22C55E]/25",
+  inactive: "bg-[#F8FAFC] text-[#64748B] ring-[#E2E8F0]",
   submitted: "bg-emerald-50 text-[#16A34A] ring-[#22C55E]/25",
   finalized: "bg-emerald-50 text-[#16A34A] ring-[#22C55E]/25",
   published: "bg-emerald-50 text-[#16A34A] ring-[#22C55E]/25",
@@ -20,6 +22,7 @@ const toneByValue: Record<string, string> = {
   needs_manual_grading: "bg-amber-50 text-[#D97706] ring-[#F59E0B]/25",
   expired: "bg-amber-50 text-[#D97706] ring-[#F59E0B]/25",
   archived: "bg-[#F8FAFC] text-[#64748B] ring-[#E2E8F0]",
+  absent: "bg-red-50 text-[#DC2626] ring-[#EF4444]/25",
   cancelled: "bg-red-50 text-[#DC2626] ring-[#EF4444]/25",
   dibatalkan: "bg-red-50 text-[#DC2626] ring-[#EF4444]/25",
   finished: "bg-[#F8FAFC] text-[#64748B] ring-[#E2E8F0]",
@@ -30,11 +33,11 @@ export function StatusPill({ value }: StatusPillProps) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-md px-2 py-1 text-xs font-medium capitalize ring-1",
+        "inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1",
         toneByValue[value] ?? "bg-[#F8FAFC] text-[#64748B] ring-[#E2E8F0]",
       )}
     >
-      {value.replaceAll("_", " ")}
+      {getStatusLabel(value)}
     </span>
   );
 }

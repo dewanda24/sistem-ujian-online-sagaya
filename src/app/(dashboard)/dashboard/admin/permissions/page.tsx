@@ -47,30 +47,30 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Permissions"
-        description="Review permission code, module, action, dan mapping role permission."
+        title="Izin Akses"
+        description="Tinjau kode izin, modul, aksi, dan pengaturan hak akses tiap peran."
       />
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
-          title="Permissions"
+          title="Izin Akses"
           value={String(permissions.length)}
-          description="Total permission code tersedia."
+          description="Total kode izin yang tersedia."
         />
         <DashboardCard
-          title="Modules"
+          title="Modul"
           value={String(modules.length)}
-          description="Kelompok modul RBAC."
+          description="Kelompok fitur dalam sistem."
         />
         <DashboardCard
-          title="Roles"
+          title="Peran"
           value={String(roles.length)}
-          description="Role yang tampil di matrix."
+          description="Peran yang tampil di tabel."
         />
         <DashboardCard
-          title="Assignments"
+          title="Penugasan Izin"
           value={String(assignmentCount)}
-          description="Mapping role-permission tersimpan."
+          description="Pengaturan izin yang sudah tersimpan."
         />
       </section>
 
@@ -78,7 +78,7 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
         <input
           name="q"
           defaultValue={params.q ?? ""}
-          placeholder="Cari permission, module, action"
+          placeholder="Cari izin, modul, atau aksi"
           className="rounded-md border px-3 py-2 text-sm"
         />
         <select
@@ -86,7 +86,7 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
           defaultValue={params.module ?? ""}
           className="rounded-md border px-3 py-2 text-sm"
         >
-          <option value="">Semua module</option>
+          <option value="">Semua modul</option>
           {modules.map((module) => (
             <option key={module} value={module}>
               {module}
@@ -99,12 +99,12 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
       </form>
 
       <DataTable
-        columns={["Permission", "Module", "Action", ...roles.map((role) => role.label)]}
+        columns={["Izin", "Modul", "Aksi", ...roles.map((role) => role.label)]}
         isEmpty={filteredPermissions.length === 0}
         empty={
           <EmptyState
-            title="Permission belum tersedia"
-            description="Permission belum tersedia atau tidak cocok dengan filter."
+            title="Izin akses belum tersedia"
+            description="Izin akses belum tersedia atau tidak cocok dengan filter."
           />
         }
       >
@@ -120,7 +120,7 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
                 <td key={role.id} className="px-4 py-3">
                   {role.name === "super_admin" ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-                      Full
+                      Penuh
                     </span>
                   ) : (
                     <form action={updateRolePermissionAction}>
@@ -136,15 +136,15 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
                         value={enabled ? "false" : "true"}
                       />
                       <ConfirmSubmitButton
-                        confirmMessage={`${enabled ? "Cabut" : "Berikan"} permission ${permission.code} untuk role ${role.label}?`}
-                        confirmTitle="Konfirmasi Permission"
+                        confirmMessage={`${enabled ? "Cabut" : "Berikan"} izin ${permission.code} untuk peran ${role.label}?`}
+                        confirmTitle="Konfirmasi Izin Akses"
                         className={
                           enabled
                             ? "rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700"
                             : "rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
                         }
                       >
-                        {enabled ? "On" : "Off"}
+                        {enabled ? "Aktif" : "Nonaktif"}
                       </ConfirmSubmitButton>
                     </form>
                   )}

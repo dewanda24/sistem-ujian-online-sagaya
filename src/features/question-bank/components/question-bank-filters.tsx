@@ -70,7 +70,7 @@ export function QuestionBankFilters({
           >
             <option value="">Semua status</option>
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="published">Sudah Diterbitkan</option>
             <option value="archived">Archived</option>
           </select>
         </>

@@ -22,7 +22,7 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   students: {
     filename: "template-siswa.csv",
     title: "Template Siswa",
-    description: "Kolom dasar untuk staging data siswa sebelum input/import.",
+    description: "Kolom dasar untuk menyiapkan data siswa sebelum diimport.",
     columns: [
       { key: "full_name", example: "Budi Santoso" },
       { key: "email", example: "budi.santoso@siswa.test" },
@@ -38,7 +38,7 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   teachers: {
     filename: "template-guru.csv",
     title: "Template Guru",
-    description: "Kolom dasar untuk staging data guru dan akun auth.",
+    description: "Kolom dasar untuk menyiapkan data guru dan akun login.",
     columns: [
       { key: "full_name", example: "Ibu Rina" },
       { key: "email", example: "rina.guru@sagaya.test" },
@@ -52,7 +52,7 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   questions: {
     filename: "template-bank-soal.csv",
     title: "Template Bank Soal",
-    description: "Kolom staging soal pilihan ganda dan esai.",
+    description: "Kolom untuk menyiapkan soal pilihan ganda dan esai.",
     columns: [
       { key: "subject_code", example: "MTK" },
       { key: "category", example: "Bilangan Bulat" },
@@ -72,7 +72,7 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   classes: {
     filename: "template-kelas.csv",
     title: "Template Kelas",
-    description: "Kolom staging kelas untuk tahun ajaran aktif.",
+    description: "Kolom untuk menyiapkan kelas pada tahun ajaran aktif.",
     columns: [
       { key: "class_name", example: "VII A" },
       { key: "grade", example: "7" },
@@ -82,8 +82,8 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   },
   "student-class-assignments": {
     filename: "template-assignment-siswa-kelas.csv",
-    title: "Template Assignment Siswa Kelas",
-    description: "Kolom staging assignment siswa ke kelas melalui class_members.",
+    title: "Template Penugasan Siswa Kelas",
+    description: "Kolom untuk menempatkan siswa ke kelas.",
     columns: [
       { key: "student_email", example: "budi.santoso@siswa.test" },
       { key: "class_name", example: "VII A" },
@@ -93,8 +93,8 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
   },
   "teacher-subject-assignments": {
     filename: "template-assignment-guru-mapel-kelas.csv",
-    title: "Template Assignment Guru Mapel Kelas",
-    description: "Kolom staging assignment guru ke mapel, kelas, dan tahun ajaran.",
+    title: "Template Penugasan Guru Mapel Kelas",
+    description: "Kolom untuk menugaskan guru ke mapel, kelas, dan tahun ajaran.",
     columns: [
       { key: "teacher_email", example: "rina.guru@sagaya.test" },
       { key: "subject_code", example: "MTK" },

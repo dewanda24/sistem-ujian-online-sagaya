@@ -145,10 +145,10 @@ export function WordImportForm({
 
       <section className="rounded-lg border bg-card p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold">Upload File</h2>
+          <h2 className="text-base font-semibold">Unggah File</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Gunakan template resmi agar hasil parsing rapi. Hasil import selalu
-            disimpan sebagai draft.
+            Gunakan template resmi agar hasil pembacaan rapi. Hasil import selalu
+            disimpan sebagai belum diterbitkan.
           </p>
         </div>
         <form action={previewAction} className="grid gap-4 md:grid-cols-2">
@@ -189,16 +189,16 @@ export function WordImportForm({
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            <span className="font-medium">Difficulty default</span>
+            <span className="font-medium">Tingkat Kesulitan Default</span>
             <select
               name="difficulty"
               value={difficulty}
               onChange={(event) => setDifficulty(event.target.value)}
               className="rounded-md border px-3 py-2 text-sm"
             >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              <option value="easy">Mudah</option>
+              <option value="medium">Sedang</option>
+              <option value="hard">Sulit</option>
             </select>
           </label>
           <label className="grid gap-1 text-sm">
@@ -217,14 +217,14 @@ export function WordImportForm({
                 href="/api/templates/questions-word"
                 className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
               >
-                Download Template Word
+                Unduh Template Word
               </Link>
             )}
             <button
               disabled={isPreviewPending}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPreviewPending ? "Memproses..." : "Preview Import"}
+              {isPreviewPending ? "Memproses..." : "Pratinjau Import"}
             </button>
           </div>
         </form>
@@ -245,9 +245,9 @@ export function WordImportForm({
         <section className="rounded-lg border bg-card p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="text-base font-semibold">Preview Hasil Parsing</h2>
+              <h2 className="text-base font-semibold">Pratinjau Hasil Pembacaan</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-              Edit hasil parsing sebelum disimpan. Hanya soal valid yang akan
+              Ubah hasil pembacaan sebelum disimpan. Hanya soal valid yang akan
               dikirim ke proses simpan.
               </p>
             </div>
@@ -259,7 +259,7 @@ export function WordImportForm({
           <div className="mb-4 flex flex-wrap gap-2">
             <DownloadJsonButton
               filename="bank-soal-word-error-log.json"
-              label="Download Error Log"
+              label="Download Kesalahan Log"
               payload={validatedQuestions
                 .filter((question) => question.errors.length > 0)
                 .map((question, index) => ({
@@ -270,7 +270,7 @@ export function WordImportForm({
             />
             <DownloadJsonButton
               filename="bank-soal-word-preview-result.json"
-              label="Download Result"
+              label="Unduh Hasil"
               payload={{
                 total_rows: validatedQuestions.length,
                 valid_rows: validCount,
@@ -296,9 +296,9 @@ export function WordImportForm({
                       }
                     >
                       {question.errors.length
-                        ? "Error"
+                        ? "Kesalahan"
                         : question.warnings.length
-                          ? "Warning"
+                          ? "Peringatan"
                           : "Valid"}
                     </span>
                   </div>

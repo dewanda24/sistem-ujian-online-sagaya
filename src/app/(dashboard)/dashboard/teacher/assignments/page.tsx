@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { DataTable } from "@/components/master-data/data-table";
 import {
   firstRelation,
   getTeacherAssignmentOverview,
@@ -18,13 +19,10 @@ type ClassRelation = {
   id?: string | null;
   name?: string | null;
   grade_level?: number | string | null;
-  is_active?: boolean | null;
 };
 
 type AcademicYearRelation = {
-  id?: string | null;
   name?: string | null;
-  is_active?: boolean | null;
 };
 
 type TeachingGroup = {
@@ -112,90 +110,90 @@ export default async function TeacherAssignmentsPage() {
         <SummaryCard label="Tahun Ajaran" value={academicYearCount} />
       </div>
 
-      {teachingGroups.length === 0 ? (
-        <EmptyState
-          title="Belum ada kelas mengajar"
-          description="Hubungi admin sekolah jika mapel atau kelas belum muncul."
-        />
-      ) : (
-        <section className="grid gap-4 lg:grid-cols-2">
-          {teachingGroups.map((group) => {
-            const classes = Array.from(group.classes.values());
-            const subjectHref = buildQueryHref("/dashboard/question-bank/questions", {
-              subject_id: group.subject.id,
-            });
-            const packageHref = buildQueryHref("/dashboard/exams/packages", {
-              subject_id: group.subject.id,
-            });
+      <DataTable
+        columns={["Mapel", "Kelas", "Tahun Ajaran", "Aksi"]}
+        isEmpty={teachingGroups.length === 0}
+        empty={
+          <EmptyState
+            title="Belum ada kelas mengajar"
+            description="Hubungi admin sekolah jika mapel atau kelas belum muncul."
+          />
+        }
+        searchPlaceholder="Cari mapel atau kelas..."
+        enableColumnVisibility={false}
+      >
+        {teachingGroups.map((group) => {
+          const classes = Array.from(group.classes.values());
+          const subjectHref = buildQueryHref("/dashboard/question-bank/questions", {
+            subject_id: group.subject.id,
+          });
+          const packageHref = buildQueryHref("/dashboard/exams/packages", {
+            subject_id: group.subject.id,
+          });
 
-            return (
-              <article
-                key={group.subject.id ?? group.subject.name}
-                className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#2563EB]">Mapel</p>
-                    <h2 className="mt-1 text-xl font-semibold text-[#0F172A]">
-                      {group.subject.name}
-                    </h2>
-                    <p className="mt-1 text-sm text-[#64748B]">
-                      {group.subject.code ?? "Kode mapel belum tersedia"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-[#F8FAFC] px-3 py-2 text-sm text-[#64748B]">
-                    {Array.from(group.academicYears).join(", ") || "Tahun ajaran aktif"}
-                  </div>
+          return (
+            <tr key={group.subject.id ?? group.subject.name}>
+              <td className="px-4 py-3">
+                <div className="font-semibold text-[#0F172A]">
+                  {group.subject.name}
                 </div>
-
-                <div className="mt-5">
-                  <p className="text-sm font-semibold text-[#0F172A]">Kelas</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {classes.length > 0 ? (
-                      classes.map((classItem) => (
-                        <span
-                          key={classItem.id}
-                          className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm font-medium text-[#0F172A]"
-                        >
-                          {classItem.name ?? "Kelas"}{" "}
+                <div className="mt-1 text-xs text-[#64748B]">
+                  {group.subject.code ?? "Kode mapel belum tersedia"}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
+                  {classes.length > 0 ? (
+                    classes.map((classItem) => (
+                      <span
+                        key={classItem.id}
+                        className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-xs font-medium text-[#0F172A]"
+                      >
+                        {classItem.name ?? "Kelas"}
+                        {classItem.grade_level ? (
                           <span className="font-normal text-[#64748B]">
-                            {classItem.grade_level ? `Tingkat ${classItem.grade_level}` : ""}
+                            {" "}
+                            - Tingkat {classItem.grade_level}
                           </span>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-[#64748B]">
-                        Kelas belum tersedia.
+                        ) : null}
                       </span>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <span className="text-sm text-[#64748B]">
+                      Kelas belum tersedia.
+                    </span>
+                  )}
                 </div>
-
-                <div className="mt-5 grid gap-2 sm:grid-cols-3">
+              </td>
+              <td className="px-4 py-3 text-sm text-[#64748B]">
+                {Array.from(group.academicYears).join(", ") || "Tahun ajaran aktif"}
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
                   <Link
                     href={subjectHref}
-                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563EB] px-3 text-sm font-semibold text-white hover:bg-[#1D4ED8]"
+                    className="inline-flex h-8 items-center rounded-lg bg-[#2563EB] px-3 text-xs font-semibold text-white hover:bg-[#1D4ED8]"
                   >
                     Soal
                   </Link>
                   <Link
                     href={packageHref}
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#E2E8F0] px-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+                    className="inline-flex h-8 items-center rounded-lg border border-[#E2E8F0] px-3 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
                   >
-                    Paket Ujian
+                    Paket
                   </Link>
                   <Link
                     href="/dashboard/exams/schedules"
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#E2E8F0] px-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+                    className="inline-flex h-8 items-center rounded-lg border border-[#E2E8F0] px-3 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
                   >
                     Jadwal
                   </Link>
                 </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
+              </td>
+            </tr>
+          );
+        })}
+      </DataTable>
     </div>
   );
 }

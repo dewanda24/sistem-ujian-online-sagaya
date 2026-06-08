@@ -108,7 +108,7 @@ export async function commitStudentClassAssignmentImportAction(
   if (!(file instanceof File) || file.size === 0) {
     return {
       ok: false,
-      message: "File CSV assignment siswa-kelas wajib diunggah.",
+      message: "File CSV penugasan siswa-kelas wajib diunggah.",
     };
   }
 
@@ -288,7 +288,7 @@ export async function commitStudentClassAssignmentImportAction(
   return {
     ok: isSuccess,
     message: isSuccess
-      ? `Import berhasil! ${success} assignment siswa-kelas telah diproses.`
+      ? `Import berhasil! ${success} penugasan siswa-kelas telah diproses.`
       : `Import selesai dengan ${errors.length} error dari ${lines.length - 1} baris.`,
     summary: {
       total: lines.length - 1,

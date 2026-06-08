@@ -178,7 +178,7 @@ export function TeacherAssignmentImportForm() {
     <div className="space-y-6 rounded-lg border bg-card p-6">
       <div>
         <h3 className="text-lg font-semibold">
-          Import Assignment Guru-Mapel-Kelas
+          Import Penugasan Guru-Mapel-Kelas
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload file CSV dengan kolom: teacher_email, subject_code, class_name,
@@ -205,7 +205,7 @@ export function TeacherAssignmentImportForm() {
               href="/api/templates/teacher-subject-assignments"
               className="inline-flex items-center rounded-md border px-4 py-2 text-sm hover:bg-muted transition"
             >
-              Download Template
+              Unduh Template
             </Link>
           </div>
         </div>
@@ -222,7 +222,7 @@ export function TeacherAssignmentImportForm() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">
-                Preview ({previewRows.length} baris)
+                Pratinjau ({previewRows.length} baris)
               </h4>
               <div className="flex gap-4 text-xs">
                 <div>
@@ -382,7 +382,7 @@ export function TeacherAssignmentImportForm() {
       <ConfirmDialog
         isOpen={Boolean(pendingFormData)}
         title="Konfirmasi Import"
-        description={`Import ${validCount} assignment guru-mapel-kelas yang valid?`}
+        description={`Import ${validCount} penugasan guru-mapel-kelas yang valid?`}
         confirmLabel="Import"
         isLoading={isPending}
         onCancel={() => setPendingFormData(null)}
@@ -390,7 +390,7 @@ export function TeacherAssignmentImportForm() {
           if (!pendingFormData || isPending) return;
           formAction(pendingFormData);
           setPendingFormData(null);
-          toast.info("Import assignment guru-mapel-kelas sedang diproses.");
+          toast.info("Import penugasan guru-mapel-kelas sedang diproses.");
         }}
       />
     </div>

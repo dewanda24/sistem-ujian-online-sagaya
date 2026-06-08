@@ -40,7 +40,7 @@ export function QuestionPreview({ question }: QuestionPreviewProps) {
 
   return (
     <details className="rounded-md border bg-background p-3">
-      <summary className="cursor-pointer text-sm font-medium">Preview</summary>
+      <summary className="cursor-pointer text-sm font-medium">Pratinjau</summary>
       <div className="mt-3 space-y-3 text-sm">
         {question.question_stimuli ? (
           <div className="rounded-md border border-dashed p-3">

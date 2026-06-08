@@ -14,6 +14,7 @@ import {
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { UI_LABELS } from "@/constants/ui-labels";
 
 type ReportResultRow = {
   id: string;
@@ -83,7 +84,7 @@ export function ReportResultTable({
   );
   const columns =
     mode === "results"
-      ? ["Peserta", "Kelas", "Nilai", "Status", "Waktu Submit", "Aksi"]
+      ? ["Peserta", "Kelas", "Nilai", "Status", "Waktu Selesai", "Aksi"]
       : ["Siswa", "Kelas", "Mapel", "Nilai", "Status", "Aksi"];
 
   if (rows.length === 0) {
@@ -91,7 +92,7 @@ export function ReportResultTable({
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
         <EmptyState
           title={mode === "results" ? "Belum ada hasil ujian" : "Belum ada rekap nilai"}
-          description="Hasil ujian akan tampil setelah peserta submit ujian."
+          description="Hasil ujian akan tampil setelah peserta menyelesaikan ujian."
           actionHref="/dashboard/exams/schedules"
           actionLabel="Lihat Jadwal"
         />
@@ -225,7 +226,7 @@ export function ReportResultTable({
             className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ChevronLeft className="size-3.5" />
-            Prev
+            {UI_LABELS.actions.previous}
           </button>
           <span className="text-xs">
             {currentPage} / {pageCount}
@@ -236,7 +237,7 @@ export function ReportResultTable({
             disabled={currentPage >= pageCount}
             className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Next
+            {UI_LABELS.actions.next}
             <ChevronRight className="size-3.5" />
           </button>
         </div>
@@ -263,22 +264,22 @@ function RowActions({
       <button
         type="button"
         onClick={onDetail}
-        title="Detail"
+        title="Rincian"
         className={`inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] ${
           compact ? "h-7 px-2 text-xs" : "h-7 w-7"
         }`}
       >
         <Eye className="size-3.5" />
-        <span className="sr-only">Detail</span>
+        <span className="sr-only">Rincian</span>
       </button>
       {!compact ? (
         <Link
           href={exportHref(row)}
-          title="Export"
+          title={UI_LABELS.actions.exportData}
           className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
         >
           <Download className="size-3.5" />
-          <span className="sr-only">Export</span>
+          <span className="sr-only">{UI_LABELS.actions.exportData}</span>
         </Link>
       ) : null}
       <details className="relative">
@@ -309,7 +310,7 @@ function RowActions({
               href={exportHref(row)}
               className="rounded-lg px-2 py-1.5 hover:bg-[#F8FAFC]"
             >
-              Export
+              {UI_LABELS.actions.exportData}
             </Link>
           ) : null}
         </div>
@@ -334,7 +335,7 @@ function DetailDrawer({
               Detail Hasil
             </h2>
             <p className="mt-1 text-sm text-[#64748B]">
-              Ringkasan attempt dan status penilaian peserta.
+              Ringkasan pengerjaan ujian dan status penilaian peserta.
             </p>
           </div>
           <button
@@ -355,7 +356,7 @@ function DetailDrawer({
           <Section title="Ujian">
             <Info label="Jadwal" value={row.examTitle} />
             <Info label="Mapel" value={row.subject} />
-            <Info label="Waktu submit" value={formatDateTime(row.submittedAt)} />
+            <Info label="Waktu selesai" value={formatDateTime(row.submittedAt)} />
           </Section>
           <Section title="Nilai">
             <Info label="Nilai akhir" value={getScoreLabel(row)} />

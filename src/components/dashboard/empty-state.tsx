@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AlertCircle, Inbox, Loader2 } from "lucide-react";
 
+import { UI_LABELS } from "@/constants/ui-labels";
+
 interface EmptyStateProps {
   title: string;
   description: string;
@@ -40,10 +42,10 @@ export function EmptyState({
 }
 
 export function ErrorState({
-  title = "Terjadi kendala",
-  description = "Data belum bisa ditampilkan. Coba muat ulang halaman.",
+  title = UI_LABELS.messages.unexpectedError,
+  description = UI_LABELS.messages.loadFailed,
   actionHref = ".",
-  actionLabel = "Coba lagi",
+  actionLabel = UI_LABELS.actions.retry,
 }: Partial<Pick<EmptyStateProps, "title" | "description" | "actionHref" | "actionLabel">>) {
   return (
     <EmptyState
@@ -57,8 +59,8 @@ export function ErrorState({
 }
 
 export function LoadingState({
-  title = "Memuat data",
-  description = "Sebentar, data sedang disiapkan.",
+  title = UI_LABELS.messages.loadingData,
+  description = UI_LABELS.messages.loadingDescription,
 }: Partial<Pick<EmptyStateProps, "title" | "description">>) {
   return <EmptyState title={title} description={description} icon="loading" />;
 }

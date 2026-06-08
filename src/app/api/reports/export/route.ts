@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const user = await requireAuth();
 
   if (!hasPermission(user, "reports.export")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
   const url = new URL(request.url);

@@ -1403,7 +1403,7 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   if (!parsed.success) {
     redirectTo("/dashboard/master-data/teachers", {
       ok: false,
-      message: parsed.error.issues[0]?.message ?? "Assignment guru tidak valid.",
+      message: parsed.error.issues[0]?.message ?? "Penugasan guru tidak valid.",
     });
   }
 
@@ -1461,7 +1461,7 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/teachers");
   redirectTo("/dashboard/master-data/teachers", {
     ok: !error,
-    message: error ? error.message : "Assignment guru berhasil ditambahkan.",
+    message: error ? error.message : "Penugasan guru berhasil ditambahkan.",
   });
 }
 

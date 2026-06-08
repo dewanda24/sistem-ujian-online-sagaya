@@ -39,51 +39,51 @@ type PageProps = {
 
 const exportItems = [
   {
-    title: "Export Guru",
+    title: "Unduh Data Guru",
     description: "Data guru sesuai scope sekolah.",
     href: "/api/data-export/teachers",
     available: true,
   },
   {
-    title: "Export Siswa",
+    title: "Unduh Data Siswa",
     description: "Data siswa sesuai scope sekolah.",
     href: "/api/data-export/students",
     available: true,
   },
   {
-    title: "Export Kelas",
+    title: "Unduh Data Kelas",
     description: "Data kelas, tahun ajaran, dan wali kelas.",
     href: "/api/data-export/classes",
     available: true,
   },
   {
-    title: "Export Assignment Guru",
+    title: "Unduh Penugasan Guru",
     description: "Relasi guru, mapel, kelas, dan tahun ajaran.",
     href: "/api/data-export/teacher-assignments",
     available: true,
   },
   {
-    title: "Export Assignment Siswa",
-    description: "Backend export assignment siswa belum tersedia.",
+    title: "Unduh Penugasan Siswa",
+    description: "Unduhan penugasan siswa belum tersedia.",
     href: "",
     available: false,
   },
   {
-    title: "Export Bank Soal",
+    title: "Unduh Bank Soal",
     description: "Bank soal sesuai scope pengguna.",
     href: "/api/question-bank/export",
     available: true,
   },
   {
-    title: "Export Nilai",
+    title: "Unduh Nilai",
     description: "Rekap nilai dari modul laporan.",
     href: "/api/reports/export",
     available: true,
     permission: "reports.export",
   },
   {
-    title: "Export Monitoring",
-    description: "Data monitoring ujian.",
+    title: "Unduh Pengawasan",
+    description: "Data pengawasan ujian.",
     href: "/api/monitoring/export",
     available: true,
     permission: "exam_monitoring.view",
@@ -116,8 +116,8 @@ export default async function ImportExportPage({ searchParams }: PageProps) {
         message={params.message}
       />
       <DashboardPageHeader
-        title="Import / Export Center"
-        description="Pusat operasional resmi untuk import data, export data, riwayat, dan status environment."
+        title="Pusat Import & Unduh Data"
+        description="Tempat import data, unduh data, melihat riwayat, dan memeriksa kesiapan sistem."
       />
 
       <nav className="grid gap-2 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-sm sm:grid-cols-2 lg:flex lg:flex-wrap">
@@ -214,15 +214,15 @@ function ExportDataTab({ user }: { user: Awaited<ReturnType<typeof requirePermis
                 href={item.href}
                 confirmMessage={`${item.title} ke CSV sekarang?`}
               >
-                Export CSV
+                Unduh CSV
               </ConfirmLinkButton>
             ) : (
               <span className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-                Backend belum tersedia
+                Belum tersedia
               </span>
             )}
             <span className="rounded-md border px-3 py-2 text-sm text-muted-foreground opacity-70">
-              Excel Coming Soon
+              Excel segera tersedia
             </span>
           </div>
         </DashboardCard>
@@ -243,7 +243,7 @@ function ImportHistoryTab({
       columns={[
         "Tanggal",
         "Modul",
-        "User",
+        "Pengguna",
         "Total Data",
         "Berhasil",
         "Gagal",
@@ -272,12 +272,12 @@ function ImportHistoryTab({
             <div className="flex flex-wrap gap-2">
               <DownloadJsonLink
                 filename={`import-result-${row.id}.json`}
-                label="Download Result"
+                label="Unduh Hasil"
                 payload={row.payload}
               />
               <DownloadJsonLink
                 filename={`import-error-log-${row.id}.json`}
-                label="Download Error Log"
+                label="Unduh Catatan Error"
                 payload={pickErrors(row.payload)}
               />
             </div>
@@ -300,7 +300,7 @@ function ExportHistoryTab({
       columns={[
         "Tanggal",
         "Modul",
-        "User",
+        "Pengguna",
         "Jumlah Data",
         "Format",
         "Status",
@@ -337,7 +337,7 @@ function EnvironmentTab({
     <section className="grid gap-4 md:grid-cols-3">
       {envStatus.map((item) => (
         <DashboardCard key={item.key} title={item.key}>
-          <StatusBadge label={item.configured ? "Ready" : "Missing"} />
+          <StatusBadge label={item.configured ? "Siap" : "Belum Siap"} />
         </DashboardCard>
       ))}
     </section>
@@ -346,11 +346,11 @@ function EnvironmentTab({
 
 function StatusBadge({ label }: { label: string }) {
   const className =
-    label === "Ready" || label === "Valid" || label === "Success"
+    label === "Siap" || label === "Valid" || label === "Berhasil"
       ? "bg-emerald-100 text-emerald-700"
-      : label === "Missing" || label === "Error" || label === "Failed"
+      : label === "Belum Siap" || label === "Error" || label === "Gagal"
         ? "bg-red-100 text-red-700"
-        : label === "Partial Success"
+        : label === "Berhasil Sebagian"
           ? "bg-amber-100 text-amber-700"
           : "bg-slate-100 text-slate-700";
 
@@ -394,13 +394,13 @@ function pickErrors(payload: Record<string, unknown>) {
 function getTabs(isSuperAdmin: boolean) {
   const tabs: Array<{ value: CenterTab; label: string }> = [
     { value: "import", label: "Import Data" },
-    { value: "export", label: "Export Data" },
+    { value: "export", label: "Unduh Data" },
     { value: "import-history", label: "Riwayat Import" },
-    { value: "export-history", label: "Riwayat Export" },
+    { value: "export-history", label: "Riwayat Unduhan" },
   ];
 
   if (isSuperAdmin) {
-    tabs.push({ value: "environment", label: "Environment" });
+    tabs.push({ value: "environment", label: "Kesiapan Sistem" });
   }
 
   return tabs;

@@ -176,9 +176,9 @@ export function ImportPreviewForm({
   return (
     <section className="rounded-lg border bg-card p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Upload, Validasi, Preview</h2>
+        <h2 className="text-base font-semibold">Unggah, Validasi, Pratinjau</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Validasi struktur CSV sebelum commit. Tombol Commit / Import Sekarang
+          Validasi struktur CSV sebelum import. Tombol Import Sekarang
           hanya aktif jika validasi berhasil.
         </p>
       </div>
@@ -223,8 +223,8 @@ export function ImportPreviewForm({
         {importAction ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
             <p className="text-sm text-muted-foreground">
-              Preview valid akan membuat tombol import aktif. Import siswa/guru
-              juga membuat akun auth sesuai kolom email dan password.
+              Pratinjau yang valid akan membuat tombol import aktif. Import siswa/guru
+              juga membuat akun login sesuai kolom email dan password.
             </p>
             <ConfirmSubmitButton
               confirmMessage={`Import ${rows.length} baris ${template.title} sekarang? Pastikan data sudah benar.`}
@@ -238,7 +238,7 @@ export function ImportPreviewForm({
           </div>
         ) : (
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Template ini hanya divalidasi di staging preview. Gunakan form import
+            Template ini hanya divalidasi di pratinjau. Gunakan form import
             khusus di bawah untuk menyimpan data.
           </div>
         )}
@@ -250,13 +250,13 @@ export function ImportPreviewForm({
           <div className="font-medium">{template.title}</div>
         </div>
         <div className="rounded-md border p-3 text-sm">
-          <div className="text-xs text-muted-foreground">Rows</div>
+          <div className="text-xs text-muted-foreground">Baris</div>
           <div className="font-medium">{rows.length}</div>
         </div>
         <div className="rounded-md border p-3 text-sm">
           <div className="text-xs text-muted-foreground">Status</div>
           <div className={isValid ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
-            {isValid ? "Valid" : "Error"}
+            {isValid ? "Valid" : "Perlu Diperbaiki"}
           </div>
         </div>
       </div>
@@ -264,7 +264,7 @@ export function ImportPreviewForm({
       <div className="mt-4 flex flex-wrap gap-2">
         <DownloadJsonButton
           filename={`validation-error-${templateType}.json`}
-          label="Download Error Log"
+          label="Unduh Catatan Error"
           payload={{
             module: template.title,
             total_rows: rows.length,
@@ -276,7 +276,7 @@ export function ImportPreviewForm({
         />
         <DownloadJsonButton
           filename={`preview-result-${templateType}.json`}
-          label="Download Result"
+          label="Unduh Hasil"
           payload={{
             module: template.title,
             total_rows: rows.length,
@@ -316,12 +316,12 @@ export function ImportPreviewForm({
           <div className="mt-3 flex flex-wrap gap-2">
             <DownloadJsonButton
               filename={`commit-result-${templateType}.json`}
-              label="Download Result"
+              label="Unduh Hasil"
               payload={actionState.summary}
             />
             <DownloadJsonButton
               filename={`commit-error-log-${templateType}.json`}
-              label="Download Error Log"
+              label="Unduh Catatan Error"
               payload={actionState.summary.errors}
               disabled={actionState.summary.errors.length === 0}
             />
@@ -346,7 +346,7 @@ export function ImportPreviewForm({
           <DataTable
             columns={headers}
             empty="Belum ada data."
-            searchPlaceholder="Cari isi preview..."
+            searchPlaceholder="Cari isi pratinjau..."
             stickyActionColumn={false}
           >
             {rows.map((row, index) => (

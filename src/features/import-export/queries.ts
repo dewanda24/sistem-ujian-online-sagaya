@@ -19,7 +19,7 @@ export type ImportHistoryRow = {
   total: number;
   success: number;
   failed: number;
-  status: "Success" | "Partial Success" | "Failed";
+  status: "Berhasil" | "Berhasil Sebagian" | "Gagal";
   payload: AuditPayload;
 };
 
@@ -30,7 +30,7 @@ export type ExportHistoryRow = {
   user: string;
   rowCount: number;
   format: string;
-  status: "Success" | "Failed";
+  status: "Berhasil" | "Gagal";
   payload: AuditPayload;
 };
 
@@ -59,18 +59,18 @@ const moduleLabels: Record<string, string> = {
   "students.import_csv": "Siswa",
   "teachers.import_csv": "Guru",
   "classes.import_csv": "Kelas",
-  "class_members.import_csv": "Assignment Siswa-Kelas",
-  "teacher_subjects.import_csv": "Assignment Guru-Mapel-Kelas",
+  "class_members.import_csv": "Penugasan Siswa-Kelas",
+  "teacher_subjects.import_csv": "Penugasan Guru-Mapel-Kelas",
   "questions.import_excel": "Bank Soal Excel/CSV",
   "questions.import_word": "Bank Soal Word",
   "questions.import_csv": "Bank Soal CSV",
   "data_export.teachers": "Guru",
   "data_export.students": "Siswa",
   "data_export.classes": "Kelas",
-  "data_export.teacher-assignments": "Assignment Guru",
+  "data_export.teacher-assignments": "Penugasan Guru",
   "questions.export_csv": "Bank Soal",
   "reports.export": "Nilai",
-  "monitoring.export": "Monitoring",
+  "monitoring.export": "Pengawasan",
 };
 
 export async function getImportExportHistories() {
@@ -154,16 +154,16 @@ function toImportHistoryRow(
   );
   const status =
     failed > 0 && success > 0
-      ? "Partial Success"
+      ? "Berhasil Sebagian"
       : failed > 0
-        ? "Failed"
-        : "Success";
+        ? "Gagal"
+        : "Berhasil";
 
   return {
     id: String(row.id),
     date: row.created_at ?? "",
     module: moduleLabels[row.action ?? ""] ?? row.action ?? "-",
-    user: row.user_id ? userNames.get(row.user_id) ?? row.user_id : "System",
+    user: row.user_id ? userNames.get(row.user_id) ?? row.user_id : "Sistem",
     total,
     success,
     failed,
@@ -182,10 +182,10 @@ function toExportHistoryRow(
     id: String(row.id),
     date: row.created_at ?? "",
     module: moduleLabels[row.action ?? ""] ?? row.action ?? "-",
-    user: row.user_id ? userNames.get(row.user_id) ?? row.user_id : "System",
+    user: row.user_id ? userNames.get(row.user_id) ?? row.user_id : "Sistem",
     rowCount: numberPayload(payload, "row_count", "count"),
     format: String(payload.format ?? "CSV").toUpperCase(),
-    status: "Success",
+    status: "Berhasil",
     payload,
   };
 }

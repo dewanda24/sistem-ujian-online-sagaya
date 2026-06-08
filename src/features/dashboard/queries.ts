@@ -316,39 +316,39 @@ export async function getRoleDashboardStats(
 
     return [
       {
-        title: "Users",
+        title: "Pengguna",
         value: String(users),
-        description: "Total akun internal semua role.",
+        description: "Total akun semua peran pengguna.",
         href: "/dashboard/admin/users",
       },
       {
-        title: "Jadwal Active",
+        title: "Ujian Aktif",
         value: String(activeSchedules),
         description: "Jadwal ujian yang sedang aktif.",
         href: "/dashboard/exams/schedules",
       },
       {
-        title: "Pending Grading",
+        title: "Perlu Koreksi",
         value: String(summary.pending),
-        description: "Attempt yang masih perlu koreksi essay.",
+        description: "Pengerjaan ujian yang masih perlu koreksi essay.",
         href: "/dashboard/teacher/grading",
       },
       {
-        title: "Finalized",
+        title: "Nilai Final",
         value: String(summary.finalized),
-        description: "Attempt dengan nilai final.",
+        description: "Pengerjaan ujian dengan nilai final.",
         href: "/dashboard/reports",
       },
       {
-        title: "Absent",
+        title: "Tidak Hadir",
         value: String(summary.absent),
         description: "Peserta yang ditandai tidak hadir.",
         href: "/dashboard/reports/exams",
       },
       {
-        title: "Average Final",
+        title: "Rata-rata Nilai",
         value: `${summary.averagePercent.toFixed(2)}%`,
-        description: "Rata-rata dari nilai finalized.",
+        description: "Rata-rata dari nilai final.",
         href: "/dashboard/reports",
       },
     ];
@@ -382,25 +382,25 @@ export async function getRoleDashboardStats(
       {
         title: "Siswa",
         value: String(students),
-        description: "Total akun siswa aktif di data internal.",
+        description: "Total akun siswa aktif.",
         href: "/dashboard/master-data/students",
       },
       {
         title: "Guru",
         value: String(teachers),
-        description: "Total akun guru di data internal.",
+        description: "Total akun guru aktif.",
         href: "/dashboard/master-data/teachers",
       },
       {
         title: "Kelas",
         value: String(classes),
-        description: "Total kelas pada master data.",
+        description: "Total kelas pada data sekolah.",
         href: "/dashboard/master-data/classes",
       },
       {
         title: "Mapel",
         value: String(subjects),
-        description: "Total mata pelajaran pada master data.",
+        description: "Total mata pelajaran pada data sekolah.",
         href: "/dashboard/master-data/subjects",
       },
       {
@@ -410,7 +410,7 @@ export async function getRoleDashboardStats(
         href: "/dashboard/exams/schedules",
       },
       {
-        title: "Jadwal Active",
+        title: "Ujian Aktif",
         value: String(activeSchedules),
         description: "Ujian yang sedang aktif.",
         href: "/dashboard/exams/schedules?status=active",
@@ -418,7 +418,7 @@ export async function getRoleDashboardStats(
       {
         title: "Tanpa Peserta",
         value: String(schedulesWithoutParticipants),
-        description: "Scheduled/active tapi peserta belum tersinkron.",
+        description: "Jadwal aktif atau terjadwal yang belum memiliki peserta.",
         href: "/dashboard/exams/schedules",
       },
       {
@@ -430,25 +430,25 @@ export async function getRoleDashboardStats(
       {
         title: "Kelas Tanpa Wali",
         value: String(classReadiness.withoutHomeroom),
-        description: "Kelas aktif tanpa homeroom teacher.",
+        description: "Kelas aktif tanpa wali kelas.",
         href: "/dashboard/master-data/classes",
       },
       {
-        title: "Submitted",
+        title: "Sudah Selesai",
         value: String(summary.submitted),
-        description: "Attempt yang sudah dikumpulkan.",
+        description: "Pengerjaan ujian yang sudah dikumpulkan.",
         href: "/dashboard/reports",
       },
       {
-        title: "Pending Grading",
+        title: "Perlu Koreksi",
         value: String(summary.pending),
         description: "Essay yang masih perlu koreksi.",
         href: "/dashboard/teacher/grading",
       },
       {
-        title: "Average Final",
+        title: "Rata-rata Nilai",
         value: `${summary.averagePercent.toFixed(2)}%`,
-        description: "Rata-rata nilai finalized.",
+        description: "Rata-rata nilai final.",
         href: "/dashboard/reports",
       },
     ];
@@ -468,31 +468,31 @@ export async function getRoleDashboardStats(
         href: "/dashboard/teacher/assignments",
       },
       {
-        title: "Draft Soal",
+        title: "Soal Belum Diterbitkan",
         value: String(teacherStats.draftQuestions),
-        description: "Soal draft yang dibuat guru.",
+        description: "Soal yang dibuat guru dan belum diterbitkan.",
         href: "/dashboard/question-bank/questions?status=draft",
       },
       {
-        title: "Soal Published",
+        title: "Soal Sudah Diterbitkan",
         value: String(teacherStats.publishedQuestions),
         description: "Soal siap dipakai pada paket ujian.",
         href: "/dashboard/question-bank/questions?status=published",
       },
       {
-        title: "Paket Draft",
+        title: "Paket Belum Diterbitkan",
         value: String(teacherStats.draftPackages),
-        description: "Paket ujian yang belum dipublish.",
+        description: "Paket ujian yang belum diterbitkan.",
         href: "/dashboard/exams/packages?status=draft",
       },
       {
-        title: "Paket Published",
+        title: "Paket Sudah Diterbitkan",
         value: String(teacherStats.publishedPackages),
         description: "Paket ujian siap dijadwalkan.",
         href: "/dashboard/exams/packages?status=published",
       },
       {
-        title: "Jadwal Upcoming",
+        title: "Jadwal Mendatang",
         value: String(teacherStats.upcomingSchedules),
         description: "Jadwal mendatang untuk mapel guru.",
         href: "/dashboard/exams/schedules?status=scheduled",
@@ -540,13 +540,13 @@ export async function getRoleDashboardStats(
       {
         title: "Riwayat",
         value: String(submittedAttempts.length),
-        description: "Attempt yang sudah dikumpulkan.",
+        description: "Pengerjaan ujian yang sudah dikumpulkan.",
         href: "/dashboard/student/history",
       },
       {
-        title: "Session",
-        value: "Secure",
-        description: "Akses peserta terlindungi Supabase SSR.",
+        title: "Akses",
+        value: "Aman",
+        description: "Akses siswa dilindungi oleh sistem login.",
       },
     ];
   }
@@ -556,7 +556,7 @@ export async function getRoleDashboardStats(
 
     return [
       {
-        title: "Jadwal Active",
+        title: "Ujian Aktif",
         value: String(summary.activeSchedules.length),
         description: "Jadwal yang sedang perlu dipantau.",
         href: "/dashboard/proctor/monitoring",
@@ -574,21 +574,21 @@ export async function getRoleDashboardStats(
         href: "/dashboard/proctor/schedules",
       },
       {
-        title: "In Progress",
+        title: "Sedang Ujian",
         value: String(summary.inProgress),
-        description: "Attempt siswa yang sedang berjalan.",
+        description: "Pengerjaan ujian siswa yang sedang berjalan.",
         href: "/dashboard/proctor/monitoring?status=in_progress",
       },
       {
-        title: "Submitted",
+        title: "Sudah Selesai",
         value: String(summary.submitted),
-        description: "Attempt yang sudah dikumpulkan.",
+        description: "Pengerjaan ujian yang sudah dikumpulkan.",
         href: "/dashboard/proctor/monitoring?status=submitted",
       },
       {
-        title: "Event",
+        title: "Kejadian",
         value: String(summary.events.length),
-        description: "Event ujian/anti-cheat yang tercatat.",
+        description: "Kejadian ujian yang tercatat.",
         href: "/dashboard/proctor/monitoring",
       },
     ];

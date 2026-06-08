@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     : schedules;
 
   if (filters.schedule_id && exportSchedules.length === 0) {
-    return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+    return NextResponse.json({ error: "Jadwal tidak ditemukan" }, { status: 404 });
   }
 
   const rows = (

@@ -52,8 +52,8 @@ export function TeacherForm({
         <input name="phone" defaultValue={profile?.phone ?? ""} placeholder="Telepon" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
         <input name="password" type="password" placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Password awal"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
         <select name="status" defaultValue={teacher?.status ?? "active"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         <label className="flex items-center gap-2 text-sm text-[#64748B]">
           <input type="checkbox" disabled />
@@ -69,7 +69,9 @@ export function TeacherForm({
         <section className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-3">
             <h2 className="font-semibold text-[#0F172A]">Mapel Guru</h2>
-            <p className="text-sm text-[#64748B]">Assignment memakai teacher_subjects existing.</p>
+            <p className="text-sm text-[#64748B]">
+              Atur mata pelajaran, kelas, dan tahun ajaran yang diajar guru.
+            </p>
           </div>
           <form action={saveTeacherAssignmentAction} className="grid gap-3 md:grid-cols-4">
             <input type="hidden" name="teacher_id" value={teacher?.id ?? ""} />
@@ -85,7 +87,7 @@ export function TeacherForm({
                 <span className="text-[#64748B]">{item.classes?.name ?? "-"}</span>
                 <span className="text-[#64748B]">{item.academic_years?.name ?? "-"}</span>
               </div>
-            )) : <p className="px-3 py-4 text-sm text-[#64748B]">Belum ada assignment.</p>}
+            )) : <p className="px-3 py-4 text-sm text-[#64748B]">Belum ada penugasan.</p>}
           </div>
         </section>
       ) : null}

@@ -22,7 +22,7 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
     id: "exams",
     label: "Ujian & hasil",
     description:
-      "Paket ujian, jadwal, token, peserta ujian, attempt, jawaban, event, dan nilai.",
+      "Paket ujian, jadwal, token, peserta ujian, pengerjaan, jawaban, kejadian, dan nilai.",
     tables: [
       "exam_events",
       "exam_answers",
@@ -36,16 +36,16 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
   },
   {
     id: "assignments",
-    label: "Assignment guru/siswa",
+    label: "Penugasan guru/siswa",
     description:
-      "Assignment guru-mapel-kelas dan riwayat/assignment siswa ke kelas.",
+      "Penugasan guru-mapel-kelas dan riwayat penempatan siswa ke kelas.",
     tables: ["teacher_subjects", "student_classes", "class_members"],
   },
   {
     id: "students",
     label: "Data siswa",
     description:
-      "Akun siswa, profil siswa, auth user siswa, assignment kelas siswa, peserta ujian, attempt, jawaban, event, dan nilai siswa.",
+      "Akun siswa, profil siswa, akun login siswa, penempatan kelas, peserta ujian, pengerjaan, jawaban, kejadian, dan nilai siswa.",
     tables: [
       "exam_events (milik siswa)",
       "exam_answers (milik siswa)",
@@ -78,7 +78,7 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
     id: "master_data",
     label: "Master sekolah & akademik",
     description:
-      "Sekolah, mapel, kelas, semester, dan tahun ajaran. Dependensi ujian, assignment, dan Bank Soal ikut dibersihkan otomatis.",
+      "Sekolah, mapel, kelas, semester, dan tahun ajaran. Data terkait seperti ujian, penugasan, dan Bank Soal ikut dibersihkan otomatis.",
     tables: ["classes", "semesters", "academic_years", "subjects", "schools"],
     dangerous: true,
   },
@@ -86,7 +86,7 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
     id: "operational_users",
     label: "Akun operasional",
     description:
-      "Akun admin sekolah, kepala sekolah, guru, siswa, dan proctor. Akun Super Admin tetap aman.",
+      "Akun admin sekolah, kepala sekolah, guru, siswa, dan pengawas. Akun Super Admin tetap aman.",
     tables: [
       "user_profiles (akun non-Super Admin)",
       "users (akun non-Super Admin)",
@@ -96,21 +96,21 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
   },
   {
     id: "audit_logs",
-    label: "Audit logs",
-    description: "Riwayat aktivitas sistem di tabel audit_logs.",
+    label: "Catatan Aktivitas",
+    description: "Riwayat aktivitas sistem.",
     tables: ["audit_logs"],
   },
 ];
 
 export const operationalResetRetainedTables = [
-  "users role super_admin",
+  "akun Super Admin",
   "auth.users akun Super Admin",
   "user_profiles akun Super Admin",
-  "roles",
-  "permissions",
-  "role_permissions",
+  "hak akses",
+  "izin akses",
+  "relasi hak akses",
   "konfigurasi/env sistem",
-  "template import/export",
+  "template import/unduh",
 ] as const;
 
 export type ResetTableSummary = {

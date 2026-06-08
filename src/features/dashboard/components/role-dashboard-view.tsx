@@ -15,6 +15,7 @@ import {
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { UI_LABELS } from "@/constants/ui-labels";
 import { getRoleDashboardStats } from "@/features/dashboard/queries";
 import { getAcademicYears } from "@/lib/master-data/queries";
 import type { CurrentUser, RoleName } from "@/types/auth";
@@ -34,49 +35,49 @@ type RoleDashboardContent = {
 
 const contentByRole: Record<RoleName, RoleDashboardContent> = {
   super_admin: {
-    title: "Super Admin Dashboard",
+    title: "Beranda Super Admin",
     description:
-      "Kontrol penuh untuk user, role, permission, dan audit sistem ujian online.",
+      "Kelola pengguna, hak akses, izin akses, dan catatan aktivitas sistem ujian online.",
     stats: [
       {
-        title: "Permission Scope",
-        value: "Full",
-        description: "Akses super admin melewati semua permission checks.",
+        title: "Cakupan Akses",
+        value: "Penuh",
+        description: "Super Admin dapat mengelola seluruh pengaturan sistem.",
       },
       {
-        title: "Governance",
-        value: "Active",
-        description: "RBAC foundation siap untuk audit dan kontrol akses.",
+        title: "Kontrol Sistem",
+        value: "Aktif",
+        description: "Hak akses dan catatan aktivitas siap dipantau.",
       },
       {
-        title: "System Readiness",
+        title: "Kesiapan Sistem",
         value: "Sprint 2",
-        description: "Dashboard siap menerima modul akademik berikutnya.",
+        description: "Beranda siap menerima modul akademik berikutnya.",
       },
     ],
-    workbenchTitle: "Admin operations belum memiliki data ringkasan",
+    workbenchTitle: "Belum ada ringkasan pengelolaan sistem",
     workbenchDescription:
-      "Kartu ini disiapkan untuk metrik user, role, permission, dan audit logs pada sprint berikutnya.",
+      "Kartu ini disiapkan untuk ringkasan pengguna, hak akses, izin akses, dan catatan aktivitas.",
   },
   admin: {
-    title: "Admin Dashboard",
+    title: "Beranda Admin Sekolah",
     description:
-      "Kelola operasional pengguna, konfigurasi role terbatas, dan kesiapan pelaksanaan ujian.",
+      "Kelola pengguna, data sekolah, dan kesiapan pelaksanaan ujian.",
     stats: [
       {
-        title: "User Management",
-        value: "Ready",
-        description: "Menu user tampil sesuai permission users.view.",
+        title: "Pengguna",
+        value: "Siap",
+        description: "Menu pengguna tampil sesuai hak akses admin sekolah.",
       },
       {
-        title: "Role Access",
-        value: "Scoped",
-        description: "Akses admin dibatasi oleh role dan permission.",
+        title: "Hak Akses",
+        value: "Terbatas",
+        description: "Akses admin dibatasi sesuai tugas sekolah.",
       },
       {
-        title: "Operations",
+        title: "Operasional",
         value: "Stable",
-        description: "Layout dashboard siap untuk workflow administrasi.",
+        description: "Tampilan beranda siap untuk pekerjaan administrasi.",
       },
     ],
     workbenchTitle: "Belum ada pekerjaan administrasi aktif",
@@ -84,24 +85,24 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Nanti area ini dapat menampilkan onboarding user, validasi akun, dan jadwal ujian.",
   },
   principal: {
-    title: "Principal Dashboard",
+    title: "Beranda Kepala Sekolah",
     description:
       "Pantau ringkasan sekolah, performa ujian, dan laporan akademik lintas kelas.",
     stats: [
       {
-        title: "Reports",
-        value: "Ready",
+        title: "Laporan",
+        value: "Siap",
         description: "Area laporan kepala sekolah sudah dipisah dari admin.",
       },
       {
-        title: "Visibility",
-        value: "School",
-        description: "Dirancang untuk agregasi data dan monitoring.",
+        title: "Cakupan Data",
+        value: "Sekolah",
+        description: "Dirancang untuk ringkasan data dan pengawasan.",
       },
       {
-        title: "Access",
-        value: "Principal",
-        description: "Route hanya dapat diakses role principal.",
+        title: "Hak Akses",
+        value: "Kepala Sekolah",
+        description: "Halaman hanya dapat dibuka oleh kepala sekolah.",
       },
     ],
     workbenchTitle: "Belum ada laporan yang tersedia",
@@ -109,51 +110,51 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Sprint berikutnya dapat mengisi ringkasan nilai, tingkat partisipasi, dan status ujian.",
   },
   teacher: {
-    title: "Teacher Dashboard",
+    title: "Beranda Guru",
     description:
-      "Workspace guru untuk bank soal, penyusunan ujian, dan penilaian hasil peserta.",
+      "Ruang kerja guru untuk bank soal, penyusunan ujian, dan penilaian hasil siswa.",
     stats: [
       {
-        title: "Question Bank",
-        value: "Ready",
+        title: "Bank Soal",
+        value: "Siap",
         description: "Kelola kategori dan soal sesuai mapel yang ditugaskan.",
         href: "/dashboard/question-bank/questions",
       },
       {
-        title: "Exams",
-        value: "Ready",
-        description: "Area ujian guru siap dihubungkan ke modul exam.",
+        title: "Ujian",
+        value: "Siap",
+        description: "Area ujian guru siap digunakan.",
         href: "/dashboard/exams",
       },
       {
-        title: "Grading",
-        value: "Ready",
+        title: "Koreksi Essay",
+        value: "Siap",
         description: "Fondasi penilaian sudah memiliki route dan menu.",
       },
     ],
     workbenchTitle: "Belum ada ujian yang perlu dinilai",
     workbenchDescription:
-      "Setelah modul ujian aktif, area ini dapat menampilkan draft ujian dan pekerjaan grading.",
+      "Setelah ujian aktif, area ini dapat menampilkan soal belum diterbitkan dan pekerjaan koreksi.",
   },
   student: {
-    title: "Student Dashboard",
+    title: "Beranda Siswa",
     description:
       "Halaman peserta untuk melihat ujian aktif, riwayat ujian, dan jadwal pengerjaan.",
     stats: [
       {
-        title: "Active Exams",
+        title: "Ujian Berlangsung",
         value: "0",
         description: "Belum ada ujian aktif yang ditautkan ke peserta.",
       },
       {
-        title: "History",
+        title: "Riwayat",
         value: "0",
         description: "Riwayat ujian akan tampil setelah modul exam berjalan.",
       },
       {
-        title: "Session",
-        value: "Secure",
-        description: "Akses peserta terlindungi session Supabase SSR.",
+        title: "Akses",
+        value: "Aman",
+        description: "Akses siswa dilindungi oleh sistem login.",
       },
     ],
     workbenchTitle: "Tidak ada ujian aktif",
@@ -161,24 +162,24 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Saat guru atau proktor membuka ujian, daftar ujian peserta akan muncul di sini.",
   },
   proctor: {
-    title: "Proctor Dashboard",
+    title: "Beranda Pengawas",
     description:
-      "Monitoring pelaksanaan ujian, kehadiran peserta, dan status sesi secara real-time.",
+      "Pantau pelaksanaan ujian, kehadiran peserta, dan status pengerjaan.",
     stats: [
       {
-        title: "Monitoring",
-        value: "Ready",
-        description: "Route monitoring proctor sudah tersedia.",
+        title: "Pengawasan",
+        value: "Siap",
+        description: "Halaman pengawasan pengawas sudah tersedia.",
       },
       {
-        title: "Exam Sessions",
+        title: "Sesi Ujian",
         value: "0",
         description: "Sesi ujian akan muncul setelah modul exam aktif.",
       },
       {
-        title: "Access",
-        value: "Proctor",
-        description: "Route dikunci untuk role proctor.",
+        title: "Hak Akses",
+        value: "Pengawas",
+        description: "Halaman hanya dapat dibuka oleh pengawas.",
       },
     ],
     workbenchTitle: "Belum ada sesi ujian berjalan",
@@ -290,7 +291,8 @@ function TeacherDashboardOverview({
   const kelasValue = stats.find((stat) => stat.title === "Kelas Saya")?.value ?? "0/0";
   const kelasCount = Number(kelasValue.split("/")[1] ?? kelasValue) || 0;
   const bankSoalCount =
-    statNumber(stats, "Draft Soal") + statNumber(stats, "Soal Published");
+    statNumber(stats, "Soal Belum Diterbitkan") +
+    statNumber(stats, "Soal Sudah Diterbitkan");
   const ujianAktif = statNumber(stats, "Ujian Aktif");
   const perluDinilai = statNumber(stats, "Perlu Dinilai");
   const belumMengikuti = statNumber(stats, "Belum Mengikuti");
@@ -306,7 +308,7 @@ function TeacherDashboardOverview({
     {
       title: "Bank Soal",
       value: String(bankSoalCount),
-      description: "Soal draft dan published.",
+      description: "Soal belum diterbitkan dan sudah diterbitkan.",
       href: "/dashboard/question-bank/questions",
       icon: BookOpen,
     },
@@ -355,7 +357,7 @@ function TeacherDashboardOverview({
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#2563EB]">
-              Dashboard Guru
+              {UI_LABELS.navigation.home} Guru
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-normal sm:text-3xl">
               Halo, {displayName}
@@ -489,11 +491,11 @@ function AdminDashboardOverview({
   academicYearName,
   stats,
 }: AdminDashboardOverviewProps) {
-  const primaryStats = ["Siswa", "Guru", "Kelas", "Jadwal Active"]
+  const primaryStats = ["Siswa", "Guru", "Kelas", "Ujian Aktif"]
     .map((title) => stats.find((stat) => stat.title === title))
     .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
     .map((stat) =>
-      stat.title === "Jadwal Active"
+      stat.title === "Ujian Aktif"
         ? {
             ...stat,
             title: "Ujian Aktif",
@@ -514,7 +516,7 @@ function AdminDashboardOverview({
           <div className="min-w-0 space-y-4">
             <div>
               <p className="text-sm font-medium text-[#2563EB]">
-                Dashboard Admin Sekolah
+                {UI_LABELS.navigation.home} Admin Sekolah
               </p>
               <h1 className="mt-2 text-2xl font-semibold tracking-normal md:text-3xl">
                 Selamat Datang, {displayName}
@@ -615,8 +617,8 @@ function AdminOperationalWorkbench() {
       icon: CalendarDays,
     },
     {
-      title: "Import Data",
-      description: "Unggah data master sekaligus.",
+      title: UI_LABELS.navigation.importData,
+      description: "Unggah data sekolah sekaligus.",
       href: "/dashboard/import-export",
       icon: Upload,
     },
@@ -666,32 +668,32 @@ function ProctorOperationalWorkbench() {
       href: "/dashboard/proctor/schedules",
     },
     {
-      title: "Monitoring Live",
-      description: "Pantau peserta, progress submit, event, lock, dan aksi darurat.",
+      title: "Pengawasan Langsung",
+      description: "Pantau peserta, progres pengerjaan, kejadian, kunci akses, dan aksi darurat.",
       href: "/dashboard/proctor/monitoring",
     },
     {
       title: "Token Ujian",
-      description: "Lihat dan print token ujian yang wajib token.",
+      description: "Lihat dan cetak token ujian.",
       href: "/dashboard/proctor/tokens",
     },
     {
       title: "Peserta Belum Mulai",
-      description: "Fokus ke siswa assigned yang belum membuka ujian.",
+      description: "Fokus ke siswa yang belum membuka ujian.",
       href: "/dashboard/proctor/monitoring?status=assigned",
     },
     {
       title: "Peserta Sedang Ujian",
-      description: "Pantau attempt yang sedang in progress.",
+      description: "Pantau pengerjaan ujian yang sedang berjalan.",
       href: "/dashboard/proctor/monitoring?status=in_progress",
     },
     {
-      title: "Peserta Submitted",
+      title: "Peserta Sudah Selesai",
       description: "Cek peserta yang sudah mengumpulkan ujian.",
       href: "/dashboard/proctor/monitoring?status=submitted",
     },
     {
-      title: "Profile Pengawas",
+      title: "Profil Pengawas",
       description: "Perbarui data profil pengawas dan kontak operasional.",
       href: "/dashboard/profile",
     },

@@ -8,9 +8,9 @@ import { requireRole } from "@/lib/auth/require-role";
 type ReadinessStatus = "ready" | "warning" | "missing";
 
 const statusLabel: Record<ReadinessStatus, string> = {
-  ready: "Ready",
-  warning: "Warning",
-  missing: "Missing",
+  ready: "Siap",
+  warning: "Perlu Dicek",
+  missing: "Belum Siap",
 };
 
 const statusClassName: Record<ReadinessStatus, string> = {
@@ -29,23 +29,23 @@ export default async function SuperAdminReadinessPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Production Readiness"
-        description="Pemeriksaan cepat untuk akun, peserta ujian, audit log, dan konfigurasi operasional sebelum sistem dipakai lebih luas."
+        title="Kesiapan Sistem"
+        description="Pemeriksaan cepat untuk akun, peserta ujian, catatan aktivitas, dan konfigurasi operasional sebelum sistem dipakai lebih luas."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
-          title="Ready"
+          title="Siap"
           value={String(readyCount)}
           description="Komponen yang sudah memenuhi baseline."
         />
         <DashboardCard
-          title="Warning"
+          title="Perlu Dicek"
           value={String(warningCount)}
           description="Perlu dicek sebelum simulasi/produksi."
         />
         <DashboardCard
-          title="Missing"
+          title="Belum Siap"
           value={String(missingCount)}
           description="Perlu dilengkapi agar alur inti aman."
         />
@@ -80,11 +80,11 @@ export default async function SuperAdminReadinessPage() {
 
       <DashboardCard
         title="Catatan"
-        description="Readiness ini bersifat read-only dan tidak mengubah database."
+        description="Pemeriksaan ini hanya membaca data dan tidak mengubah database."
       >
         <p className="text-sm leading-6 text-muted-foreground">
-          Item berstatus warning tidak selalu berarti error. Gunakan halaman ini
-          sebagai daftar cek sebelum demo, simulasi ujian, atau deployment.
+          Item berstatus perlu dicek tidak selalu berarti rusak. Gunakan halaman ini
+          sebagai daftar cek sebelum demo, simulasi ujian, atau rilis produksi.
         </p>
       </DashboardCard>
     </div>

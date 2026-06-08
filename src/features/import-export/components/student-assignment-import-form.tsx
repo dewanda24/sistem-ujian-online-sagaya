@@ -182,7 +182,7 @@ export function StudentAssignmentImportForm() {
   return (
     <div className="space-y-6 rounded-lg border bg-card p-6">
       <div>
-        <h3 className="text-lg font-semibold">Import Assignment Siswa-Kelas</h3>
+        <h3 className="text-lg font-semibold">Import Penugasan Siswa-Kelas</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload file CSV dengan kolom: student_email, class_name,
           academic_year, joined_at (opsional)
@@ -208,7 +208,7 @@ export function StudentAssignmentImportForm() {
               href="/api/templates/student-class-assignments"
               className="inline-flex items-center rounded-md border px-4 py-2 text-sm hover:bg-muted transition"
             >
-              Download Template
+              Unduh Template
             </Link>
           </div>
         </div>
@@ -225,7 +225,7 @@ export function StudentAssignmentImportForm() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">
-                Preview ({previewRows.length} baris)
+                Pratinjau ({previewRows.length} baris)
               </h4>
               <div className="flex gap-4 text-xs">
                 <div>
@@ -385,7 +385,7 @@ export function StudentAssignmentImportForm() {
       <ConfirmDialog
         isOpen={Boolean(pendingFormData)}
         title="Konfirmasi Import"
-        description={`Import ${validCount} assignment siswa-kelas yang valid?`}
+        description={`Import ${validCount} penugasan siswa-kelas yang valid?`}
         confirmLabel="Import"
         isLoading={isPending}
         onCancel={() => setPendingFormData(null)}
@@ -393,7 +393,7 @@ export function StudentAssignmentImportForm() {
           if (!pendingFormData || isPending) return;
           formAction(pendingFormData);
           setPendingFormData(null);
-          toast.info("Import assignment siswa-kelas sedang diproses.");
+          toast.info("Import penugasan siswa-kelas sedang diproses.");
         }}
       />
     </div>

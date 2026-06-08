@@ -145,7 +145,7 @@ function FieldLabel({
   );
 }
 
-function ErrorList({ errors }: { errors: string[] }) {
+function KesalahanList({ errors }: { errors: string[] }) {
   if (errors.length === 0) {
     return null;
   }
@@ -203,7 +203,7 @@ export function QuestionForm({
   const [attachmentCaption, setAttachmentCaption] = useState(
     attachment?.caption ?? "",
   );
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setKesalahans] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
   const filteredCategories = useMemo(
@@ -234,27 +234,27 @@ export function QuestionForm({
   const isMultipleChoice = type === "multiple_choice";
 
   function validate() {
-    const nextErrors: string[] = [];
+    const nextKesalahans: string[] = [];
 
-    if (!subjectId) nextErrors.push("Mapel wajib dipilih.");
-    if (!content.trim()) nextErrors.push("Pertanyaan wajib diisi.");
+    if (!subjectId) nextKesalahans.push("Mapel wajib dipilih.");
+    if (!content.trim()) nextKesalahans.push("Pertanyaan wajib diisi.");
     if (!Number(point) || Number(point) <= 0) {
-      nextErrors.push("Poin wajib lebih dari 0.");
+      nextKesalahans.push("Poin wajib lebih dari 0.");
     }
 
     if (isMultipleChoice) {
       const emptyLabels = requiredLabels.filter((label) => !options[label].trim());
       if (emptyLabels.length > 0) {
-        nextErrors.push("Pilihan ganda wajib mengisi opsi A, B, C, dan D.");
+        nextKesalahans.push("Pilihan ganda wajib mengisi opsi A, B, C, dan D.");
       }
-      if (!correct) nextErrors.push("Pilih satu jawaban benar.");
+      if (!correct) nextKesalahans.push("Pilih satu jawaban benar.");
       if (correct === "E" && !options.E.trim()) {
-        nextErrors.push("Opsi E wajib diisi jika dipilih sebagai jawaban benar.");
+        nextKesalahans.push("Opsi E wajib diisi jika dipilih sebagai jawaban benar.");
       }
     }
 
     if (stimulusMode === "existing" && !stimulusId) {
-      nextErrors.push("Pilih stimulus yang akan digunakan.");
+      nextKesalahans.push("Pilih stimulus yang akan digunakan.");
     }
 
     if (
@@ -262,13 +262,13 @@ export function QuestionForm({
       (!newStimulusTitle.trim() ||
         (!newStimulusContent.trim() && !newStimulusMediaUrl.trim()))
     ) {
-      nextErrors.push(
+      nextKesalahans.push(
         "Stimulus baru wajib memiliki judul dan isi bacaan atau URL media.",
       );
     }
 
-    setErrors(nextErrors);
-    return nextErrors.length === 0;
+    setKesalahans(nextKesalahans);
+    return nextKesalahans.length === 0;
   }
 
   return (
@@ -286,7 +286,7 @@ export function QuestionForm({
       <input type="hidden" name="status" value="draft" />
       <input type="hidden" name="stimulus_mode" value={stimulusMode} />
 
-      <ErrorList errors={errors} />
+      <KesalahanList errors={errors} />
 
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
         <div className="grid gap-2 sm:grid-cols-5">
@@ -365,9 +365,9 @@ export function QuestionForm({
                 defaultValue={editable?.difficulty ?? "medium"}
                 className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+                <option value="easy">Mudah</option>
+                <option value="medium">Sedang</option>
+                <option value="hard">Sulit</option>
               </select>
             </FieldLabel>
             <FieldLabel label="Poin">
@@ -630,7 +630,7 @@ export function QuestionForm({
           </button>
           <button className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]">
             <Save className="size-4" />
-            {editable ? "Simpan Draft" : "Simpan Draft"}
+            {editable ? "Simpan Belum Diterbitkan" : "Simpan Belum Diterbitkan"}
           </button>
         </div>
       </div>
@@ -639,7 +639,7 @@ export function QuestionForm({
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
           <div className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-[#0F172A]">Preview Soal</h2>
+              <h2 className="text-lg font-semibold text-[#0F172A]">Pratinjau Soal</h2>
               <button
                 type="button"
                 onClick={() => setShowPreview(false)}

@@ -419,7 +419,7 @@ async function deleteStudentOwnedData(
       "student_classes",
       "student_id",
       studentIds,
-      "assignment kelas siswa",
+      "penempatan kelas siswa",
     ),
   );
   tableSummaries.push(

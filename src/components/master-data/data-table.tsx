@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { UI_LABELS } from "@/constants/ui-labels";
 import { cn } from "@/lib/utils";
 
 interface DataTableProps {
@@ -41,7 +42,7 @@ export function DataTable({
   empty,
   isEmpty,
   isLoading = false,
-  searchPlaceholder = "Cari data...",
+  searchPlaceholder = UI_LABELS.tables.searchPlaceholder,
   maxHeightClassName = "max-h-[65vh]",
   enableSearch = true,
   enablePagination = true,
@@ -117,7 +118,7 @@ export function DataTable({
           {enableColumnVisibility && columns.length > 4 ? (
             <details className="relative">
               <summary className="flex h-10 cursor-pointer list-none items-center rounded-xl border border-[#E2E8F0] px-3 text-sm hover:bg-[#F8FAFC]">
-                Kolom
+                {UI_LABELS.tables.columns}
               </summary>
               <div className="absolute z-30 mt-2 grid min-w-56 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 text-sm shadow-lg">
                 {columns.map((column, index) => (
@@ -136,10 +137,12 @@ export function DataTable({
         </div>
 
         <div className="flex items-center justify-between gap-3 text-sm text-[#64748B] md:justify-end">
-          <span>{filteredRows.length} data</span>
+          <span>
+            {filteredRows.length} {UI_LABELS.tables.dataCount}
+          </span>
           {enablePagination ? (
             <label className="flex items-center gap-2">
-              <span>Rows</span>
+              <span>{UI_LABELS.tables.rows}</span>
               <select
                 value={rowsPerPage}
                 onChange={(event) => updateRowsPerPage(event.target.value)}
@@ -185,7 +188,7 @@ export function DataTable({
             <tr>
               {enableRowNumbers ? (
                 <th className="w-14 whitespace-nowrap px-3 py-2 font-medium">
-                  No
+                  {UI_LABELS.tables.no}
                 </th>
               ) : null}
               {visibleColumns.map((column, index) => {
@@ -238,7 +241,7 @@ export function DataTable({
       {enablePagination ? (
         <div className="flex flex-col gap-3 border-t border-[#E2E8F0] p-3 text-sm text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Halaman {currentPage} dari {pageCount}
+            {UI_LABELS.tables.page} {currentPage} dari {pageCount}
           </span>
           <div className="flex gap-2">
             <button
@@ -247,7 +250,7 @@ export function DataTable({
               disabled={currentPage <= 1}
               className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Previous
+              {UI_LABELS.actions.previous}
             </button>
             <button
               type="button"
@@ -257,7 +260,7 @@ export function DataTable({
               disabled={currentPage >= pageCount}
               className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Next
+              {UI_LABELS.actions.next}
             </button>
           </div>
         </div>
@@ -270,8 +273,8 @@ function renderEmptyState(query: string, empty?: ReactNode) {
   if (query) {
     return (
       <EmptyState
-        title="Data tidak ditemukan"
-        description="Coba gunakan kata kunci lain atau reset filter."
+        title={UI_LABELS.messages.noSearchResult}
+        description={UI_LABELS.messages.noSearchResultDescription}
       />
     );
   }
@@ -281,7 +284,7 @@ function renderEmptyState(query: string, empty?: ReactNode) {
       return (
         <EmptyState
           title={empty}
-          description="Data akan muncul setelah tersedia."
+          description={UI_LABELS.messages.dataWillAppear}
         />
       );
     }
@@ -291,8 +294,8 @@ function renderEmptyState(query: string, empty?: ReactNode) {
 
   return (
     <EmptyState
-      title="Belum ada data"
-      description="Data akan muncul setelah dibuat atau diimport."
+      title={UI_LABELS.messages.noData}
+      description={UI_LABELS.messages.dataWillAppear}
     />
   );
 }
