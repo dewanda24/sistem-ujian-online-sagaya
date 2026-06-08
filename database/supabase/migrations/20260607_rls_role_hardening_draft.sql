@@ -1,0 +1,1158 @@
+-- RLS role hardening draft.
+-- Do not run in production before staging validation.
+-- Goal: keep tenant isolation, add role-aware write/read policies, and replace broad FOR ALL policies.
+
+begin;
+
+-- =====================================================
+-- HELPERS
+-- =====================================================
+
+create or replace function public.current_app_role_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select u.role_id
+  from public.users u
+  where u.auth_user_id = auth.uid()
+  limit 1
+$$;
+
+create or replace function public.current_app_has_role(role_names text[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_app_role_name() = any(role_names), false)
+$$;
+
+create or replace function public.current_app_can_read_school(target_school_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.current_app_is_super_admin()
+    or (
+      target_school_id is not null
+      and target_school_id = public.current_app_school_id()
+    )
+$$;
+
+create or replace function public.current_app_can_admin_school(target_school_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.current_app_is_super_admin()
+    or (
+      public.current_app_role_name() = 'admin'
+      and target_school_id is not null
+      and target_school_id = public.current_app_school_id()
+    )
+$$;
+
+create or replace function public.current_app_can_manage_questions(target_school_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.current_app_is_super_admin()
+    or (
+      public.current_app_has_role(array['admin','teacher'])
+      and target_school_id is not null
+      and target_school_id = public.current_app_school_id()
+    )
+$$;
+
+create or replace function public.current_app_can_manage_exams(target_school_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.current_app_is_super_admin()
+    or (
+      public.current_app_has_role(array['admin','teacher'])
+      and target_school_id is not null
+      and target_school_id = public.current_app_school_id()
+    )
+$$;
+
+create or replace function public.current_app_can_monitor_exams(target_school_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.current_app_is_super_admin()
+    or (
+      public.current_app_has_role(array['admin','teacher','proctor','principal'])
+      and target_school_id is not null
+      and target_school_id = public.current_app_school_id()
+    )
+$$;
+
+create or replace function public.current_student_has_exam_package(target_package_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.exam_attempts ea
+    join public.exam_schedules es on es.id = ea.exam_schedule_id
+    where ea.student_id = public.current_app_user_id()
+      and es.exam_package_id = target_package_id
+      and ea.status = 'in_progress'
+  )
+$$;
+
+create or replace function public.current_student_has_question(target_question_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.exam_package_questions epq
+    join public.exam_schedules es on es.exam_package_id = epq.exam_package_id
+    join public.exam_attempts ea on ea.exam_schedule_id = es.id
+    where epq.question_id = target_question_id
+      and ea.student_id = public.current_app_user_id()
+      and ea.status = 'in_progress'
+  )
+$$;
+
+create or replace function public.current_app_can_read_question(target_question_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.questions q
+    where q.id = target_question_id
+      and (
+        public.current_app_can_manage_questions(q.school_id)
+        or public.current_student_has_question(q.id)
+      )
+  )
+$$;
+
+-- =====================================================
+-- ENABLE RLS FOR P0 TABLES
+-- =====================================================
+
+alter table public.roles enable row level security;
+alter table public.permissions enable row level security;
+alter table public.role_permissions enable row level security;
+alter table public.user_profiles enable row level security;
+alter table public.audit_logs enable row level security;
+
+-- Drop draft policies first to make staging reruns predictable.
+drop policy if exists roles_select_current_or_admin_v2 on public.roles;
+drop policy if exists roles_insert_super_admin_v2 on public.roles;
+drop policy if exists roles_update_super_admin_v2 on public.roles;
+drop policy if exists roles_delete_super_admin_v2 on public.roles;
+drop policy if exists permissions_select_current_or_admin_v2 on public.permissions;
+drop policy if exists permissions_insert_super_admin_v2 on public.permissions;
+drop policy if exists permissions_update_super_admin_v2 on public.permissions;
+drop policy if exists permissions_delete_super_admin_v2 on public.permissions;
+drop policy if exists role_permissions_select_current_or_admin_v2 on public.role_permissions;
+drop policy if exists role_permissions_insert_super_admin_v2 on public.role_permissions;
+drop policy if exists role_permissions_update_super_admin_v2 on public.role_permissions;
+drop policy if exists role_permissions_delete_super_admin_v2 on public.role_permissions;
+drop policy if exists user_profiles_select_scoped_v2 on public.user_profiles;
+drop policy if exists user_profiles_insert_scoped_v2 on public.user_profiles;
+drop policy if exists user_profiles_update_scoped_v2 on public.user_profiles;
+drop policy if exists user_profiles_delete_admin_v2 on public.user_profiles;
+drop policy if exists audit_logs_select_super_admin_v2 on public.audit_logs;
+drop policy if exists audit_logs_insert_authenticated_v2 on public.audit_logs;
+drop policy if exists audit_logs_update_none_v2 on public.audit_logs;
+drop policy if exists audit_logs_delete_none_v2 on public.audit_logs;
+
+create policy roles_select_current_or_admin_v2 on public.roles
+for select using (
+  public.current_app_has_role(array['super_admin','admin'])
+  or id = public.current_app_role_id()
+);
+
+create policy roles_insert_super_admin_v2 on public.roles
+for insert with check (public.current_app_is_super_admin());
+
+create policy roles_update_super_admin_v2 on public.roles
+for update using (public.current_app_is_super_admin())
+with check (public.current_app_is_super_admin());
+
+create policy roles_delete_super_admin_v2 on public.roles
+for delete using (public.current_app_is_super_admin());
+
+create policy permissions_select_current_or_admin_v2 on public.permissions
+for select using (
+  public.current_app_has_role(array['super_admin','admin'])
+  or exists (
+    select 1
+    from public.role_permissions rp
+    where rp.permission_id = permissions.id
+      and rp.role_id = public.current_app_role_id()
+  )
+);
+
+create policy permissions_insert_super_admin_v2 on public.permissions
+for insert with check (public.current_app_is_super_admin());
+
+create policy permissions_update_super_admin_v2 on public.permissions
+for update using (public.current_app_is_super_admin())
+with check (public.current_app_is_super_admin());
+
+create policy permissions_delete_super_admin_v2 on public.permissions
+for delete using (public.current_app_is_super_admin());
+
+create policy role_permissions_select_current_or_admin_v2 on public.role_permissions
+for select using (
+  public.current_app_has_role(array['super_admin','admin'])
+  or role_id = public.current_app_role_id()
+);
+
+create policy role_permissions_insert_super_admin_v2 on public.role_permissions
+for insert with check (public.current_app_is_super_admin());
+
+create policy role_permissions_update_super_admin_v2 on public.role_permissions
+for update using (public.current_app_is_super_admin())
+with check (public.current_app_is_super_admin());
+
+create policy role_permissions_delete_super_admin_v2 on public.role_permissions
+for delete using (public.current_app_is_super_admin());
+
+create policy user_profiles_select_scoped_v2 on public.user_profiles
+for select using (
+  user_id = public.current_app_user_id()
+  or exists (
+    select 1
+    from public.users u
+    where u.id = user_id
+      and (
+        public.current_app_can_admin_school(u.school_id)
+        or (
+          public.current_app_has_role(array['teacher','proctor','principal'])
+          and u.school_id = public.current_app_school_id()
+        )
+      )
+  )
+);
+
+create policy user_profiles_insert_scoped_v2 on public.user_profiles
+for insert with check (
+  user_id = public.current_app_user_id()
+  or exists (
+    select 1
+    from public.users u
+    where u.id = user_id
+      and public.current_app_can_admin_school(u.school_id)
+  )
+);
+
+create policy user_profiles_update_scoped_v2 on public.user_profiles
+for update using (
+  user_id = public.current_app_user_id()
+  or exists (
+    select 1
+    from public.users u
+    where u.id = user_id
+      and public.current_app_can_admin_school(u.school_id)
+  )
+)
+with check (
+  user_id = public.current_app_user_id()
+  or exists (
+    select 1
+    from public.users u
+    where u.id = user_id
+      and public.current_app_can_admin_school(u.school_id)
+  )
+);
+
+create policy user_profiles_delete_admin_v2 on public.user_profiles
+for delete using (
+  exists (
+    select 1
+    from public.users u
+    where u.id = user_id
+      and public.current_app_can_admin_school(u.school_id)
+  )
+);
+
+create policy audit_logs_select_super_admin_v2 on public.audit_logs
+for select using (public.current_app_is_super_admin());
+
+create policy audit_logs_insert_authenticated_v2 on public.audit_logs
+for insert with check (auth.uid() is not null);
+
+create policy audit_logs_update_none_v2 on public.audit_logs
+for update using (false)
+with check (false);
+
+create policy audit_logs_delete_none_v2 on public.audit_logs
+for delete using (false);
+
+-- =====================================================
+-- P1: MASTER DATA
+-- =====================================================
+
+drop policy if exists users_select_scoped_v2 on public.users;
+drop policy if exists users_insert_admin_v2 on public.users;
+drop policy if exists users_update_admin_v2 on public.users;
+drop policy if exists users_delete_admin_v2 on public.users;
+drop policy if exists academic_years_select_school_v2 on public.academic_years;
+drop policy if exists academic_years_insert_admin_v2 on public.academic_years;
+drop policy if exists academic_years_update_admin_v2 on public.academic_years;
+drop policy if exists academic_years_delete_admin_v2 on public.academic_years;
+drop policy if exists semesters_select_school_v2 on public.semesters;
+drop policy if exists semesters_insert_admin_v2 on public.semesters;
+drop policy if exists semesters_update_admin_v2 on public.semesters;
+drop policy if exists semesters_delete_admin_v2 on public.semesters;
+drop policy if exists classes_select_school_v2 on public.classes;
+drop policy if exists classes_insert_admin_v2 on public.classes;
+drop policy if exists classes_update_admin_v2 on public.classes;
+drop policy if exists classes_delete_admin_v2 on public.classes;
+drop policy if exists subjects_select_school_v2 on public.subjects;
+drop policy if exists subjects_insert_admin_v2 on public.subjects;
+drop policy if exists subjects_update_admin_v2 on public.subjects;
+drop policy if exists subjects_delete_admin_v2 on public.subjects;
+drop policy if exists teacher_subjects_select_scoped_v2 on public.teacher_subjects;
+drop policy if exists teacher_subjects_insert_admin_v2 on public.teacher_subjects;
+drop policy if exists teacher_subjects_update_admin_v2 on public.teacher_subjects;
+drop policy if exists teacher_subjects_delete_admin_v2 on public.teacher_subjects;
+drop policy if exists class_members_select_scoped_v2 on public.class_members;
+drop policy if exists class_members_insert_admin_v2 on public.class_members;
+drop policy if exists class_members_update_admin_v2 on public.class_members;
+drop policy if exists class_members_delete_admin_v2 on public.class_members;
+drop policy if exists student_classes_select_scoped_v2 on public.student_classes;
+drop policy if exists student_classes_insert_admin_v2 on public.student_classes;
+drop policy if exists student_classes_update_admin_v2 on public.student_classes;
+drop policy if exists student_classes_delete_admin_v2 on public.student_classes;
+
+create policy users_select_scoped_v2 on public.users
+for select using (
+  public.current_app_is_super_admin()
+  or id = public.current_app_user_id()
+  or (
+    school_id = public.current_app_school_id()
+    and public.current_app_has_role(array['admin','teacher','proctor','principal'])
+  )
+);
+
+create policy users_insert_admin_v2 on public.users
+for insert with check (public.current_app_can_admin_school(school_id));
+
+create policy users_update_admin_v2 on public.users
+for update using (public.current_app_can_admin_school(school_id))
+with check (public.current_app_can_admin_school(school_id));
+
+create policy users_delete_admin_v2 on public.users
+for delete using (public.current_app_can_admin_school(school_id));
+
+create policy academic_years_select_school_v2 on public.academic_years
+for select using (public.current_app_can_read_school(school_id));
+
+create policy academic_years_insert_admin_v2 on public.academic_years
+for insert with check (public.current_app_can_admin_school(school_id));
+
+create policy academic_years_update_admin_v2 on public.academic_years
+for update using (public.current_app_can_admin_school(school_id))
+with check (public.current_app_can_admin_school(school_id));
+
+create policy academic_years_delete_admin_v2 on public.academic_years
+for delete using (public.current_app_can_admin_school(school_id));
+
+create policy semesters_select_school_v2 on public.semesters
+for select using (
+  public.current_app_is_super_admin()
+  or exists (
+    select 1 from public.academic_years ay
+    where ay.id = academic_year_id
+      and ay.school_id = public.current_app_school_id()
+  )
+);
+
+create policy semesters_insert_admin_v2 on public.semesters
+for insert with check (
+  exists (
+    select 1 from public.academic_years ay
+    where ay.id = academic_year_id
+      and public.current_app_can_admin_school(ay.school_id)
+  )
+);
+
+create policy semesters_update_admin_v2 on public.semesters
+for update using (
+  exists (
+    select 1 from public.academic_years ay
+    where ay.id = academic_year_id
+      and public.current_app_can_admin_school(ay.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.academic_years ay
+    where ay.id = academic_year_id
+      and public.current_app_can_admin_school(ay.school_id)
+  )
+);
+
+create policy semesters_delete_admin_v2 on public.semesters
+for delete using (
+  exists (
+    select 1 from public.academic_years ay
+    where ay.id = academic_year_id
+      and public.current_app_can_admin_school(ay.school_id)
+  )
+);
+
+create policy classes_select_school_v2 on public.classes
+for select using (public.current_app_can_read_school(school_id));
+
+create policy classes_insert_admin_v2 on public.classes
+for insert with check (public.current_app_can_admin_school(school_id));
+
+create policy classes_update_admin_v2 on public.classes
+for update using (public.current_app_can_admin_school(school_id))
+with check (public.current_app_can_admin_school(school_id));
+
+create policy classes_delete_admin_v2 on public.classes
+for delete using (public.current_app_can_admin_school(school_id));
+
+create policy subjects_select_school_v2 on public.subjects
+for select using (public.current_app_can_read_school(school_id));
+
+create policy subjects_insert_admin_v2 on public.subjects
+for insert with check (public.current_app_can_admin_school(school_id));
+
+create policy subjects_update_admin_v2 on public.subjects
+for update using (public.current_app_can_admin_school(school_id))
+with check (public.current_app_can_admin_school(school_id));
+
+create policy subjects_delete_admin_v2 on public.subjects
+for delete using (public.current_app_can_admin_school(school_id));
+
+create policy teacher_subjects_select_scoped_v2 on public.teacher_subjects
+for select using (
+  public.current_app_is_super_admin()
+  or teacher_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.subjects s
+    where s.id = subject_id
+      and s.school_id = public.current_app_school_id()
+      and public.current_app_has_role(array['admin','principal','proctor'])
+  )
+);
+
+create policy teacher_subjects_insert_admin_v2 on public.teacher_subjects
+for insert with check (
+  exists (
+    select 1 from public.subjects s
+    where s.id = subject_id
+      and public.current_app_can_admin_school(s.school_id)
+  )
+);
+
+create policy teacher_subjects_update_admin_v2 on public.teacher_subjects
+for update using (
+  exists (
+    select 1 from public.subjects s
+    where s.id = subject_id
+      and public.current_app_can_admin_school(s.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.subjects s
+    where s.id = subject_id
+      and public.current_app_can_admin_school(s.school_id)
+  )
+);
+
+create policy teacher_subjects_delete_admin_v2 on public.teacher_subjects
+for delete using (
+  exists (
+    select 1 from public.subjects s
+    where s.id = subject_id
+      and public.current_app_can_admin_school(s.school_id)
+  )
+);
+
+create policy class_members_select_scoped_v2 on public.class_members
+for select using (
+  public.current_app_is_super_admin()
+  or student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and c.school_id = public.current_app_school_id()
+      and (
+        public.current_app_has_role(array['admin','principal','proctor'])
+        or c.homeroom_teacher_id = public.current_app_user_id()
+      )
+  )
+);
+
+create policy class_members_insert_admin_v2 on public.class_members
+for insert with check (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+create policy class_members_update_admin_v2 on public.class_members
+for update using (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+create policy class_members_delete_admin_v2 on public.class_members
+for delete using (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+create policy student_classes_select_scoped_v2 on public.student_classes
+for select using (
+  public.current_app_is_super_admin()
+  or student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and c.school_id = public.current_app_school_id()
+      and public.current_app_has_role(array['admin','principal','proctor','teacher'])
+  )
+);
+
+create policy student_classes_insert_admin_v2 on public.student_classes
+for insert with check (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+create policy student_classes_update_admin_v2 on public.student_classes
+for update using (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+create policy student_classes_delete_admin_v2 on public.student_classes
+for delete using (
+  exists (
+    select 1 from public.classes c
+    where c.id = class_id
+      and public.current_app_can_admin_school(c.school_id)
+  )
+);
+
+-- =====================================================
+-- P2: QUESTION BANK
+-- =====================================================
+
+drop policy if exists question_categories_select_manager_v2 on public.question_categories;
+drop policy if exists question_categories_insert_manager_v2 on public.question_categories;
+drop policy if exists question_categories_update_manager_v2 on public.question_categories;
+drop policy if exists question_categories_delete_manager_v2 on public.question_categories;
+drop policy if exists question_stimuli_select_scoped_v2 on public.question_stimuli;
+drop policy if exists question_stimuli_insert_manager_v2 on public.question_stimuli;
+drop policy if exists question_stimuli_update_manager_v2 on public.question_stimuli;
+drop policy if exists question_stimuli_delete_manager_v2 on public.question_stimuli;
+drop policy if exists questions_select_scoped_v2 on public.questions;
+drop policy if exists questions_insert_manager_v2 on public.questions;
+drop policy if exists questions_update_manager_v2 on public.questions;
+drop policy if exists questions_delete_manager_v2 on public.questions;
+drop policy if exists question_options_select_scoped_v2 on public.question_options;
+drop policy if exists question_options_insert_manager_v2 on public.question_options;
+drop policy if exists question_options_update_manager_v2 on public.question_options;
+drop policy if exists question_options_delete_manager_v2 on public.question_options;
+drop policy if exists question_attachments_select_scoped_v2 on public.question_attachments;
+drop policy if exists question_attachments_insert_manager_v2 on public.question_attachments;
+drop policy if exists question_attachments_update_manager_v2 on public.question_attachments;
+drop policy if exists question_attachments_delete_manager_v2 on public.question_attachments;
+drop policy if exists question_versions_select_manager_v2 on public.question_versions;
+drop policy if exists question_versions_insert_manager_v2 on public.question_versions;
+drop policy if exists question_versions_update_none_v2 on public.question_versions;
+drop policy if exists question_versions_delete_super_admin_v2 on public.question_versions;
+
+create policy question_categories_select_manager_v2 on public.question_categories
+for select using (public.current_app_can_manage_questions(school_id));
+
+create policy question_categories_insert_manager_v2 on public.question_categories
+for insert with check (public.current_app_can_manage_questions(school_id));
+
+create policy question_categories_update_manager_v2 on public.question_categories
+for update using (public.current_app_can_manage_questions(school_id))
+with check (public.current_app_can_manage_questions(school_id));
+
+create policy question_categories_delete_manager_v2 on public.question_categories
+for delete using (public.current_app_can_manage_questions(school_id));
+
+create policy question_stimuli_select_scoped_v2 on public.question_stimuli
+for select using (
+  public.current_app_can_manage_questions(school_id)
+  or exists (
+    select 1 from public.questions q
+    where q.stimulus_id = question_stimuli.id
+      and public.current_student_has_question(q.id)
+  )
+);
+
+create policy question_stimuli_insert_manager_v2 on public.question_stimuli
+for insert with check (public.current_app_can_manage_questions(school_id));
+
+create policy question_stimuli_update_manager_v2 on public.question_stimuli
+for update using (public.current_app_can_manage_questions(school_id))
+with check (public.current_app_can_manage_questions(school_id));
+
+create policy question_stimuli_delete_manager_v2 on public.question_stimuli
+for delete using (public.current_app_can_manage_questions(school_id));
+
+create policy questions_select_scoped_v2 on public.questions
+for select using (
+  public.current_app_can_manage_questions(school_id)
+  or public.current_student_has_question(id)
+);
+
+create policy questions_insert_manager_v2 on public.questions
+for insert with check (public.current_app_can_manage_questions(school_id));
+
+create policy questions_update_manager_v2 on public.questions
+for update using (public.current_app_can_manage_questions(school_id))
+with check (public.current_app_can_manage_questions(school_id));
+
+create policy questions_delete_manager_v2 on public.questions
+for delete using (public.current_app_can_manage_questions(school_id));
+
+create policy question_options_select_scoped_v2 on public.question_options
+for select using (public.current_app_can_read_question(question_id));
+
+create policy question_options_insert_manager_v2 on public.question_options
+for insert with check (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_options_update_manager_v2 on public.question_options
+for update using (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_options_delete_manager_v2 on public.question_options
+for delete using (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_attachments_select_scoped_v2 on public.question_attachments
+for select using (public.current_app_can_read_question(question_id));
+
+create policy question_attachments_insert_manager_v2 on public.question_attachments
+for insert with check (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_attachments_update_manager_v2 on public.question_attachments
+for update using (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_attachments_delete_manager_v2 on public.question_attachments
+for delete using (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_versions_select_manager_v2 on public.question_versions
+for select using (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_versions_insert_manager_v2 on public.question_versions
+for insert with check (
+  exists (
+    select 1 from public.questions q
+    where q.id = question_id
+      and public.current_app_can_manage_questions(q.school_id)
+  )
+);
+
+create policy question_versions_update_none_v2 on public.question_versions
+for update using (false)
+with check (false);
+
+create policy question_versions_delete_super_admin_v2 on public.question_versions
+for delete using (public.current_app_is_super_admin());
+
+-- =====================================================
+-- P3: EXAMS
+-- =====================================================
+
+drop policy if exists exam_packages_select_scoped_v2 on public.exam_packages;
+drop policy if exists exam_packages_insert_manager_v2 on public.exam_packages;
+drop policy if exists exam_packages_update_manager_v2 on public.exam_packages;
+drop policy if exists exam_packages_delete_manager_v2 on public.exam_packages;
+drop policy if exists exam_package_questions_select_scoped_v2 on public.exam_package_questions;
+drop policy if exists exam_package_questions_insert_manager_v2 on public.exam_package_questions;
+drop policy if exists exam_package_questions_update_manager_v2 on public.exam_package_questions;
+drop policy if exists exam_package_questions_delete_manager_v2 on public.exam_package_questions;
+drop policy if exists exam_schedules_select_scoped_v2 on public.exam_schedules;
+drop policy if exists exam_schedules_insert_manager_v2 on public.exam_schedules;
+drop policy if exists exam_schedules_update_manager_v2 on public.exam_schedules;
+drop policy if exists exam_schedules_delete_manager_v2 on public.exam_schedules;
+drop policy if exists exam_schedule_classes_select_scoped_v2 on public.exam_schedule_classes;
+drop policy if exists exam_schedule_classes_insert_manager_v2 on public.exam_schedule_classes;
+drop policy if exists exam_schedule_classes_update_manager_v2 on public.exam_schedule_classes;
+drop policy if exists exam_schedule_classes_delete_manager_v2 on public.exam_schedule_classes;
+drop policy if exists exam_participants_select_scoped_v2 on public.exam_participants;
+drop policy if exists exam_participants_insert_manager_v2 on public.exam_participants;
+drop policy if exists exam_participants_update_scoped_v2 on public.exam_participants;
+drop policy if exists exam_participants_delete_manager_v2 on public.exam_participants;
+drop policy if exists exam_attempts_select_scoped_v2 on public.exam_attempts;
+drop policy if exists exam_attempts_insert_student_or_manager_v2 on public.exam_attempts;
+drop policy if exists exam_attempts_update_student_or_monitor_v2 on public.exam_attempts;
+drop policy if exists exam_attempts_delete_manager_v2 on public.exam_attempts;
+drop policy if exists exam_answers_select_scoped_v2 on public.exam_answers;
+drop policy if exists exam_answers_insert_student_v2 on public.exam_answers;
+drop policy if exists exam_answers_update_student_or_manager_v2 on public.exam_answers;
+drop policy if exists exam_answers_delete_manager_v2 on public.exam_answers;
+drop policy if exists exam_events_select_scoped_v2 on public.exam_events;
+drop policy if exists exam_events_insert_student_or_monitor_v2 on public.exam_events;
+drop policy if exists exam_events_update_none_v2 on public.exam_events;
+drop policy if exists exam_events_delete_super_admin_v2 on public.exam_events;
+
+create policy exam_packages_select_scoped_v2 on public.exam_packages
+for select using (
+  public.current_app_can_monitor_exams(school_id)
+  or public.current_student_has_exam_package(id)
+);
+
+create policy exam_packages_insert_manager_v2 on public.exam_packages
+for insert with check (public.current_app_can_manage_exams(school_id));
+
+create policy exam_packages_update_manager_v2 on public.exam_packages
+for update using (public.current_app_can_manage_exams(school_id))
+with check (public.current_app_can_manage_exams(school_id));
+
+create policy exam_packages_delete_manager_v2 on public.exam_packages
+for delete using (public.current_app_can_manage_exams(school_id));
+
+create policy exam_package_questions_select_scoped_v2 on public.exam_package_questions
+for select using (
+  public.current_student_has_exam_package(exam_package_id)
+  or exists (
+    select 1 from public.exam_packages ep
+    where ep.id = exam_package_id
+      and public.current_app_can_monitor_exams(ep.school_id)
+  )
+);
+
+create policy exam_package_questions_insert_manager_v2 on public.exam_package_questions
+for insert with check (
+  exists (
+    select 1 from public.exam_packages ep
+    where ep.id = exam_package_id
+      and public.current_app_can_manage_exams(ep.school_id)
+  )
+);
+
+create policy exam_package_questions_update_manager_v2 on public.exam_package_questions
+for update using (
+  exists (
+    select 1 from public.exam_packages ep
+    where ep.id = exam_package_id
+      and public.current_app_can_manage_exams(ep.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.exam_packages ep
+    where ep.id = exam_package_id
+      and public.current_app_can_manage_exams(ep.school_id)
+  )
+);
+
+create policy exam_package_questions_delete_manager_v2 on public.exam_package_questions
+for delete using (
+  exists (
+    select 1 from public.exam_packages ep
+    where ep.id = exam_package_id
+      and public.current_app_can_manage_exams(ep.school_id)
+  )
+);
+
+create policy exam_schedules_select_scoped_v2 on public.exam_schedules
+for select using (
+  public.current_app_can_monitor_exams(school_id)
+  or exists (
+    select 1 from public.exam_participants p
+    where p.exam_schedule_id = exam_schedules.id
+      and p.student_id = public.current_app_user_id()
+  )
+);
+
+create policy exam_schedules_insert_manager_v2 on public.exam_schedules
+for insert with check (public.current_app_can_manage_exams(school_id));
+
+create policy exam_schedules_update_manager_v2 on public.exam_schedules
+for update using (public.current_app_can_manage_exams(school_id))
+with check (public.current_app_can_manage_exams(school_id));
+
+create policy exam_schedules_delete_manager_v2 on public.exam_schedules
+for delete using (public.current_app_can_manage_exams(school_id));
+
+create policy exam_schedule_classes_select_scoped_v2 on public.exam_schedule_classes
+for select using (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and (
+        public.current_app_can_monitor_exams(es.school_id)
+        or exists (
+          select 1 from public.exam_participants p
+          where p.exam_schedule_id = es.id
+            and p.student_id = public.current_app_user_id()
+        )
+      )
+  )
+);
+
+create policy exam_schedule_classes_insert_manager_v2 on public.exam_schedule_classes
+for insert with check (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_schedule_classes_update_manager_v2 on public.exam_schedule_classes
+for update using (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+)
+with check (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_schedule_classes_delete_manager_v2 on public.exam_schedule_classes
+for delete using (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_participants_select_scoped_v2 on public.exam_participants
+for select using (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_monitor_exams(es.school_id)
+  )
+);
+
+create policy exam_participants_insert_manager_v2 on public.exam_participants
+for insert with check (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_participants_update_scoped_v2 on public.exam_participants
+for update using (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_has_role(array['super_admin','admin','teacher','proctor'])
+      and public.current_app_can_read_school(es.school_id)
+  )
+)
+with check (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_has_role(array['super_admin','admin','teacher','proctor'])
+      and public.current_app_can_read_school(es.school_id)
+  )
+);
+
+create policy exam_participants_delete_manager_v2 on public.exam_participants
+for delete using (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_attempts_select_scoped_v2 on public.exam_attempts
+for select using (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_monitor_exams(es.school_id)
+  )
+);
+
+create policy exam_attempts_insert_student_or_manager_v2 on public.exam_attempts
+for insert with check (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_attempts_update_student_or_monitor_v2 on public.exam_attempts
+for update using (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_has_role(array['super_admin','admin','teacher','proctor'])
+      and public.current_app_can_read_school(es.school_id)
+  )
+)
+with check (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_has_role(array['super_admin','admin','teacher','proctor'])
+      and public.current_app_can_read_school(es.school_id)
+  )
+);
+
+create policy exam_attempts_delete_manager_v2 on public.exam_attempts
+for delete using (
+  exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_answers_select_scoped_v2 on public.exam_answers
+for select using (
+  exists (
+    select 1 from public.exam_attempts ea
+    join public.exam_schedules es on es.id = ea.exam_schedule_id
+    where ea.id = exam_attempt_id
+      and (
+        ea.student_id = public.current_app_user_id()
+        or public.current_app_can_monitor_exams(es.school_id)
+      )
+  )
+);
+
+create policy exam_answers_insert_student_v2 on public.exam_answers
+for insert with check (
+  exists (
+    select 1 from public.exam_attempts ea
+    where ea.id = exam_attempt_id
+      and ea.student_id = public.current_app_user_id()
+      and ea.status = 'in_progress'
+  )
+);
+
+create policy exam_answers_update_student_or_manager_v2 on public.exam_answers
+for update using (
+  exists (
+    select 1 from public.exam_attempts ea
+    join public.exam_schedules es on es.id = ea.exam_schedule_id
+    where ea.id = exam_attempt_id
+      and (
+        (ea.student_id = public.current_app_user_id() and ea.status = 'in_progress')
+        or public.current_app_has_role(array['super_admin','admin','teacher'])
+          and public.current_app_can_read_school(es.school_id)
+      )
+  )
+)
+with check (
+  exists (
+    select 1 from public.exam_attempts ea
+    join public.exam_schedules es on es.id = ea.exam_schedule_id
+    where ea.id = exam_attempt_id
+      and (
+        (ea.student_id = public.current_app_user_id() and ea.status = 'in_progress')
+        or public.current_app_has_role(array['super_admin','admin','teacher'])
+          and public.current_app_can_read_school(es.school_id)
+      )
+  )
+);
+
+create policy exam_answers_delete_manager_v2 on public.exam_answers
+for delete using (
+  exists (
+    select 1 from public.exam_attempts ea
+    join public.exam_schedules es on es.id = ea.exam_schedule_id
+    where ea.id = exam_attempt_id
+      and public.current_app_can_manage_exams(es.school_id)
+  )
+);
+
+create policy exam_events_select_scoped_v2 on public.exam_events
+for select using (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_can_monitor_exams(es.school_id)
+  )
+);
+
+create policy exam_events_insert_student_or_monitor_v2 on public.exam_events
+for insert with check (
+  student_id = public.current_app_user_id()
+  or exists (
+    select 1 from public.exam_schedules es
+    where es.id = exam_schedule_id
+      and public.current_app_has_role(array['super_admin','admin','teacher','proctor'])
+      and public.current_app_can_read_school(es.school_id)
+  )
+);
+
+create policy exam_events_update_none_v2 on public.exam_events
+for update using (false)
+with check (false);
+
+create policy exam_events_delete_super_admin_v2 on public.exam_events
+for delete using (public.current_app_is_super_admin());
+
+-- =====================================================
+-- RETIRE BROAD TENANT WRITE POLICIES AFTER V2 EXISTS
+-- =====================================================
+
+drop policy if exists users_tenant_write on public.users;
+drop policy if exists academic_years_tenant_all on public.academic_years;
+drop policy if exists semesters_tenant_all on public.semesters;
+drop policy if exists classes_tenant_all on public.classes;
+drop policy if exists subjects_tenant_all on public.subjects;
+drop policy if exists teacher_subjects_tenant_all on public.teacher_subjects;
+drop policy if exists student_classes_tenant_all on public.student_classes;
+drop policy if exists class_members_tenant_all on public.class_members;
+drop policy if exists question_categories_tenant_all on public.question_categories;
+drop policy if exists question_stimuli_tenant_all on public.question_stimuli;
+drop policy if exists questions_tenant_all on public.questions;
+drop policy if exists question_options_tenant_all on public.question_options;
+drop policy if exists question_attachments_tenant_all on public.question_attachments;
+drop policy if exists question_versions_tenant_all on public.question_versions;
+drop policy if exists exam_packages_tenant_all on public.exam_packages;
+drop policy if exists exam_package_questions_tenant_all on public.exam_package_questions;
+drop policy if exists exam_schedules_tenant_all on public.exam_schedules;
+drop policy if exists exam_schedule_classes_tenant_all on public.exam_schedule_classes;
+drop policy if exists exam_participants_tenant_all on public.exam_participants;
+drop policy if exists exam_attempts_tenant_all on public.exam_attempts;
+drop policy if exists exam_answers_tenant_all on public.exam_answers;
+drop policy if exists exam_events_tenant_all on public.exam_events;
+
+commit;

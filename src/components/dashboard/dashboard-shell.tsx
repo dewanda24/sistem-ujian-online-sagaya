@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
@@ -16,13 +16,18 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children, user }: DashboardShellProps) {
-  const menuItems = getDashboardMenu(user);
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  return (
+    <DashboardShellContent key={pathname} user={user}>
+      {children}
+    </DashboardShellContent>
+  );
+}
+
+function DashboardShellContent({ children, user }: DashboardShellProps) {
+  const menuItems = getDashboardMenu(user);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[#F8FAFC]">
