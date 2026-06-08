@@ -69,8 +69,8 @@ export default async function MonitoringPage({
       <ActionToast status={params.notice} message={params.message} />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <DashboardPageHeader
-          title="Monitoring Ujian"
-          description="Pantau status peserta, progres pengerjaan, dan pelanggaran ujian secara real-time."
+          title="Pengawasan Ujian"
+          description="Pantau status peserta, progres pengerjaan, dan kejadian selama ujian."
         />
         <div className="flex flex-wrap gap-2">
           <a

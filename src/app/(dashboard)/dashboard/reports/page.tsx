@@ -26,16 +26,20 @@ const modules = [
 ];
 
 export default async function ReportsPage() {
-  await requirePermission("reports.view");
+  const user = await requirePermission("reports.view");
+  const visibleModules =
+    user.roles?.name === "teacher"
+      ? modules.filter((module) => module.href !== "/dashboard/reports/login-cards")
+      : modules;
 
   return (
     <div className="space-y-5">
       <DashboardPageHeader
-        title="Laporan"
-        description="Akses ringkas untuk hasil ujian dan rekap nilai."
+        title="Nilai"
+        description="Akses ringkas untuk hasil ujian dan rekap nilai siswa."
       />
       <div className="grid gap-3 md:grid-cols-2">
-        {modules.map((module) => {
+        {visibleModules.map((module) => {
           const Icon = module.icon;
 
           return (

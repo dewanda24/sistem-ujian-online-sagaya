@@ -31,8 +31,8 @@ export default async function ExamsPage() {
   return (
     <div>
       <DashboardPageHeader
-        title="Exams"
-        description="Fondasi paket dan jadwal ujian. Token, ruang ujian, autosave, scoring, dan monitoring masuk sprint berikutnya."
+        title="Ujian"
+        description="Buat paket ujian, atur jadwal, dan siapkan kartu ujian siswa."
       />
       <div className="grid gap-4 md:grid-cols-3">
         {modules.map((module) => (

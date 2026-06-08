@@ -20,7 +20,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Profile & Settings"
+        title="Profil"
         description="Kelola identitas dasar akun yang digunakan di seluruh dashboard."
       />
 

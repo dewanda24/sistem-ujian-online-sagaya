@@ -2,8 +2,6 @@ import Link from "next/link";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { StatusPill } from "@/components/dashboard/status-pill";
-import { DataTable } from "@/components/master-data/data-table";
 import {
   firstRelation,
   getTeacherAssignmentOverview,
@@ -29,6 +27,12 @@ type AcademicYearRelation = {
   is_active?: boolean | null;
 };
 
+type TeachingGroup = {
+  subject: SubjectRelation;
+  academicYears: Set<string>;
+  classes: Map<string, ClassRelation>;
+};
+
 function buildQueryHref(path: string, params: Record<string, string | null | undefined>) {
   const searchParams = new URLSearchParams();
 
@@ -46,147 +50,152 @@ function buildQueryHref(path: string, params: Record<string, string | null | und
 export default async function TeacherAssignmentsPage() {
   await requireRole("teacher");
   const assignments = await getTeacherAssignmentOverview();
-  const subjectIds = [
-    ...new Set(
-      assignments
-        .map((assignment) => assignment.subject_id as string | null)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
-  const classIds = [
-    ...new Set(
-      assignments
-        .map((assignment) => assignment.class_id as string | null)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
-  const academicYearIds = [
-    ...new Set(
-      assignments
-        .map((assignment) => assignment.academic_year_id as string | null)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
+  const teachingMap = new Map<string, TeachingGroup>();
+
+  for (const assignment of assignments) {
+    const subject = firstRelation(
+      assignment.subjects as SubjectRelation | SubjectRelation[] | null,
+    );
+    const classItem = firstRelation(
+      assignment.classes as ClassRelation | ClassRelation[] | null,
+    );
+    const academicYear = firstRelation(
+      assignment.academic_years as AcademicYearRelation | AcademicYearRelation[] | null,
+    );
+    const subjectId = subject?.id ?? (assignment.subject_id as string | null) ?? "unknown";
+
+    if (!teachingMap.has(subjectId)) {
+      teachingMap.set(subjectId, {
+        subject: {
+          id: subjectId,
+          code: subject?.code ?? null,
+          name: subject?.name ?? "Mapel belum tersedia",
+        },
+        academicYears: new Set(),
+        classes: new Map(),
+      });
+    }
+
+    const group = teachingMap.get(subjectId)!;
+
+    if (academicYear?.name) {
+      group.academicYears.add(academicYear.name);
+    }
+
+    if (classItem?.id) {
+      group.classes.set(classItem.id, classItem);
+    }
+  }
+
+  const teachingGroups = Array.from(teachingMap.values());
+  const classCount = new Set(
+    assignments
+      .map((assignment) => assignment.class_id as string | null)
+      .filter(Boolean),
+  ).size;
+  const academicYearCount = new Set(
+    assignments
+      .map((assignment) => assignment.academic_year_id as string | null)
+      .filter(Boolean),
+  ).size;
 
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Mapel & Kelas Saya"
-        description="Ringkasan assignment mengajar berdasarkan teacher_subjects. Halaman ini menjadi pintu kerja guru sebelum menyusun soal, paket, dan jadwal ujian."
+        title="Kelas Saya"
+        description="Mapel dan kelas yang sedang diajar. Dari sini guru bisa langsung membuat soal, paket ujian, atau jadwal."
       />
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <SummaryCard label="Assignment" value={assignments.length} />
-        <SummaryCard label="Mapel" value={subjectIds.length} />
-        <SummaryCard label="Kelas" value={classIds.length} />
-        <SummaryCard label="Tahun Ajaran" value={academicYearIds.length} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Mapel" value={teachingGroups.length} />
+        <SummaryCard label="Kelas" value={classCount} />
+        <SummaryCard label="Tahun Ajaran" value={academicYearCount} />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <QuickLink
-          title="Bank Soal"
-          description="Kelola soal sesuai mapel yang ditugaskan."
-          href="/dashboard/question-bank/questions"
+      {teachingGroups.length === 0 ? (
+        <EmptyState
+          title="Belum ada kelas mengajar"
+          description="Hubungi admin sekolah jika mapel atau kelas belum muncul."
         />
-        <QuickLink
-          title="Paket Ujian"
-          description="Susun paket dari soal yang sudah published."
-          href="/dashboard/exams/packages"
-        />
-        <QuickLink
-          title="Jadwal Ujian"
-          description="Lihat jadwal ujian terkait mapel guru."
-          href="/dashboard/exams/schedules"
-        />
-        <QuickLink
-          title="Monitoring"
-          description="Pantau sesi ujian aktif yang menjadi tanggung jawab guru."
-          href="/dashboard/teacher/monitoring"
-        />
-      </div>
-
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">Daftar Assignment Mengajar</h2>
-        <DataTable
-          columns={["Mapel", "Kelas", "Tahun Ajaran", "Status Kelas", "Aksi"]}
-          isEmpty={assignments.length === 0}
-          empty={
-            <EmptyState
-              title="Belum ada assignment mengajar"
-              description="Assignment akan tampil setelah admin menghubungkan guru, mapel, kelas, dan tahun ajaran di master data guru."
-            />
-          }
-        >
-          {assignments.map((assignment) => {
-            const subject = firstRelation(
-              assignment.subjects as SubjectRelation | SubjectRelation[] | null,
-            );
-            const classItem = firstRelation(
-              assignment.classes as ClassRelation | ClassRelation[] | null,
-            );
-            const academicYear = firstRelation(
-              assignment.academic_years as
-                | AcademicYearRelation
-                | AcademicYearRelation[]
-                | null,
-            );
+      ) : (
+        <section className="grid gap-4 lg:grid-cols-2">
+          {teachingGroups.map((group) => {
+            const classes = Array.from(group.classes.values());
             const subjectHref = buildQueryHref("/dashboard/question-bank/questions", {
-              subject_id: subject?.id ?? (assignment.subject_id as string | null),
+              subject_id: group.subject.id,
             });
             const packageHref = buildQueryHref("/dashboard/exams/packages", {
-              subject_id: subject?.id ?? (assignment.subject_id as string | null),
+              subject_id: group.subject.id,
             });
 
             return (
-              <tr key={assignment.id as string}>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{subject?.name ?? "Mapel belum tersedia"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {subject?.code ?? assignment.subject_id ?? "-"}
+              <article
+                key={group.subject.id ?? group.subject.name}
+                className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#2563EB]">Mapel</p>
+                    <h2 className="mt-1 text-xl font-semibold text-[#0F172A]">
+                      {group.subject.name}
+                    </h2>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      {group.subject.code ?? "Kode mapel belum tersedia"}
+                    </p>
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{classItem?.name ?? "Kelas belum tersedia"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Tingkat {classItem?.grade_level ?? "-"}
+                  <div className="rounded-xl bg-[#F8FAFC] px-3 py-2 text-sm text-[#64748B]">
+                    {Array.from(group.academicYears).join(", ") || "Tahun ajaran aktif"}
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div>{academicYear?.name ?? "-"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {academicYear?.is_active ? "Aktif" : "Tidak aktif"}
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-[#0F172A]">Kelas</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {classes.length > 0 ? (
+                      classes.map((classItem) => (
+                        <span
+                          key={classItem.id}
+                          className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm font-medium text-[#0F172A]"
+                        >
+                          {classItem.name ?? "Kelas"}{" "}
+                          <span className="font-normal text-[#64748B]">
+                            {classItem.grade_level ? `Tingkat ${classItem.grade_level}` : ""}
+                          </span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-[#64748B]">
+                        Kelas belum tersedia.
+                      </span>
+                    )}
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  <StatusPill value={classItem?.is_active ? "active" : "inactive"} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={subjectHref}
-                      className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                    >
-                      Soal
-                    </Link>
-                    <Link
-                      href={packageHref}
-                      className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                    >
-                      Paket
-                    </Link>
-                    <Link
-                      href="/dashboard/exams/schedules"
-                      className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                    >
-                      Jadwal
-                    </Link>
-                  </div>
-                </td>
-              </tr>
+                </div>
+
+                <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                  <Link
+                    href={subjectHref}
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563EB] px-3 text-sm font-semibold text-white hover:bg-[#1D4ED8]"
+                  >
+                    Soal
+                  </Link>
+                  <Link
+                    href={packageHref}
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#E2E8F0] px-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+                  >
+                    Paket Ujian
+                  </Link>
+                  <Link
+                    href="/dashboard/exams/schedules"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#E2E8F0] px-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+                  >
+                    Jadwal
+                  </Link>
+                </div>
+              </article>
             );
           })}
-        </DataTable>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
@@ -199,29 +208,9 @@ function SummaryCard({
   value: string | number;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="text-sm font-medium text-[#64748B]">{label}</div>
+      <div className="mt-2 text-3xl font-semibold text-[#0F172A]">{value}</div>
     </div>
-  );
-}
-
-function QuickLink({
-  title,
-  description,
-  href,
-}: {
-  title: string;
-  description: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-lg border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/40"
-    >
-      <div className="font-semibold">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-    </Link>
   );
 }

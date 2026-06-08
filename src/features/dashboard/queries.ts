@@ -181,8 +181,10 @@ async function getTeacherOperationalStats(teacherId: string) {
       publishedQuestions: 0,
       draftPackages: 0,
       publishedPackages: 0,
+      todaySchedules: 0,
       upcomingSchedules: 0,
       activeSchedules: 0,
+      notStartedParticipants: 0,
     };
   }
 
@@ -226,13 +228,34 @@ async function getTeacherOperationalStats(teacherId: string) {
       publishedQuestions: publishedQuestions ?? 0,
       draftPackages,
       publishedPackages,
+      todaySchedules: 0,
       upcomingSchedules: 0,
       activeSchedules: 0,
+      notStartedParticipants: 0,
     };
   }
 
-  const [{ count: upcomingSchedules }, { count: activeSchedules }] =
+  const todayStart = new Date();
+  const todayEnd = new Date();
+
+  todayStart.setHours(0, 0, 0, 0);
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const [
+    { count: todaySchedules },
+    { count: upcomingSchedules },
+    { count: activeSchedules },
+    { data: participantSchedules },
+  ] =
     await Promise.all([
+      supabase
+        .from("exam_schedules")
+        .select("id", { count: "exact", head: true })
+        .in("exam_package_id", packageIds)
+        .in("status", ["scheduled", "active"])
+        .gte("start_at", todayStart.toISOString())
+        .lte("start_at", todayEnd.toISOString())
+        .is("deleted_at", null),
       supabase
         .from("exam_schedules")
         .select("id", { count: "exact", head: true })
@@ -248,7 +271,22 @@ async function getTeacherOperationalStats(teacherId: string) {
         .lte("start_at", now)
         .gte("end_at", now)
         .is("deleted_at", null),
+      supabase
+        .from("exam_schedules")
+        .select("id, exam_participants(status)")
+        .in("exam_package_id", packageIds)
+        .in("status", ["scheduled", "active"])
+        .is("deleted_at", null),
     ]);
+  const notStartedParticipants = (participantSchedules ?? []).reduce(
+    (total, schedule) =>
+      total +
+      (schedule.exam_participants ?? []).filter(
+        (participant: { status?: string | null }) =>
+          ["assigned", "pending"].includes(participant.status ?? ""),
+      ).length,
+    0,
+  );
 
   return {
     assignmentCount: assignments?.length ?? 0,
@@ -258,8 +296,10 @@ async function getTeacherOperationalStats(teacherId: string) {
     publishedQuestions: publishedQuestions ?? 0,
     draftPackages,
     publishedPackages,
+    todaySchedules: todaySchedules ?? 0,
     upcomingSchedules: upcomingSchedules ?? 0,
     activeSchedules: activeSchedules ?? 0,
+    notStartedParticipants,
   };
 }
 
@@ -422,9 +462,9 @@ export async function getRoleDashboardStats(
 
     return [
       {
-        title: "Mapel / Kelas",
+        title: "Kelas Saya",
         value: `${teacherStats.subjectCount}/${teacherStats.classCount}`,
-        description: `${teacherStats.assignmentCount} assignment mengajar.`,
+        description: `${teacherStats.assignmentCount} tugas mengajar.`,
         href: "/dashboard/teacher/assignments",
       },
       {
@@ -458,16 +498,28 @@ export async function getRoleDashboardStats(
         href: "/dashboard/exams/schedules?status=scheduled",
       },
       {
-        title: "Jadwal Active",
+        title: "Ujian Aktif",
         value: String(teacherStats.activeSchedules),
         description: "Ujian aktif yang terkait mapel guru.",
-        href: "/dashboard/teacher/monitoring",
+        href: "/dashboard/exams/schedules?status=active",
       },
       {
-        title: "Pending Grading",
+        title: "Perlu Dinilai",
         value: String(attempts.length),
         description: "Essay yang perlu koreksi manual.",
         href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
+      },
+      {
+        title: "Belum Mengikuti",
+        value: String(teacherStats.notStartedParticipants),
+        description: "Peserta pada ujian aktif/terjadwal yang belum mulai.",
+        href: "/dashboard/reports/students?status=assigned",
+      },
+      {
+        title: "Ujian Hari Ini",
+        value: String(teacherStats.todaySchedules),
+        description: "Ujian mapel guru yang mulai hari ini.",
+        href: "/dashboard/exams/schedules",
       },
     ];
   }

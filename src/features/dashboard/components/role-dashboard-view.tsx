@@ -1,9 +1,12 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpen,
   CalendarDays,
+  ClipboardCheck,
   GraduationCap,
+  PenSquare,
   School,
   Upload,
   Users,
@@ -210,6 +213,10 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
     );
   }
 
+  if (role === "teacher") {
+    return <TeacherDashboardOverview displayName={displayName} stats={stats} />;
+  }
+
   return (
     <div>
       <DashboardPageHeader
@@ -245,15 +252,221 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
       </div>
 
       <div className="mt-6">
-        {role === "teacher" ? <TeacherOperationalWorkbench /> : null}
         {role === "proctor" ? <ProctorOperationalWorkbench /> : null}
-        {role !== "teacher" && role !== "proctor" ? (
+        {role !== "proctor" ? (
             <EmptyState
               title={content.workbenchTitle}
               description={content.workbenchDescription}
             />
           ) : null}
       </div>
+    </div>
+  );
+}
+
+interface TeacherDashboardOverviewProps {
+  displayName: string;
+  stats: Array<{
+    title: string;
+    value: string;
+    description: string;
+    href?: string;
+  }>;
+}
+
+function statNumber(
+  stats: TeacherDashboardOverviewProps["stats"],
+  title: string,
+) {
+  const value = stats.find((stat) => stat.title === title)?.value ?? "0";
+
+  return Number(value.replace(/[^0-9.-]/g, "")) || 0;
+}
+
+function TeacherDashboardOverview({
+  displayName,
+  stats,
+}: TeacherDashboardOverviewProps) {
+  const kelasValue = stats.find((stat) => stat.title === "Kelas Saya")?.value ?? "0/0";
+  const kelasCount = Number(kelasValue.split("/")[1] ?? kelasValue) || 0;
+  const bankSoalCount =
+    statNumber(stats, "Draft Soal") + statNumber(stats, "Soal Published");
+  const ujianAktif = statNumber(stats, "Ujian Aktif");
+  const perluDinilai = statNumber(stats, "Perlu Dinilai");
+  const belumMengikuti = statNumber(stats, "Belum Mengikuti");
+  const ujianHariIni = statNumber(stats, "Ujian Hari Ini");
+  const mainStats = [
+    {
+      title: "Kelas Saya",
+      value: String(kelasCount),
+      description: "Kelas yang sedang diajar.",
+      href: "/dashboard/teacher/assignments",
+      icon: GraduationCap,
+    },
+    {
+      title: "Bank Soal",
+      value: String(bankSoalCount),
+      description: "Soal draft dan published.",
+      href: "/dashboard/question-bank/questions",
+      icon: BookOpen,
+    },
+    {
+      title: "Ujian Aktif",
+      value: String(ujianAktif),
+      description: "Ujian yang sedang berjalan.",
+      href: "/dashboard/exams/schedules?status=active",
+      icon: CalendarDays,
+    },
+    {
+      title: "Perlu Dinilai",
+      value: String(perluDinilai),
+      description: "Jawaban essay menunggu koreksi.",
+      href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
+      icon: ClipboardCheck,
+    },
+  ];
+  const tasks = [
+    {
+      title: `${perluDinilai} Jawaban Essay Belum Dinilai`,
+      description: "Selesaikan koreksi agar nilai siswa bisa final.",
+      href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
+      action: "Nilai Sekarang",
+      urgent: perluDinilai > 0,
+    },
+    {
+      title: `${belumMengikuti} Siswa Belum Mengikuti Ujian`,
+      description: "Cek peserta yang belum mulai pada ujian aktif atau terjadwal.",
+      href: "/dashboard/reports/students?status=assigned",
+      action: "Lihat Detail",
+      urgent: belumMengikuti > 0,
+    },
+    {
+      title: `${ujianHariIni} Ujian Akan Dimulai Hari Ini`,
+      description: "Pastikan jadwal, kelas, dan token ujian sudah siap.",
+      href: "/dashboard/exams/schedules",
+      action: "Lihat Jadwal",
+      urgent: ujianHariIni > 0,
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 text-[#0F172A]">
+      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6 lg:p-8">
+        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#2563EB]">
+              Dashboard Guru
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-normal sm:text-3xl">
+              Halo, {displayName}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B] sm:text-base">
+              Mulai dari kelas yang diajar, buat soal, buat ujian, koreksi essay,
+              lalu lihat nilai siswa.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[520px]">
+            <Link
+              href="/dashboard/question-bank/questions/create"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1D4ED8]"
+            >
+              <PenSquare className="size-4" />
+              Buat Soal
+            </Link>
+            <Link
+              href="/dashboard/exams/packages/create"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E293B]"
+            >
+              <CalendarDays className="size-4" />
+              Buat Ujian
+            </Link>
+            <Link
+              href="/dashboard/teacher/grading?grading_status=needs_manual_grading"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
+            >
+              <ClipboardCheck className="size-4" />
+              Koreksi Essay
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {mainStats.map((stat) => {
+          const Icon = stat.icon;
+
+          return (
+            <Link key={stat.title} href={stat.href}>
+              <div className="flex h-full items-start gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm transition hover:border-[#2563EB]/40 hover:shadow-md">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
+                  <Icon className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[#64748B]">{stat.title}</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-normal">
+                    {stat.value}
+                  </p>
+                  <p className="mt-1 text-sm leading-5 text-[#64748B]">
+                    {stat.description}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Tugas yang Perlu Dicek</h2>
+            <p className="text-sm text-[#64748B]">
+              Prioritas kerja guru hari ini.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/teacher/assignments"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 text-sm font-medium hover:bg-[#F8FAFC]"
+          >
+            Kelas Saya
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {tasks.map((task) => (
+            <article
+              key={task.action}
+              className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4"
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+                    task.urgent
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  <AlertTriangle className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-[#0F172A]">
+                    {task.title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-[#64748B]">
+                    {task.description}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={task.href}
+                className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#0F172A] px-3 text-sm font-semibold text-white transition hover:bg-[#1E293B]"
+              >
+                {task.action}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -486,70 +699,6 @@ function ProctorOperationalWorkbench() {
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {actions.map((action) => (
-        <Link key={action.href} href={action.href}>
-          <DashboardCard
-            title={action.title}
-            description={action.description}
-            className="h-full transition hover:border-primary/40 hover:shadow-md"
-          />
-        </Link>
-      ))}
-    </section>
-  );
-}
-
-function TeacherOperationalWorkbench() {
-  const actions = [
-    {
-      title: "Kelola Bank Soal",
-      description: "Buat, edit, publish, dan arsipkan soal sesuai mapel assigned.",
-      href: "/dashboard/question-bank/questions",
-    },
-    {
-      title: "Kategori Soal",
-      description: "Rapikan soal dengan kategori per mapel.",
-      href: "/dashboard/question-bank/categories",
-    },
-    {
-      title: "Susun Paket Ujian",
-      description: "Pilih soal published dan cek readiness paket.",
-      href: "/dashboard/exams/packages",
-    },
-    {
-      title: "Atur Jadwal",
-      description: "Lihat atau kelola jadwal sesuai permission dan mapel.",
-      href: "/dashboard/exams/schedules",
-    },
-    {
-      title: "Koreksi Essay",
-      description: "Tangani jawaban essay yang masih pending grading.",
-      href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
-    },
-    {
-      title: "Monitoring Guru",
-      description: "Pantau sesi ujian yang terkait mapel guru.",
-      href: "/dashboard/teacher/monitoring",
-    },
-    {
-      title: "Mapel & Kelas Saya",
-      description: "Lihat assignment mengajar sebelum menyusun soal dan ujian.",
-      href: "/dashboard/teacher/assignments",
-    },
-    {
-      title: "Kelas Binaan",
-      description: "Pantau siswa dan ujian kelas wali.",
-      href: "/dashboard/teacher/homeroom",
-    },
-    {
-      title: "Laporan",
-      description: "Review nilai siswa, kelas, mapel, dan export laporan.",
-      href: "/dashboard/reports",
-    },
-  ];
-
-  return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {actions.map((action) => (
         <Link key={action.href} href={action.href}>
           <DashboardCard

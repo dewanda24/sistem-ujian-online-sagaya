@@ -58,8 +58,8 @@ export default async function GradingPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Grading"
-        description="Rekap hasil ujian yang sudah dikumpulkan. Essay ditandai perlu koreksi manual."
+        title="Koreksi Essay"
+        description="Jawaban essay yang perlu diperiksa sebelum nilai siswa menjadi final."
       />
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_220px_220px_220px_auto]">
         <input
@@ -75,8 +75,8 @@ export default async function GradingPage({ searchParams }: PageProps) {
         >
           <option value="">Semua status</option>
           <option value="needs_manual_grading">Perlu koreksi essay</option>
-          <option value="auto_scored">Auto scored</option>
-          <option value="finalized">Finalized</option>
+          <option value="auto_scored">Sudah dinilai otomatis</option>
+          <option value="finalized">Nilai final</option>
         </select>
         <select
           name="subject_id"
@@ -112,7 +112,7 @@ export default async function GradingPage({ searchParams }: PageProps) {
         empty={
           <EmptyState
             title="Tidak ada pekerjaan grading"
-            description="Daftar penilaian akan tampil setelah ujian selesai dikerjakan peserta."
+            description="Daftar koreksi akan tampil setelah siswa mengumpulkan jawaban essay."
           />
         }
       >

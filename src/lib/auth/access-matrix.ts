@@ -225,13 +225,6 @@ const teacherQuestionBankMenu: AccessMenuItem = {
       roles: ["teacher"],
       permission: "questions.create",
     },
-    {
-      label: "Kategori Soal",
-      href: "/dashboard/question-bank/categories",
-      icon: "list-checks",
-      roles: ["teacher"],
-      permission: "question_bank.view",
-    },
   ],
 };
 
@@ -244,7 +237,7 @@ const dashboardItem = (role: RoleName, href: string): AccessMenuItem => ({
 });
 
 const profileItem = (role: RoleName): AccessMenuItem => ({
-  label: "Profile",
+  label: "Profil",
   href: "/dashboard/profile",
   icon: "users",
   roles: [role],
@@ -600,8 +593,8 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("teacher", "/dashboard/teacher"),
       {
-        label: "Kelas Binaan",
-        href: "/dashboard/teacher/homeroom",
+        label: "Kelas Saya",
+        href: "/dashboard/teacher/assignments",
         icon: "graduation-cap",
         roles: ["teacher"],
       },
@@ -614,14 +607,14 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "exams.view",
         children: [
           {
-            label: "Paket",
+            label: "Paket Ujian",
             href: "/dashboard/exams/packages",
             icon: "book-open",
             roles: ["teacher"],
             permission: "exam_packages.view",
           },
           {
-            label: "Jadwal",
+            label: "Jadwal Ujian",
             href: "/dashboard/exams/schedules",
             icon: "calendar-days",
             roles: ["teacher"],
@@ -630,26 +623,18 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Monitoring",
-        href: "/dashboard/teacher/monitoring",
-        icon: "list-checks",
-        roles: ["teacher"],
-        permission: "exam_monitoring.view",
-      },
-      {
-        label: "Grading",
+        label: "Nilai",
         href: "/dashboard/teacher/grading",
         icon: "clipboard-check",
         roles: ["teacher"],
-        permission: "grading.view",
-      },
-      {
-        label: "Laporan",
-        href: "/dashboard/reports",
-        icon: "activity",
-        roles: ["teacher"],
-        permission: "reports.view",
         children: [
+          {
+            label: "Koreksi Essay",
+            href: "/dashboard/teacher/grading",
+            icon: "clipboard-check",
+            roles: ["teacher"],
+            permission: "grading.view",
+          },
           {
             label: "Hasil Ujian",
             href: "/dashboard/reports/students",
@@ -730,7 +715,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "exam_monitoring.view",
       },
       {
-        label: "Monitoring",
+        label: "Pengawasan Ujian",
         href: "/dashboard/proctor/monitoring",
         icon: "list-checks",
         roles: ["proctor"],
