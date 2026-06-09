@@ -33,6 +33,7 @@ type ActionResult = {
 };
 
 const IMPORT_CENTER_PATH = "/dashboard/import-export";
+const SUPER_ADMIN_SCHOOLS_PATH = "/dashboard/super-admin/schools";
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -59,6 +60,20 @@ function redirectTo(path: string, result: ActionResult): never {
   redirect(`${path}?${params.toString()}`);
 }
 
+function getSchoolRedirectPath(formData: FormData) {
+  const path = formString(formData, "redirect_path");
+
+  if (
+    path === SUPER_ADMIN_SCHOOLS_PATH ||
+    path === `${SUPER_ADMIN_SCHOOLS_PATH}/new` ||
+    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(path)
+  ) {
+    return path;
+  }
+
+  return SUPER_ADMIN_SCHOOLS_PATH;
+}
+
 function serviceRoleClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -73,6 +88,7 @@ function serviceRoleClient() {
 }
 
 export async function saveSchoolAction(formData: FormData) {
+  const redirectPath = getSchoolRedirectPath(formData);
   await requireRole("super_admin");
   const currentUser = await requirePermission("schools.manage");
   const scope = await requireSchoolScope();
@@ -80,14 +96,17 @@ export async function saveSchoolAction(formData: FormData) {
     id: formString(formData, "id"),
     name: formString(formData, "name"),
     npsn: formString(formData, "npsn"),
+    education_level: formString(formData, "education_level"),
     address: formString(formData, "address"),
+    city: formString(formData, "city"),
+    province: formString(formData, "province"),
     phone: formString(formData, "phone"),
     email: formString(formData, "email"),
     is_active: formBoolean(formData, "is_active"),
   });
 
   if (!parsed.success) {
-    redirectTo("/dashboard/master-data/schools", {
+    redirectTo(redirectPath, {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Data sekolah tidak valid.",
     });
@@ -98,6 +117,27 @@ export async function saveSchoolAction(formData: FormData) {
 
   if (!scope.isSuperAdmin) {
     assertSameSchool(scope, id);
+  }
+
+  if (payload.npsn) {
+    let duplicateQuery = supabase
+      .from("schools")
+      .select("id")
+      .eq("npsn", payload.npsn)
+      .limit(1);
+
+    if (id) {
+      duplicateQuery = duplicateQuery.neq("id", id);
+    }
+
+    const { data: duplicateSchool } = await duplicateQuery.maybeSingle();
+
+    if (duplicateSchool?.id) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: "NPSN sudah digunakan sekolah lain.",
+      });
+    }
   }
 
   const { data: savedSchool, error } = id
@@ -120,13 +160,18 @@ export async function saveSchoolAction(formData: FormData) {
   }
 
   revalidatePath("/dashboard/master-data/schools");
-  redirectTo("/dashboard/master-data/schools", {
+  revalidatePath(SUPER_ADMIN_SCHOOLS_PATH);
+  if (savedSchool?.id) {
+    revalidatePath(`${SUPER_ADMIN_SCHOOLS_PATH}/${savedSchool.id}`);
+  }
+  redirectTo(redirectPath === `${SUPER_ADMIN_SCHOOLS_PATH}/new` ? SUPER_ADMIN_SCHOOLS_PATH : redirectPath, {
     ok: !error,
     message: error ? error.message : "Data sekolah berhasil disimpan.",
   });
 }
 
 export async function toggleSchoolAction(formData: FormData) {
+  const redirectPath = getSchoolRedirectPath(formData);
   await requireRole("super_admin");
   const currentUser = await requirePermission("schools.manage");
   const scope = await requireSchoolScope();
@@ -150,7 +195,9 @@ export async function toggleSchoolAction(formData: FormData) {
   }
 
   revalidatePath("/dashboard/master-data/schools");
-  redirectTo("/dashboard/master-data/schools", {
+  revalidatePath(SUPER_ADMIN_SCHOOLS_PATH);
+  revalidatePath(`${SUPER_ADMIN_SCHOOLS_PATH}/${id}`);
+  redirectTo(redirectPath, {
     ok: !error,
     message: error ? error.message : "Status sekolah berhasil diperbarui.",
   });

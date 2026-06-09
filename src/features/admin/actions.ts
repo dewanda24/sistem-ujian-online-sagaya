@@ -42,9 +42,17 @@ function getOperationalUserRedirectPath(formData: FormData) {
     "/dashboard/admin/users",
     "/dashboard/master-data/admins",
     "/dashboard/master-data/proctors",
+    "/dashboard/super-admin/schools",
   ]);
 
-  return allowedPaths.has(path) ? path : "/dashboard/admin/users";
+  if (
+    allowedPaths.has(path) ||
+    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(path)
+  ) {
+    return path;
+  }
+
+  return "/dashboard/admin/users";
 }
 
 function serviceRoleClient() {
@@ -293,6 +301,10 @@ export async function saveAdminUserAction(formData: FormData) {
   revalidatePath("/dashboard/admin/users");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
+  revalidatePath("/dashboard/super-admin/schools");
+  if (resolvedSchoolId) {
+    revalidatePath(`/dashboard/super-admin/schools/${resolvedSchoolId}`);
+  }
   redirectTo(redirectPath, {
     ok: !profileError,
     message: profileError ? profileError.message : "User berhasil disimpan.",
@@ -338,6 +350,10 @@ export async function toggleAdminUserStatusAction(formData: FormData) {
   revalidatePath("/dashboard/admin/users");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
+  revalidatePath("/dashboard/super-admin/schools");
+  if (targetUser?.school_id) {
+    revalidatePath(`/dashboard/super-admin/schools/${targetUser.school_id}`);
+  }
   redirectTo(redirectPath, {
     ok: !error,
     message: error ? error.message : "Status user berhasil diperbarui.",
@@ -427,6 +443,10 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
   revalidatePath("/dashboard/admin/users");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
+  revalidatePath("/dashboard/super-admin/schools");
+  if (targetUser.school_id) {
+    revalidatePath(`/dashboard/super-admin/schools/${targetUser.school_id}`);
+  }
   redirectTo(redirectPath, {
     ok: !error,
     message: error ? error.message : "Password user berhasil direset.",
