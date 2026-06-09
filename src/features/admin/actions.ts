@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import {
+  getFriendlyErrorMessage,
+  type ActionResult as StandardActionResult,
+} from "@/lib/actions/action-result";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { requireRole } from "@/lib/auth/require-role";
 import {
@@ -21,6 +25,7 @@ import {
 type ActionResult = {
   ok: boolean;
   message: string;
+  errors?: StandardActionResult["errors"];
 };
 
 function formString(formData: FormData, key: string) {
@@ -30,7 +35,7 @@ function formString(formData: FormData, key: string) {
 function redirectTo(path: string, result: ActionResult): never {
   const params = new URLSearchParams({
     status: result.ok ? "success" : "error",
-    message: result.message,
+    message: result.ok ? result.message : getFriendlyErrorMessage(result.message),
   });
 
   redirect(`${path}${path.includes("?") ? "&" : "?"}${params.toString()}`);
@@ -108,6 +113,38 @@ async function getPermissionCodeById(permissionId: string) {
   return data?.code ? String(data.code) : null;
 }
 
+async function ensureUniqueUserCredentials({
+  id,
+  email,
+  username,
+  redirectPath,
+}: {
+  id?: string | null;
+  email: string;
+  username: string;
+  redirectPath: string;
+}) {
+  const supabase = await createClient();
+  const [{ data: emailUser }, { data: usernameUser }] = await Promise.all([
+    supabase.from("users").select("id").eq("email", email).maybeSingle(),
+    supabase.from("users").select("id").eq("username", username).maybeSingle(),
+  ]);
+
+  if (emailUser?.id && emailUser.id !== id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Email sudah digunakan.",
+    });
+  }
+
+  if (usernameUser?.id && usernameUser.id !== id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Username sudah digunakan.",
+    });
+  }
+}
+
 export async function saveAdminUserAction(formData: FormData) {
   const redirectPath = getOperationalUserRedirectPath(formData);
   const parsed = adminUserSchema.safeParse({
@@ -165,6 +202,13 @@ export async function saveAdminUserAction(formData: FormData) {
     });
   }
 
+  await ensureUniqueUserCredentials({
+    id,
+    email,
+    username,
+    redirectPath: id ? `${redirectPath}?edit=${id}` : redirectPath,
+  });
+
   if (!id) {
     if (!adminClient) {
       redirectTo(redirectPath, {
@@ -183,7 +227,7 @@ export async function saveAdminUserAction(formData: FormData) {
     if (error || !data.user) {
       redirectTo(redirectPath, {
         ok: false,
-        message: error?.message ?? "Gagal membuat auth user.",
+        message: error ? getFriendlyErrorMessage(error) : "Gagal membuat auth user.",
       });
     }
 
@@ -198,7 +242,7 @@ export async function saveAdminUserAction(formData: FormData) {
     if (error) {
       redirectTo(`${redirectPath}?edit=${id}`, {
         ok: false,
-        message: error.message,
+        message: getFriendlyErrorMessage(error),
       });
     }
   }
@@ -211,7 +255,7 @@ export async function saveAdminUserAction(formData: FormData) {
     if (error) {
       redirectTo(`${redirectPath}?edit=${id}`, {
         ok: false,
-        message: error.message,
+        message: getFriendlyErrorMessage(error),
       });
     }
   }
@@ -269,9 +313,13 @@ export async function saveAdminUserAction(formData: FormData) {
     : await supabase.from("users").insert(userPayload).select("id").single();
 
   if (userError || !savedUser) {
+    if (!id && authUserId && adminClient) {
+      await adminClient.auth.admin.deleteUser(authUserId);
+    }
+
     redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
       ok: false,
-      message: userError?.message ?? "Gagal menyimpan user.",
+      message: userError ? getFriendlyErrorMessage(userError) : "Gagal menyimpan user.",
     });
   }
 
@@ -282,6 +330,13 @@ export async function saveAdminUserAction(formData: FormData) {
     },
     { onConflict: "user_id" },
   );
+
+  if (profileError && !id) {
+    await supabase.from("users").delete().eq("id", savedUser.id);
+    if (authUserId && adminClient) {
+      await adminClient.auth.admin.deleteUser(authUserId);
+    }
+  }
 
   if (!profileError) {
     await logAuditEvent({
@@ -307,7 +362,11 @@ export async function saveAdminUserAction(formData: FormData) {
   }
   redirectTo(redirectPath, {
     ok: !profileError,
-    message: profileError ? profileError.message : "User berhasil disimpan.",
+    message: profileError
+      ? getFriendlyErrorMessage(profileError)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -356,7 +415,7 @@ export async function toggleAdminUserStatusAction(formData: FormData) {
   }
   redirectTo(redirectPath, {
     ok: !error,
-    message: error ? error.message : "Status user berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -449,7 +508,7 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
   }
   redirectTo(redirectPath, {
     ok: !error,
-    message: error ? error.message : "Password user berhasil direset.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -517,7 +576,7 @@ export async function updateRolePermissionAction(formData: FormData) {
   revalidatePath("/dashboard/admin/permissions");
   redirectTo("/dashboard/admin/permissions", {
     ok: !error,
-    message: error ? error.message : "Izin akses berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -572,6 +631,6 @@ export async function updateRoleLabelAction(formData: FormData) {
   revalidatePath("/dashboard/admin/roles");
   redirectTo("/dashboard/admin/roles", {
     ok: !error,
-    message: error ? error.message : "Label hak akses berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   requireSchoolScope,
@@ -238,28 +239,43 @@ export async function commitStudentClassAssignmentImportAction(
       continue;
     }
 
-    // Close previous active membership if exists
-    if (activeMembership?.id) {
-      await supabase
-        .from("class_members")
-        .update({ left_at: new Date().toISOString().slice(0, 10) })
-        .eq("id", activeMembership.id);
-    }
-
-    // Insert new membership
-    const { error } = await supabase.from("class_members").insert({
-      student_id: parsed.data.student_id,
-      class_id: parsed.data.class_id,
-      joined_at: parsed.data.joined_at || new Date().toISOString().slice(0, 10),
-      left_at: null,
-    });
+    const { data: newMembership, error } = await supabase
+      .from("class_members")
+      .insert({
+        student_id: parsed.data.student_id,
+        class_id: parsed.data.class_id,
+        joined_at:
+          parsed.data.joined_at || new Date().toISOString().slice(0, 10),
+        left_at: null,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       errors.push({
         row_number: rowNumber,
-        errors: [error.message],
+        errors: [getFriendlyErrorMessage(error)],
       });
       continue;
+    }
+
+    if (activeMembership?.id) {
+      const { error: closeError } = await supabase
+        .from("class_members")
+        .update({ left_at: new Date().toISOString().slice(0, 10) })
+        .eq("id", activeMembership.id);
+
+      if (closeError) {
+        if (newMembership?.id) {
+          await supabase.from("class_members").delete().eq("id", newMembership.id);
+        }
+
+        errors.push({
+          row_number: rowNumber,
+          errors: [getFriendlyErrorMessage(closeError)],
+        });
+        continue;
+      }
     }
 
     success += 1;

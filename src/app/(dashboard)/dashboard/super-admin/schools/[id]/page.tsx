@@ -203,6 +203,7 @@ export default async function SuperAdminSchoolDetailPage({
             <ConfirmSubmitButton
               confirmMessage={`Tambah admin sekolah untuk ${school.name}?`}
               confirmTitle="Konfirmasi Admin Sekolah"
+              loadingText="Menyimpan..."
               variant="default"
               className="px-4 py-2 text-sm"
             >

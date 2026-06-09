@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   requireSchoolScope,
@@ -138,7 +139,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
   if (!(file instanceof File) || file.size === 0) {
     return {
       ok: false,
-      message: "File CSV penugasan guru-mapel-kelas wajib diunggah.",
+      message: "File CSV penugasan guru-mata pelajaran-kelas wajib diunggah.",
     };
   }
 
@@ -247,7 +248,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
     if (!subjectId) {
       errors.push({
         row_number: rowNumber,
-        errors: [`Mapel dengan kode "${subjectCode}" tidak ditemukan`],
+        errors: [`Mata pelajaran dengan kode "${subjectCode}" tidak ditemukan`],
       });
       continue;
     }
@@ -313,7 +314,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
     if (error) {
       errors.push({
         row_number: rowNumber,
-        errors: [error.message],
+        errors: [getFriendlyErrorMessage(error)],
       });
       continue;
     }
@@ -345,7 +346,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
   return {
     ok: isSuccess,
     message: isSuccess
-      ? `Import berhasil! ${success} penugasan guru-mapel-kelas telah diproses${skipped > 0 ? `, ${skipped} duplikat dilewati` : ""}.`
+      ? `Import berhasil! ${success} penugasan guru-mata pelajaran-kelas telah diproses${skipped > 0 ? `, ${skipped} duplikat dilewati` : ""}.`
       : `Import selesai dengan ${errors.length} error dari ${lines.length - 1} baris.`,
     summary: {
       total: lines.length - 1,

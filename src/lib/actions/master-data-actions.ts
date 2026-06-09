@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import {
+  getFriendlyErrorMessage,
+  type ActionResult as StandardActionResult,
+} from "@/lib/actions/action-result";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { requireRole } from "@/lib/auth/require-role";
 import {
@@ -30,6 +34,7 @@ import { parseCsvText } from "@/lib/import/csv";
 type ActionResult = {
   ok: boolean;
   message: string;
+  errors?: StandardActionResult["errors"];
 };
 
 const IMPORT_CENTER_PATH = "/dashboard/import-export";
@@ -54,7 +59,7 @@ function parseCsv(text: string) {
 function redirectTo(path: string, result: ActionResult): never {
   const params = new URLSearchParams({
     status: result.ok ? "success" : "error",
-    message: result.message,
+    message: result.ok ? result.message : getFriendlyErrorMessage(result.message),
   });
 
   redirect(`${path}?${params.toString()}`);
@@ -166,7 +171,11 @@ export async function saveSchoolAction(formData: FormData) {
   }
   redirectTo(redirectPath === `${SUPER_ADMIN_SCHOOLS_PATH}/new` ? SUPER_ADMIN_SCHOOLS_PATH : redirectPath, {
     ok: !error,
-    message: error ? error.message : "Data sekolah berhasil disimpan.",
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -199,7 +208,7 @@ export async function toggleSchoolAction(formData: FormData) {
   revalidatePath(`${SUPER_ADMIN_SCHOOLS_PATH}/${id}`);
   redirectTo(redirectPath, {
     ok: !error,
-    message: error ? error.message : "Status sekolah berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -267,7 +276,11 @@ export async function saveAcademicYearAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/academic-years", {
     ok: !error,
-    message: error ? error.message : "Tahun ajaran berhasil disimpan.",
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -305,7 +318,7 @@ export async function toggleAcademicYearAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/academic-years", {
     ok: !error,
-    message: error ? error.message : "Status tahun ajaran diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -363,7 +376,11 @@ export async function saveSemesterAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/semesters");
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
-    message: error ? error.message : "Semester berhasil disimpan.",
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -399,7 +416,7 @@ export async function toggleSemesterAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/semesters");
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
-    message: error ? error.message : "Status semester diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -448,7 +465,11 @@ export async function saveClassAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/classes");
   redirectTo("/dashboard/master-data/classes", {
     ok: !error,
-    message: error ? error.message : "Kelas berhasil disimpan.",
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -484,7 +505,7 @@ export async function toggleClassAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/classes");
   redirectTo("/dashboard/master-data/classes", {
     ok: !error,
-    message: error ? error.message : "Status kelas diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -532,7 +553,11 @@ export async function saveSubjectAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/subjects");
   redirectTo("/dashboard/master-data/subjects", {
     ok: !error,
-    message: error ? error.message : "Mata pelajaran berhasil disimpan.",
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -568,7 +593,7 @@ export async function toggleSubjectAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/subjects");
   redirectTo("/dashboard/master-data/subjects", {
     ok: !error,
-    message: error ? error.message : "Status mata pelajaran diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -591,8 +616,22 @@ async function createAuthUser(email: string, password?: string) {
 
   return {
     userId: data.user?.id ?? null,
-    error: error?.message ?? null,
+    error: error ? getFriendlyErrorMessage(error) : null,
   };
+}
+
+async function deleteAuthUser(authUserId: string | null | undefined) {
+  if (!authUserId) {
+    return;
+  }
+
+  const adminClient = serviceRoleClient();
+
+  if (!adminClient) {
+    return;
+  }
+
+  await adminClient.auth.admin.deleteUser(authUserId);
 }
 
 async function getDefaultSchoolId() {
@@ -675,6 +714,38 @@ async function getStudentIdByEmail(email: string, schoolId?: string | null) {
   return data?.id ? (data.id as string) : null;
 }
 
+async function ensureUniqueUserCredentials({
+  id,
+  email,
+  username,
+  redirectPath,
+}: {
+  id?: string | null;
+  email: string;
+  username: string;
+  redirectPath: string;
+}) {
+  const supabase = await createClient();
+  const [{ data: emailUser }, { data: usernameUser }] = await Promise.all([
+    supabase.from("users").select("id").eq("email", email).maybeSingle(),
+    supabase.from("users").select("id").eq("username", username).maybeSingle(),
+  ]);
+
+  if (emailUser?.id && emailUser.id !== id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Email sudah digunakan.",
+    });
+  }
+
+  if (usernameUser?.id && usernameUser.id !== id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Username sudah digunakan.",
+    });
+  }
+}
+
 async function getClassIdByNameAndAcademicYear({
   className,
   academicYearName,
@@ -715,6 +786,124 @@ async function getSubjectIdByCode(code: string, schoolId: string) {
     .maybeSingle();
 
   return data?.id ? (data.id as string) : null;
+}
+
+export async function importSubjectsCsvAction(formData: FormData) {
+  const currentUser = await requirePermission("subjects.manage");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectTo(IMPORT_CENTER_PATH, {
+      ok: false,
+      message: "File CSV mata pelajaran wajib diunggah.",
+    });
+  }
+
+  const rows = parseCsv(await file.text());
+
+  if (rows.length === 0) {
+    redirectTo(IMPORT_CENTER_PATH, {
+      ok: false,
+      message: "CSV kosong atau header tidak valid.",
+    });
+  }
+
+  const schoolId = await getDefaultSchoolId();
+
+  if (!schoolId) {
+    redirectTo(IMPORT_CENTER_PATH, {
+      ok: false,
+      message: "Sekolah aktif/default tidak ditemukan.",
+    });
+  }
+
+  const supabase = await createClient();
+  let created = 0;
+  let updated = 0;
+  const errors: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const parsed = subjectSchema.safeParse({
+      school_id: schoolId,
+      code: row.code ?? "",
+      name: row.name ?? "",
+      is_active: String(row.is_active ?? "true").toLowerCase() !== "false",
+    });
+
+    if (!parsed.success) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          parsed.error.issues[0]?.message ?? "data mata pelajaran tidak valid"
+        }`,
+      );
+      continue;
+    }
+
+    const { data: existingSubject } = await supabase
+      .from("subjects")
+      .select("id")
+      .eq("school_id", schoolId)
+      .ilike("code", parsed.data.code)
+      .maybeSingle();
+    const payload = {
+      school_id: parsed.data.school_id,
+      code: parsed.data.code,
+      name: parsed.data.name,
+      is_active: parsed.data.is_active,
+    };
+    const { data: savedSubject, error } = existingSubject?.id
+      ? await supabase
+          .from("subjects")
+          .update(payload)
+          .eq("id", existingSubject.id)
+          .select("id")
+          .single()
+      : await supabase.from("subjects").insert(payload).select("id").single();
+
+    if (error || !savedSubject?.id) {
+      errors.push(
+        `Baris ${rowNumber}: ${
+          error
+            ? getFriendlyErrorMessage(error)
+            : "gagal menyimpan mata pelajaran"
+        }`,
+      );
+      continue;
+    }
+
+    if (existingSubject?.id) {
+      updated += 1;
+    } else {
+      created += 1;
+    }
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "subjects.import_csv",
+    entityType: "subjects",
+    payload: {
+      total_rows: rows.length,
+      created_count: created,
+      updated_count: updated,
+      success_count: created + updated,
+      error_count: errors.length,
+      sample_errors: errors.slice(0, 3),
+    },
+  });
+
+  revalidatePath("/dashboard/master-data/subjects");
+  revalidatePath(IMPORT_CENTER_PATH);
+  redirectTo(IMPORT_CENTER_PATH, {
+    ok: errors.length === 0,
+    message:
+      errors.length > 0
+        ? `Import selesai: ${created} dibuat, ${updated} diperbarui, ${errors.length} gagal. ${errors
+            .slice(0, 3)
+            .join("; ")}`
+        : `Import berhasil: ${created} mata pelajaran dibuat, ${updated} diperbarui.`,
+  });
 }
 
 export async function importClassesCsvAction(formData: FormData) {
@@ -814,7 +1003,9 @@ export async function importClassesCsvAction(formData: FormData) {
 
     if (error || !savedClass?.id) {
       errors.push(
-        `Baris ${rowNumber}: ${error?.message ?? "gagal menyimpan kelas"}`,
+        `Baris ${rowNumber}: ${
+          error ? getFriendlyErrorMessage(error) : "gagal menyimpan kelas"
+        }`,
       );
       continue;
     }
@@ -930,23 +1121,36 @@ export async function importStudentClassAssignmentsCsvAction(formData: FormData)
       continue;
     }
 
+    const { data: newMembership, error } = await supabase
+      .from("class_members")
+      .insert({
+        student_id: parsed.data.student_id,
+        class_id: parsed.data.class_id,
+        joined_at:
+          parsed.data.joined_at || new Date().toISOString().slice(0, 10),
+        left_at: null,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      errors.push(`Baris ${rowNumber}: ${getFriendlyErrorMessage(error)}`);
+      continue;
+    }
+
     if (activeMembership?.id) {
-      await supabase
+      const { error: closeError } = await supabase
         .from("class_members")
         .update({ left_at: new Date().toISOString().slice(0, 10) })
         .eq("id", activeMembership.id);
-    }
 
-    const { error } = await supabase.from("class_members").insert({
-      student_id: parsed.data.student_id,
-      class_id: parsed.data.class_id,
-      joined_at: parsed.data.joined_at || new Date().toISOString().slice(0, 10),
-      left_at: null,
-    });
-
-    if (error) {
-      errors.push(`Baris ${rowNumber}: ${error.message}`);
-      continue;
+      if (closeError) {
+        if (newMembership?.id) {
+          await supabase.from("class_members").delete().eq("id", newMembership.id);
+        }
+        errors.push(`Baris ${rowNumber}: ${getFriendlyErrorMessage(closeError)}`);
+        continue;
+      }
     }
 
     success += 1;
@@ -984,7 +1188,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
   if (!(file instanceof File) || file.size === 0) {
     redirectTo(IMPORT_CENTER_PATH, {
       ok: false,
-      message: "File CSV assignment guru-mapel-kelas wajib diunggah.",
+      message: "File CSV penugasan guru-mata pelajaran-kelas wajib diunggah.",
     });
   }
 
@@ -1079,7 +1283,7 @@ export async function importTeacherSubjectAssignmentsCsvAction(formData: FormDat
       .insert(parsed.data);
 
     if (error) {
-      errors.push(`Baris ${rowNumber}: ${error.message}`);
+      errors.push(`Baris ${rowNumber}: ${getFriendlyErrorMessage(error)}`);
       continue;
     }
 
@@ -1224,7 +1428,9 @@ async function importRoleUsers({
     if (createdAuthUser.error || !createdAuthUser.data.user) {
       errors.push(
         `Baris ${rowNumber}: ${
-          createdAuthUser.error?.message ?? "gagal membuat auth user"
+          createdAuthUser.error
+            ? getFriendlyErrorMessage(createdAuthUser.error)
+            : "gagal membuat auth user"
         }`,
       );
       continue;
@@ -1246,7 +1452,9 @@ async function importRoleUsers({
     if (userError || !savedUser) {
       await adminClient.auth.admin.deleteUser(createdAuthUser.data.user.id);
       errors.push(
-        `Baris ${rowNumber}: ${userError?.message ?? "gagal menyimpan user"}`,
+        `Baris ${rowNumber}: ${
+          userError ? getFriendlyErrorMessage(userError) : "gagal menyimpan user"
+        }`,
       );
       continue;
     }
@@ -1271,7 +1479,9 @@ async function importRoleUsers({
       .upsert(profilePayload, { onConflict: "user_id" });
 
     if (profileError) {
-      errors.push(`Baris ${rowNumber}: ${profileError.message}`);
+      await supabase.from("users").delete().eq("id", savedUser.id);
+      await adminClient.auth.admin.deleteUser(createdAuthUser.data.user.id);
+      errors.push(`Baris ${rowNumber}: ${getFriendlyErrorMessage(profileError)}`);
       continue;
     }
 
@@ -1356,6 +1566,13 @@ export async function saveTeacherAction(formData: FormData) {
   let authUserId: string | null = null;
   let targetSchoolId: string | null = null;
 
+  await ensureUniqueUserCredentials({
+    id,
+    email: userPayload.email,
+    username: userPayload.username,
+    redirectPath: "/dashboard/master-data/teachers",
+  });
+
   if (!id) {
     const createdAuthUser = await createAuthUser(userPayload.email, password);
 
@@ -1398,9 +1615,15 @@ export async function saveTeacherAction(formData: FormData) {
         .single();
 
   if (userError || !savedUser) {
+    if (!id) {
+      await deleteAuthUser(authUserId);
+    }
+
     redirectTo("/dashboard/master-data/teachers", {
       ok: false,
-      message: userError?.message ?? "Gagal menyimpan user guru.",
+      message: userError
+        ? getFriendlyErrorMessage(userError)
+        : "Gagal menyimpan user guru.",
     });
   }
 
@@ -1413,6 +1636,11 @@ export async function saveTeacherAction(formData: FormData) {
     },
     { onConflict: "user_id" },
   );
+
+  if (profileError && !id) {
+    await supabase.from("users").delete().eq("id", savedUser.id);
+    await deleteAuthUser(authUserId);
+  }
 
   if (!profileError) {
     await logAuditEvent({
@@ -1433,7 +1661,11 @@ export async function saveTeacherAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/teachers");
   redirectTo("/dashboard/master-data/teachers", {
     ok: !profileError,
-    message: profileError ? profileError.message : "Data guru berhasil disimpan.",
+    message: profileError
+      ? getFriendlyErrorMessage(profileError)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -1508,7 +1740,7 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/teachers");
   redirectTo("/dashboard/master-data/teachers", {
     ok: !error,
-    message: error ? error.message : "Penugasan guru berhasil ditambahkan.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil disimpan.",
   });
 }
 
@@ -1547,7 +1779,7 @@ export async function toggleUserStatusAction(formData: FormData) {
   revalidatePath(`/dashboard/master-data/${target}`);
   redirectTo(`/dashboard/master-data/${target}`, {
     ok: !error,
-    message: error ? error.message : "Status pengguna diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
 
@@ -1587,6 +1819,13 @@ export async function saveStudentAction(formData: FormData) {
     parsed.data;
   let authUserId: string | null = null;
   let targetSchoolId: string | null = null;
+
+  await ensureUniqueUserCredentials({
+    id,
+    email: userPayload.email,
+    username: userPayload.username,
+    redirectPath: "/dashboard/master-data/students",
+  });
 
   if (!id) {
     const createdAuthUser = await createAuthUser(userPayload.email, password);
@@ -1630,9 +1869,15 @@ export async function saveStudentAction(formData: FormData) {
         .single();
 
   if (userError || !savedUser) {
+    if (!id) {
+      await deleteAuthUser(authUserId);
+    }
+
     redirectTo("/dashboard/master-data/students", {
       ok: false,
-      message: userError?.message ?? "Gagal menyimpan user siswa.",
+      message: userError
+        ? getFriendlyErrorMessage(userError)
+        : "Gagal menyimpan user siswa.",
     });
   }
 
@@ -1646,6 +1891,11 @@ export async function saveStudentAction(formData: FormData) {
     },
     { onConflict: "user_id" },
   );
+
+  if (profileError && !id) {
+    await supabase.from("users").delete().eq("id", savedUser.id);
+    await deleteAuthUser(authUserId);
+  }
 
   if (!profileError) {
     await logAuditEvent({
@@ -1667,7 +1917,11 @@ export async function saveStudentAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/students");
   redirectTo("/dashboard/master-data/students", {
     ok: !profileError,
-    message: profileError ? profileError.message : "Data siswa berhasil disimpan.",
+    message: profileError
+      ? getFriendlyErrorMessage(profileError)
+      : id
+        ? "Data berhasil diperbarui."
+        : "Data berhasil disimpan.",
   });
 }
 
@@ -1712,13 +1966,6 @@ export async function saveClassMemberAction(formData: FormData) {
     .is("left_at", null)
     .maybeSingle();
 
-  if (activeMembership) {
-    await supabase
-      .from("class_members")
-      .update({ left_at: new Date().toISOString().slice(0, 10) })
-      .eq("id", activeMembership.id);
-  }
-
   const membershipPayload = {
     student_id,
     class_id,
@@ -1730,6 +1977,24 @@ export async function saveClassMemberAction(formData: FormData) {
     .insert(membershipPayload)
     .select("id")
     .single();
+
+  if (!error && activeMembership?.id) {
+    const { error: closeError } = await supabase
+      .from("class_members")
+      .update({ left_at: new Date().toISOString().slice(0, 10) })
+      .eq("id", activeMembership.id);
+
+    if (closeError) {
+      if (membership?.id) {
+        await supabase.from("class_members").delete().eq("id", membership.id);
+      }
+
+      redirectTo("/dashboard/master-data/students", {
+        ok: false,
+        message: getFriendlyErrorMessage(closeError),
+      });
+    }
+  }
 
   if (!error) {
     await logAuditEvent({
@@ -1747,6 +2012,6 @@ export async function saveClassMemberAction(formData: FormData) {
   revalidatePath("/dashboard/master-data/students");
   redirectTo("/dashboard/master-data/students", {
     ok: !error,
-    message: error ? error.message : "Riwayat kelas siswa berhasil ditambahkan.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil disimpan.",
   });
 }

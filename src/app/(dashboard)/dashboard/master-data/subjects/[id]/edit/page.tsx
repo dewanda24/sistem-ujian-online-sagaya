@@ -19,7 +19,7 @@ export default async function EditSubjectPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <DashboardPageHeader title="Edit Mapel" description={subject.name} />
+      <DashboardPageHeader title="Edit Mata Pelajaran" description={subject.name} />
       <SubjectForm subject={subject} schools={schools} />
     </div>
   );

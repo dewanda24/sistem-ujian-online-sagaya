@@ -32,10 +32,17 @@ export function ConfirmSubmitButton({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const confirmedRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const isDanger = variant === "danger" || Boolean(confirmationText);
+  const isBusy = pending || submitted;
 
   function submitConfirmed() {
+    if (isBusy) {
+      return;
+    }
+
     confirmedRef.current = true;
+    setSubmitted(true);
     setIsOpen(false);
     buttonRef.current?.form?.requestSubmit(buttonRef.current);
   }
@@ -46,7 +53,7 @@ export function ConfirmSubmitButton({
         {...props}
         ref={buttonRef}
         type="submit"
-        disabled={disabled || pending}
+        disabled={disabled || isBusy}
         onClick={(event) => {
           onClick?.(event);
 
@@ -56,7 +63,7 @@ export function ConfirmSubmitButton({
           }
 
           event.preventDefault();
-          if (!pending) {
+          if (!isBusy) {
             setIsOpen(true);
           }
         }}
@@ -70,7 +77,7 @@ export function ConfirmSubmitButton({
           className,
         )}
       >
-        {pending ? (
+        {isBusy ? (
           <>
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
             {loadingText}
@@ -86,7 +93,7 @@ export function ConfirmSubmitButton({
           description={confirmMessage}
           confirmationText={confirmationText}
           confirmLabel="Lanjutkan"
-          isLoading={pending}
+          isLoading={isBusy}
           onCancel={() => setIsOpen(false)}
           onConfirm={submitConfirmed}
         />
@@ -97,7 +104,7 @@ export function ConfirmSubmitButton({
           description={confirmMessage}
           confirmLabel="Lanjutkan"
           isDangerous={isDanger}
-          isLoading={pending}
+          isLoading={isBusy}
           onCancel={() => setIsOpen(false)}
           onConfirm={submitConfirmed}
         />

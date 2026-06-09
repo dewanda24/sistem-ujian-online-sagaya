@@ -24,12 +24,12 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
     <div className="space-y-5">
       <ActionToast status={params.status} message={params.message} />
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <DashboardPageHeader title="Mapel" description="Kelola kode dan nama mata pelajaran." />
-        <Link href="/dashboard/master-data/subjects/create" className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">Tambah Mapel</Link>
+        <DashboardPageHeader title="Mata Pelajaran" description="Kelola kode dan nama mata pelajaran." />
+        <Link href="/dashboard/master-data/subjects/create" className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">Tambah Mata Pelajaran</Link>
       </div>
 
       <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.5fr_1fr_auto]">
-        <input name="q" defaultValue={params.q ?? ""} placeholder="Cari mapel" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
+        <input name="q" defaultValue={params.q ?? ""} placeholder="Cari mata pelajaran" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
         <select name="status" defaultValue={params.status ?? ""} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
           <option value="">Semua status</option>
           <option value="true">Aktif</option>
@@ -45,7 +45,7 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
             <tr className="h-10">
-              <th className="px-3 py-2 font-medium">Nama Mapel</th>
+              <th className="px-3 py-2 font-medium">Nama Mata Pelajaran</th>
               <th className="w-32 px-3 py-2 font-medium">Kode</th>
               <th className="w-28 px-3 py-2 font-medium">Status</th>
               <th className="w-36 px-3 py-2 font-medium">Aksi</th>
@@ -73,7 +73,7 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
             ))}
           </tbody>
         </table>
-        {subjects.length === 0 ? <div className="p-8"><EmptyState title="Belum ada mapel" description="Tambahkan mapel sebelum assignment guru dan bank soal." actionHref="/dashboard/master-data/subjects/create" actionLabel="Tambah Mapel" /></div> : null}
+        {subjects.length === 0 ? <div className="p-8"><EmptyState title="Belum ada mata pelajaran" description="Tambahkan mata pelajaran sebelum penugasan guru." actionHref="/dashboard/master-data/subjects/create" actionLabel="Tambah Mata Pelajaran" /></div> : null}
       </div>
 
       <div className="grid gap-2 md:hidden">
@@ -92,7 +92,7 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
           </article>
         )) : (
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-8">
-            <EmptyState title="Belum ada mapel" description="Tambahkan mapel sebelum assignment guru dan bank soal." actionHref="/dashboard/master-data/subjects/create" actionLabel="Tambah Mapel" />
+            <EmptyState title="Belum ada mata pelajaran" description="Tambahkan mata pelajaran sebelum penugasan guru." actionHref="/dashboard/master-data/subjects/create" actionLabel="Tambah Mata Pelajaran" />
           </div>
         )}
       </div>

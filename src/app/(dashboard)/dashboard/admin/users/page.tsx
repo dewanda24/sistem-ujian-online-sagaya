@@ -204,6 +204,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                   : "Tambah user operasional baru?"
               }
               confirmTitle="Konfirmasi User"
+              loadingText={editable ? "Memperbarui..." : "Menyimpan..."}
               variant="default"
               className="px-4 py-2 text-sm"
             >

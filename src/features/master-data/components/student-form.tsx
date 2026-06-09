@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { saveClassMemberAction, saveStudentAction } from "@/lib/actions/master-data-actions";
 import type { SelectOption } from "@/lib/master-data/queries";
 
@@ -70,7 +71,9 @@ export function StudentForm({
         </select>
         <div className="flex justify-end gap-2 md:col-span-2">
           <Link href="/dashboard/master-data/students" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]">Batal</Link>
-          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Simpan Siswa</button>
+          <SubmitButton loadingText={isEdit ? "Memperbarui..." : "Menyimpan..."}>
+            Simpan Siswa
+          </SubmitButton>
         </div>
       </form>
 
@@ -88,7 +91,7 @@ export function StudentForm({
               ))}
             </select>
             <input name="joined_at" type="date" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-            <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Assign</button>
+            <SubmitButton loadingText="Menyimpan...">Assign</SubmitButton>
           </form>
           <div className="mt-3 divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0]">
             {classHistory.length ? classHistory.map((item) => (

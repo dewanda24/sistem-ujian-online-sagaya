@@ -324,6 +324,61 @@ export async function getTeacherAssignments(teacherId: string) {
   return data ?? [];
 }
 
+export async function getAllTeacherAssignments(search = "") {
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  let query = supabase
+    .from("teacher_subjects")
+    .select(
+      "id, teacher_id, subject_id, class_id, academic_year_id, users!teacher_subjects_teacher_id_fkey(id, username, email, school_id, user_profiles(full_name)), subjects(code, name, school_id), classes(name, school_id), academic_years(name, school_id), created_at",
+    )
+    .order("created_at", { ascending: false });
+
+  if (!scope.isSuperAdmin) {
+    const schoolId = requireScopedSchoolId(scope);
+
+    query = query
+      .eq("users.school_id", schoolId)
+      .eq("subjects.school_id", schoolId)
+      .eq("classes.school_id", schoolId)
+      .eq("academic_years.school_id", schoolId);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    return [];
+  }
+
+  if (!search.trim()) {
+    return data;
+  }
+
+  const keyword = search.trim().toLowerCase();
+
+  return data.filter((item) => {
+    const teacher = firstRelation(item.users);
+    const profile = firstRelation(teacher?.user_profiles);
+    const subject = firstRelation(item.subjects);
+    const classItem = firstRelation(item.classes);
+    const academicYear = firstRelation(item.academic_years);
+
+    return [
+      profile?.full_name,
+      teacher?.username,
+      teacher?.email,
+      subject?.code,
+      subject?.name,
+      classItem?.name,
+      academicYear?.name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(keyword);
+  });
+}
+
 export async function getTeacherAssignmentCounts(teacherIds: string[]) {
   if (teacherIds.length === 0) {
     return new Map<string, number>();

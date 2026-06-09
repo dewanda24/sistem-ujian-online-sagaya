@@ -156,6 +156,7 @@ export async function OperationalRoleUsersPage({
                   : "Tambah akun operasional baru?"
               }
               confirmTitle="Konfirmasi User"
+              loadingText={editable ? "Memperbarui..." : "Menyimpan..."}
               variant="default"
               className="px-4 py-2 text-sm"
             >

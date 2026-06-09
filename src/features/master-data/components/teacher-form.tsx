@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { saveTeacherAction, saveTeacherAssignmentAction } from "@/lib/actions/master-data-actions";
 import type { SelectOption } from "@/lib/master-data/queries";
 
@@ -61,14 +62,16 @@ export function TeacherForm({
         </label>
         <div className="flex justify-end gap-2 md:col-span-2">
           <Link href="/dashboard/master-data/teachers" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]">Batal</Link>
-          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Simpan Guru</button>
+          <SubmitButton loadingText={isEdit ? "Memperbarui..." : "Menyimpan..."}>
+            Simpan Guru
+          </SubmitButton>
         </div>
       </form>
 
       {isEdit ? (
         <section className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-3">
-            <h2 className="font-semibold text-[#0F172A]">Mapel Guru</h2>
+            <h2 className="font-semibold text-[#0F172A]">Penugasan Guru</h2>
             <p className="text-sm text-[#64748B]">
               Atur mata pelajaran, kelas, dan tahun ajaran yang diajar guru.
             </p>
@@ -78,7 +81,7 @@ export function TeacherForm({
             <select name="subject_id" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required>{subjects.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             <select name="class_id" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required>{classes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             <select name="academic_year_id" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required>{academicYears.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-            <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Tambah</button>
+            <SubmitButton loadingText="Menyimpan...">Tambah</SubmitButton>
           </form>
           <div className="mt-3 divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0]">
             {assignments.length ? assignments.map((item) => (

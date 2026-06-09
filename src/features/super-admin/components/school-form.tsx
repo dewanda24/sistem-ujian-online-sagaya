@@ -96,6 +96,7 @@ export function SchoolForm({ school, redirectPath }: SchoolFormProps) {
               : "Tambah sekolah baru ke platform?"
           }
           confirmTitle="Konfirmasi Sekolah"
+          loadingText={school?.id ? "Memperbarui..." : "Menyimpan..."}
           variant="default"
           className="px-4 py-2 text-sm"
         >

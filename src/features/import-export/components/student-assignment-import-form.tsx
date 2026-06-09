@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
@@ -8,6 +8,7 @@ import { commitStudentClassAssignmentImportAction } from "@/features/import-expo
 import { LoadingButton } from "@/components/common/loading-button";
 import { ImportResultSummary } from "@/components/common/import-result-summary";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getMissingCsvHeaders, parseCsvText } from "@/lib/import/csv";
 
 interface ValidationResult {
@@ -69,10 +70,12 @@ function parseCsv(text: string) {
 }
 
 export function StudentAssignmentImportForm() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<ValidationResult[]>([]);
   const [parseError, setParseError] = useState<string>("");
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const submittedRef = useRef(false);
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     (_previousState, formData) =>
@@ -85,12 +88,14 @@ export function StudentAssignmentImportForm() {
 
   useEffect(() => {
     if (!state.message) return;
+    submittedRef.current = false;
+    router.refresh();
     if (state.ok) {
       toast.success(state.message);
       return;
     }
     toast.error(state.message);
-  }, [state]);
+  }, [router, state]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -376,7 +381,7 @@ export function StudentAssignmentImportForm() {
             type="submit"
             disabled={previewRows.length === 0 || invalidCount > 0}
             isLoading={isPending}
-            loadingText="Sedang import..."
+            loadingText="Mengimpor..."
           >
             Import {validCount > 0 ? `(${validCount} baris)` : ""}
           </LoadingButton>
@@ -390,7 +395,8 @@ export function StudentAssignmentImportForm() {
         isLoading={isPending}
         onCancel={() => setPendingFormData(null)}
         onConfirm={() => {
-          if (!pendingFormData || isPending) return;
+          if (!pendingFormData || isPending || submittedRef.current) return;
+          submittedRef.current = true;
           formAction(pendingFormData);
           setPendingFormData(null);
           toast.info("Import penugasan siswa-kelas sedang diproses.");

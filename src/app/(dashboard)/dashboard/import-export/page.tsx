@@ -39,22 +39,25 @@ type PageProps = {
 
 const exportItems = [
   {
-    title: "Unduh Data Guru",
+    title: "Data Guru",
     description: "Data guru sesuai scope sekolah.",
     href: "/api/data-export/teachers",
     available: true,
+    adminVisible: true,
   },
   {
-    title: "Unduh Data Siswa",
+    title: "Data Siswa",
     description: "Data siswa sesuai scope sekolah.",
     href: "/api/data-export/students",
     available: true,
+    adminVisible: true,
   },
   {
-    title: "Unduh Data Kelas",
+    title: "Data Akademik",
     description: "Data kelas, tahun ajaran, dan wali kelas.",
     href: "/api/data-export/classes",
     available: true,
+    adminVisible: true,
   },
   {
     title: "Unduh Penugasan Guru",
@@ -195,8 +198,11 @@ function ImportDataTab({
 }
 
 function ExportDataTab({ user }: { user: Awaited<ReturnType<typeof requirePermission>> }) {
+  const isAdminSchool = user.roles?.name === "admin";
   const visibleItems = exportItems.filter(
-    (item) => !item.permission || hasPermission(user, item.permission),
+    (item) =>
+      (!isAdminSchool || item.adminVisible) &&
+      (!item.permission || hasPermission(user, item.permission)),
   );
 
   return (

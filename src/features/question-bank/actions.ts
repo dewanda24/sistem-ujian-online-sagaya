@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
@@ -69,7 +70,7 @@ function parseCsv(text: string) {
 function redirectTo(path: string, result: ActionResult): never {
   const params = new URLSearchParams({
     notice: result.ok ? "success" : "error",
-    message: result.message,
+    message: result.ok ? result.message : getFriendlyErrorMessage(result.message),
   });
 
   redirect(`${path}?${params.toString()}`);

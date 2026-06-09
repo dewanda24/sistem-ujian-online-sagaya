@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { saveClassAction } from "@/lib/actions/master-data-actions";
 import type { SelectOption } from "@/lib/master-data/queries";
 
@@ -45,7 +46,9 @@ export function ClassForm({
       </label>
       <div className="flex justify-end gap-2 md:col-span-2">
         <Link href="/dashboard/master-data/classes" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]">Batal</Link>
-        <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Simpan Kelas</button>
+        <SubmitButton loadingText={classItem?.id ? "Memperbarui..." : "Menyimpan..."}>
+          Simpan Kelas
+        </SubmitButton>
       </div>
     </form>
   );

@@ -4,7 +4,10 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
+  Circle,
   ClipboardCheck,
+  Download,
   GraduationCap,
   PenSquare,
   School,
@@ -16,8 +19,11 @@ import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { UI_LABELS } from "@/constants/ui-labels";
-import { getRoleDashboardStats } from "@/features/dashboard/queries";
-import { getAcademicYears } from "@/lib/master-data/queries";
+import {
+  getAdminOperationalDashboardData,
+  getRoleDashboardStats,
+  type AdminOperationalDashboardData,
+} from "@/features/dashboard/queries";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
 type RoleDashboardContent = {
@@ -199,17 +205,14 @@ export async function RoleDashboardView({ role, user }: RoleDashboardViewProps) 
   const stats = await getRoleDashboardStats(role, user);
 
   if (role === "admin") {
-    const academicYears = await getAcademicYears();
-    const activeAcademicYear =
-      academicYears.find((academicYear) => Boolean(academicYear.is_active)) ??
-      academicYears[0];
+    const operationalData = await getAdminOperationalDashboardData(user);
 
     return (
       <AdminDashboardOverview
         displayName={displayName}
         schoolName={user.school_name}
-        academicYearName={activeAcademicYear?.name ?? null}
         stats={stats}
+        operationalData={operationalData}
       />
     );
   }
@@ -476,22 +479,22 @@ function TeacherDashboardOverview({
 interface AdminDashboardOverviewProps {
   displayName: string;
   schoolName: string | null;
-  academicYearName: string | null;
   stats: Array<{
     title: string;
     value: string;
     description: string;
     href?: string;
   }>;
+  operationalData: AdminOperationalDashboardData;
 }
 
 function AdminDashboardOverview({
   displayName,
   schoolName,
-  academicYearName,
   stats,
+  operationalData,
 }: AdminDashboardOverviewProps) {
-  const primaryStats = ["Siswa", "Guru", "Kelas", "Ujian Aktif"]
+  const primaryStats = ["Guru", "Siswa", "Kelas", "Ujian Aktif"]
     .map((title) => stats.find((stat) => stat.title === title))
     .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
     .map((stat) =>
@@ -503,11 +506,14 @@ function AdminDashboardOverview({
           }
         : stat,
     );
-  const hasDataIssue = stats.some((stat) =>
-    ["Tanpa Peserta", "Kelas Tanpa Siswa", "Kelas Tanpa Wali"].includes(
-      stat.title,
-    ) && Number(stat.value) > 0,
-  );
+  const completedProgress = operationalData.setupProgress.filter(
+    (item) => item.done,
+  ).length;
+  const progressPercent = operationalData.setupProgress.length
+    ? Math.round(
+        (completedProgress / operationalData.setupProgress.length) * 100,
+      )
+    : 0;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 text-[#0F172A]">
@@ -522,23 +528,25 @@ function AdminDashboardOverview({
                 Selamat Datang, {displayName}
               </h1>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-normal text-[#64748B]">
-                  Sekolah
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold">
-                  {schoolName ?? "Sekolah belum dipilih"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-normal text-[#64748B]">
-                  Tahun Ajaran Aktif
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold">
-                  {academicYearName ?? "Belum ada tahun ajaran aktif"}
-                </p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <DashboardInfoChip
+                label="Sekolah"
+                value={schoolName ?? "Sekolah belum dipilih"}
+              />
+              <DashboardInfoChip
+                label="Tahun Ajaran Aktif"
+                value={
+                  operationalData.activeAcademicYearName ??
+                  "Belum ada tahun ajaran aktif"
+                }
+              />
+              <DashboardInfoChip
+                label="Semester Aktif"
+                value={
+                  operationalData.activeSemesterName ??
+                  "Belum ada semester aktif"
+                }
+              />
             </div>
           </div>
           <div className="flex size-20 shrink-0 items-center justify-center rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#2563EB] md:size-24">
@@ -563,31 +571,152 @@ function AdminDashboardOverview({
         ))}
       </section>
 
-      <AdminOperationalWorkbench />
-
-      <section
-        className={`rounded-xl border bg-[#FFFFFF] p-4 shadow-sm ${
-          hasDataIssue ? "border-[#F59E0B]/40" : "border-[#E2E8F0]"
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className={`mt-1 size-2.5 shrink-0 rounded-full ${
-              hasDataIssue ? "bg-[#F59E0B]" : "bg-[#22C55E]"
-            }`}
-          />
-          <div>
-            <h2 className="text-sm font-semibold">Informasi Penting</h2>
-            <p className="mt-1 text-sm leading-6 text-[#64748B]">
-              {hasDataIssue
-                ? "Ada data yang perlu dilengkapi sebelum ujian berjalan."
-                : "Semua data utama sudah lengkap dan siap digunakan."}
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold">Perlu Ditindaklanjuti</h2>
+            <p className="mt-1 text-sm text-[#64748B]">
+              Pekerjaan operasional yang menghambat setup atau pelaksanaan.
             </p>
           </div>
+          <div className="grid gap-3">
+            {operationalData.tasks.map((task) => (
+              <article
+                key={task.title}
+                className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
+                      task.urgent
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {task.urgent ? (
+                      <AlertTriangle className="size-5" />
+                    ) : (
+                      <CheckCircle2 className="size-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold">{task.title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-[#64748B]">
+                      {task.description}
+                    </p>
+                  </div>
+                  <Link
+                    href={task.href}
+                    className="hidden rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-semibold hover:bg-white sm:inline-flex"
+                  >
+                    {task.action}
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold">Progress Setup Sekolah</h2>
+            <p className="mt-1 text-sm text-[#64748B]">
+              {completedProgress} dari {operationalData.setupProgress.length} tahap siap.
+            </p>
+          </div>
+          <div className="mb-4 h-2 rounded-full bg-[#E2E8F0]">
+            <div
+              className="h-2 rounded-full bg-[#2563EB]"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="grid gap-2">
+            {operationalData.setupProgress.map((item) => {
+              const Icon = item.done ? CheckCircle2 : Circle;
+
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
+                >
+                  <span>{item.label}</span>
+                  <Icon
+                    className={`size-4 ${
+                      item.done ? "text-emerald-600" : "text-[#94A3B8]"
+                    }`}
+                  />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <AdminOperationalWorkbench />
+
+      <section className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold">Aktivitas Terbaru Sekolah</h2>
+          <p className="mt-1 text-sm text-[#64748B]">
+            Perubahan data terbaru dalam lingkup sekolah.
+          </p>
+        </div>
+        <div className="grid gap-2">
+          {operationalData.recentActivities.length ? (
+            operationalData.recentActivities.map((activity) => (
+              <Link
+                key={`${activity.label}-${activity.createdAt}`}
+                href={activity.href}
+                className="flex flex-col gap-1 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC] sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span>
+                  <span className="font-semibold">{activity.label}</span>
+                  <span className="text-[#64748B]"> - {activity.description}</span>
+                </span>
+                <span className="text-xs text-[#64748B]">
+                  {formatDashboardDate(activity.createdAt)}
+                </span>
+              </Link>
+            ))
+          ) : (
+            <EmptyState
+              title="Belum ada aktivitas terbaru"
+              description="Aktivitas akan muncul setelah data sekolah mulai dibuat."
+            />
+          )}
         </div>
       </section>
     </div>
   );
+}
+
+function DashboardInfoChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-normal text-[#64748B]">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function formatDashboardDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function AdminOperationalWorkbench() {
@@ -595,32 +724,38 @@ function AdminOperationalWorkbench() {
     {
       title: "Tambah Siswa",
       description: "Kelola data dan akun siswa.",
-      href: "/dashboard/master-data/students",
+      href: "/dashboard/master-data/students/create",
       icon: GraduationCap,
     },
     {
       title: "Tambah Guru",
       description: "Kelola data dan akun guru.",
-      href: "/dashboard/master-data/teachers",
+      href: "/dashboard/master-data/teachers/create",
       icon: Users,
     },
     {
-      title: "Buat Paket Ujian",
-      description: "Siapkan paket soal ujian.",
-      href: "/dashboard/exams/packages",
-      icon: BookOpen,
+      title: "Penugasan Guru",
+      description: "Hubungkan guru, mata pelajaran, dan kelas.",
+      href: "/dashboard/master-data/teacher-assignments",
+      icon: ClipboardCheck,
     },
     {
-      title: "Buat Jadwal Ujian",
+      title: "Jadwal Ujian",
       description: "Atur waktu dan peserta ujian.",
       href: "/dashboard/exams/schedules",
       icon: CalendarDays,
     },
     {
-      title: UI_LABELS.navigation.importData,
-      description: "Unggah data sekolah sekaligus.",
-      href: "/dashboard/import-export",
+      title: "Import Data",
+      description: "Unggah guru, siswa, kelas, dan penugasan.",
+      href: "/dashboard/import-export?tab=import",
       icon: Upload,
+    },
+    {
+      title: "Export Data",
+      description: "Unduh data sekolah yang dibutuhkan operator.",
+      href: "/dashboard/import-export?tab=export",
+      icon: Download,
     },
   ];
 
@@ -632,7 +767,7 @@ function AdminOperationalWorkbench() {
           Jalur cepat untuk pekerjaan utama admin sekolah.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {actions.map((action) => {
           const Icon = action.icon;
 

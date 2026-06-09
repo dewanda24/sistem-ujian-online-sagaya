@@ -37,6 +37,7 @@ export type ExportHistoryRow = {
 const importActions = [
   "students.import_csv",
   "teachers.import_csv",
+  "subjects.import_csv",
   "classes.import_csv",
   "class_members.import_csv",
   "teacher_subjects.import_csv",
@@ -58,9 +59,10 @@ const exportActions = [
 const moduleLabels: Record<string, string> = {
   "students.import_csv": "Siswa",
   "teachers.import_csv": "Guru",
+  "subjects.import_csv": "Mata Pelajaran",
   "classes.import_csv": "Kelas",
   "class_members.import_csv": "Penugasan Siswa-Kelas",
-  "teacher_subjects.import_csv": "Penugasan Guru-Mapel-Kelas",
+  "teacher_subjects.import_csv": "Penugasan Guru-Mata Pelajaran-Kelas",
   "questions.import_excel": "Bank Soal Excel/CSV",
   "questions.import_word": "Bank Soal Word",
   "questions.import_csv": "Bank Soal CSV",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,7 +21,7 @@ function formString(formData: FormData, key: string) {
 function redirectTo(result: { ok: boolean; message: string }): never {
   const params = new URLSearchParams({
     status: result.ok ? "success" : "error",
-    message: result.message,
+    message: result.ok ? result.message : getFriendlyErrorMessage(result.message),
   });
 
   redirect(`/dashboard/profile?${params.toString()}`);
@@ -55,6 +56,6 @@ export async function saveProfileSettingsAction(formData: FormData) {
   revalidatePath("/dashboard/profile");
   redirectTo({
     ok: !error,
-    message: error ? error.message : "Profil berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }

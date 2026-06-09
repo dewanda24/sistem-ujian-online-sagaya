@@ -112,7 +112,7 @@ export async function getTeacherResultRecap(filters?: {
     .select(
       "*, users(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, exam_packages(id, title, subjects(id, code, name)))",
     )
-    .eq("status", "submitted")
+    .in("status", ["submitted", "expired"])
     .order("submitted_at", { ascending: false });
 
   if (filters?.grading_status) {

@@ -16,6 +16,35 @@ type DashboardStat = {
   href?: string;
 };
 
+export type AdminTask = {
+  title: string;
+  description: string;
+  href: string;
+  action: string;
+  urgent: boolean;
+};
+
+export type AdminSetupProgressItem = {
+  label: string;
+  done: boolean;
+  href: string;
+};
+
+export type AdminRecentActivity = {
+  label: string;
+  description: string;
+  createdAt: string | null;
+  href: string;
+};
+
+export type AdminOperationalDashboardData = {
+  activeAcademicYearName: string | null;
+  activeSemesterName: string | null;
+  tasks: AdminTask[];
+  setupProgress: AdminSetupProgressItem[];
+  recentActivities: AdminRecentActivity[];
+};
+
 async function getAdminSchoolId() {
   const scope = await requireSchoolScope();
 
@@ -196,13 +225,13 @@ async function getTeacherOperationalStats(teacherId: string) {
     supabase
       .from("questions")
       .select("id", { count: "exact", head: true })
-      .eq("created_by", teacherId)
+      .in("subject_id", subjectIds)
       .eq("status", "draft")
       .is("deleted_at", null),
     supabase
       .from("questions")
       .select("id", { count: "exact", head: true })
-      .eq("created_by", teacherId)
+      .in("subject_id", subjectIds)
       .eq("status", "published")
       .is("deleted_at", null),
     supabase
@@ -268,8 +297,6 @@ async function getTeacherOperationalStats(teacherId: string) {
         .select("id", { count: "exact", head: true })
         .in("exam_package_id", packageIds)
         .eq("status", "active")
-        .lte("start_at", now)
-        .gte("end_at", now)
         .is("deleted_at", null),
       supabase
         .from("exam_schedules")
@@ -300,6 +327,221 @@ async function getTeacherOperationalStats(teacherId: string) {
     upcomingSchedules: upcomingSchedules ?? 0,
     activeSchedules: activeSchedules ?? 0,
     notStartedParticipants,
+  };
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+export async function getAdminOperationalDashboardData(
+  user: CurrentUser,
+): Promise<AdminOperationalDashboardData> {
+  const schoolId = user.school_id;
+
+  if (!schoolId) {
+    return {
+      activeAcademicYearName: null,
+      activeSemesterName: null,
+      tasks: [],
+      setupProgress: [],
+      recentActivities: [],
+    };
+  }
+
+  const supabase = await createClient();
+  const [
+    { data: academicYears },
+    { data: semesters },
+    { count: subjectCount },
+    { data: classes },
+    { data: users },
+    { data: schedules },
+  ] = await Promise.all([
+    supabase
+      .from("academic_years")
+      .select("id, name, is_active, created_at")
+      .eq("school_id", schoolId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("semesters")
+      .select("id, name, is_active, academic_year_id, created_at, academic_years!inner(school_id)")
+      .eq("academic_years.school_id", schoolId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("subjects")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId),
+    supabase
+      .from("classes")
+      .select("id, name, created_at, class_members(student_id, left_at)")
+      .eq("school_id", schoolId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("users")
+      .select("id, username, email, created_at, roles!inner(name), user_profiles(full_name)")
+      .eq("school_id", schoolId)
+      .in("roles.name", ["teacher", "student"])
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("exam_schedules")
+      .select("id, title, status, created_at, exam_participants(id)")
+      .eq("school_id", schoolId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const teacherIds = (users ?? [])
+    .filter((item) => firstRelation(item.roles)?.name === "teacher")
+    .map((item) => item.id as string);
+  const studentIds = (users ?? [])
+    .filter((item) => firstRelation(item.roles)?.name === "student")
+    .map((item) => item.id as string);
+  const { data: assignments } = teacherIds.length
+    ? await supabase
+        .from("teacher_subjects")
+        .select("id, teacher_id, created_at")
+        .in("teacher_id", teacherIds)
+    : { data: [] };
+
+  const assignedTeacherIds = new Set(
+    (assignments ?? []).map((item) => item.teacher_id as string),
+  );
+  const studentsInClass = new Set(
+    (classes ?? []).flatMap((classItem) =>
+      (classItem.class_members ?? [])
+        .filter((member: { left_at?: string | null }) => !member.left_at)
+        .map((member: { student_id?: string | null }) => member.student_id)
+        .filter((studentId): studentId is string => Boolean(studentId)),
+    ),
+  );
+  const activeAcademicYear =
+    (academicYears ?? []).find((item) => Boolean(item.is_active)) ?? null;
+  const activeSemester =
+    (semesters ?? []).find((item) => Boolean(item.is_active)) ?? null;
+  const studentsWithoutClass = studentIds.filter(
+    (studentId) => !studentsInClass.has(studentId),
+  ).length;
+  const teachersWithoutAssignment = teacherIds.filter(
+    (teacherId) => !assignedTeacherIds.has(teacherId),
+  ).length;
+  const schedulesWithoutParticipants = (schedules ?? []).filter(
+    (schedule) =>
+      ["scheduled", "active"].includes(schedule.status ?? "") &&
+      (schedule.exam_participants ?? []).length === 0,
+  ).length;
+
+  const tasks: AdminTask[] = [
+    !activeAcademicYear
+      ? {
+          title: "Tahun ajaran belum aktif",
+          description: "Aktifkan tahun ajaran agar semester dan jadwal punya periode kerja.",
+          href: "/dashboard/master-data/academic-years",
+          action: "Atur Tahun Ajaran",
+          urgent: true,
+        }
+      : null,
+    (semesters ?? []).length === 0
+      ? {
+          title: "Semester belum dibuat",
+          description: "Buat semester ganjil/genap untuk tahun ajaran sekolah.",
+          href: "/dashboard/master-data/semesters",
+          action: "Tambah Semester",
+          urgent: true,
+        }
+      : null,
+    studentsWithoutClass > 0
+      ? {
+          title: `${studentsWithoutClass} siswa belum masuk kelas`,
+          description: "Tempatkan siswa ke kelas sebelum jadwal ujian dipakai.",
+          href: "/dashboard/master-data/students",
+          action: "Cek Siswa",
+          urgent: true,
+        }
+      : null,
+    teachersWithoutAssignment > 0
+      ? {
+          title: `${teachersWithoutAssignment} guru belum mendapat mata pelajaran`,
+          description: "Lengkapi penugasan guru ke mata pelajaran dan kelas.",
+          href: "/dashboard/master-data/teacher-assignments",
+          action: "Atur Penugasan",
+          urgent: true,
+        }
+      : null,
+    schedulesWithoutParticipants > 0
+      ? {
+          title: `${schedulesWithoutParticipants} ujian belum memiliki peserta`,
+          description: "Lengkapi peserta agar ujian bisa dilaksanakan.",
+          href: "/dashboard/exams/schedules",
+          action: "Cek Jadwal",
+          urgent: true,
+        }
+      : null,
+  ].filter((item): item is AdminTask => Boolean(item));
+
+  if (tasks.length === 0) {
+    tasks.push({
+      title: "Setup sekolah siap",
+      description: "Data utama sudah cukup untuk menjalankan operasional ujian.",
+      href: "/dashboard/exams/schedules",
+      action: "Lihat Jadwal",
+      urgent: false,
+    });
+  }
+
+  const setupProgress = [
+    { label: "Tahun Ajaran", done: (academicYears ?? []).length > 0, href: "/dashboard/master-data/academic-years" },
+    { label: "Semester", done: (semesters ?? []).length > 0, href: "/dashboard/master-data/semesters" },
+    { label: "Mata Pelajaran", done: (subjectCount ?? 0) > 0, href: "/dashboard/master-data/subjects" },
+    { label: "Kelas", done: (classes ?? []).length > 0, href: "/dashboard/master-data/classes" },
+    { label: "Guru", done: teacherIds.length > 0, href: "/dashboard/master-data/teachers" },
+    { label: "Siswa", done: studentIds.length > 0, href: "/dashboard/master-data/students" },
+    { label: "Penugasan Guru", done: (assignments ?? []).length > 0, href: "/dashboard/master-data/teacher-assignments" },
+    { label: "Jadwal Ujian", done: (schedules ?? []).length > 0, href: "/dashboard/exams/schedules" },
+  ];
+  const userActivities = (users ?? []).slice(0, 4).map((item) => {
+    const profile = firstRelation(item.user_profiles);
+    const role = firstRelation(item.roles)?.name === "teacher" ? "Guru" : "Siswa";
+
+    return {
+      label: `${role} baru`,
+      description: profile?.full_name ?? item.username ?? item.email ?? "-",
+      createdAt: item.created_at as string | null,
+      href: role === "Guru" ? "/dashboard/master-data/teachers" : "/dashboard/master-data/students",
+    };
+  });
+  const recentActivities = [
+    ...userActivities,
+    ...(academicYears ?? []).slice(0, 2).map((item) => ({
+      label: "Tahun ajaran dibuat",
+      description: item.name ?? "-",
+      createdAt: item.created_at as string | null,
+      href: "/dashboard/master-data/academic-years",
+    })),
+    ...(semesters ?? []).slice(0, 2).map((item) => ({
+      label: "Semester dibuat",
+      description: item.name ?? "-",
+      createdAt: item.created_at as string | null,
+      href: "/dashboard/master-data/semesters",
+    })),
+    ...(schedules ?? []).slice(0, 3).map((item) => ({
+      label: "Jadwal ujian dibuat",
+      description: item.title ?? "-",
+      createdAt: item.created_at as string | null,
+      href: "/dashboard/exams/schedules",
+    })),
+  ]
+    .filter((item) => Boolean(item.createdAt))
+    .sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
+    .slice(0, 6);
+
+  return {
+    activeAcademicYearName: activeAcademicYear?.name ?? null,
+    activeSemesterName: activeSemester?.name ?? null,
+    tasks,
+    setupProgress,
+    recentActivities,
   };
 }
 
@@ -398,7 +640,7 @@ export async function getRoleDashboardStats(
         href: "/dashboard/master-data/classes",
       },
       {
-        title: "Mapel",
+        title: "Mata Pelajaran",
         value: String(subjects),
         description: "Total mata pelajaran pada data sekolah.",
         href: "/dashboard/master-data/subjects",
@@ -470,13 +712,13 @@ export async function getRoleDashboardStats(
       {
         title: "Soal Belum Diterbitkan",
         value: String(teacherStats.draftQuestions),
-        description: "Soal yang dibuat guru dan belum diterbitkan.",
+        description: "Soal pada mata pelajaran guru yang belum diterbitkan.",
         href: "/dashboard/question-bank/questions?status=draft",
       },
       {
         title: "Soal Sudah Diterbitkan",
         value: String(teacherStats.publishedQuestions),
-        description: "Soal siap dipakai pada paket ujian.",
+        description: "Soal pada mata pelajaran guru yang siap dipakai.",
         href: "/dashboard/question-bank/questions?status=published",
       },
       {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
@@ -8,6 +8,7 @@ import { commitTeacherSubjectAssignmentImportAction } from "@/features/import-ex
 import { LoadingButton } from "@/components/common/loading-button";
 import { ImportResultSummary } from "@/components/common/import-result-summary";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getMissingCsvHeaders, parseCsvText } from "@/lib/import/csv";
 
 interface ValidationResult {
@@ -69,10 +70,12 @@ function parseCsv(text: string) {
 }
 
 export function TeacherAssignmentImportForm() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<ValidationResult[]>([]);
   const [parseError, setParseError] = useState<string>("");
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const submittedRef = useRef(false);
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     (_previousState, formData) =>
@@ -85,12 +88,14 @@ export function TeacherAssignmentImportForm() {
 
   useEffect(() => {
     if (!state.message) return;
+    submittedRef.current = false;
+    router.refresh();
     if (state.ok) {
       toast.success(state.message);
       return;
     }
     toast.error(state.message);
-  }, [state]);
+  }, [router, state]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -178,7 +183,7 @@ export function TeacherAssignmentImportForm() {
     <div className="space-y-6 rounded-lg border bg-card p-6">
       <div>
         <h3 className="text-lg font-semibold">
-          Import Penugasan Guru-Mapel-Kelas
+          Import Penugasan Guru-Mata Pelajaran-Kelas
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload file CSV dengan kolom: teacher_email, subject_code, class_name,
@@ -251,7 +256,7 @@ export function TeacherAssignmentImportForm() {
                       Email Guru
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium">
-                      Mapel
+                      Mata Pelajaran
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium">
                       Kelas
@@ -373,7 +378,7 @@ export function TeacherAssignmentImportForm() {
             type="submit"
             disabled={previewRows.length === 0 || invalidCount > 0}
             isLoading={isPending}
-            loadingText="Sedang import..."
+            loadingText="Mengimpor..."
           >
             Import {validCount > 0 ? `(${validCount} baris)` : ""}
           </LoadingButton>
@@ -382,15 +387,16 @@ export function TeacherAssignmentImportForm() {
       <ConfirmDialog
         isOpen={Boolean(pendingFormData)}
         title="Konfirmasi Import"
-        description={`Import ${validCount} penugasan guru-mapel-kelas yang valid?`}
+        description={`Import ${validCount} penugasan guru-mata pelajaran-kelas yang valid?`}
         confirmLabel="Import"
         isLoading={isPending}
         onCancel={() => setPendingFormData(null)}
         onConfirm={() => {
-          if (!pendingFormData || isPending) return;
+          if (!pendingFormData || isPending || submittedRef.current) return;
+          submittedRef.current = true;
           formAction(pendingFormData);
           setPendingFormData(null);
-          toast.info("Import penugasan guru-mapel-kelas sedang diproses.");
+          toast.info("Import penugasan guru-mata pelajaran-kelas sedang diproses.");
         }}
       />
     </div>

@@ -9,7 +9,7 @@ export default async function CreateSubjectPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <DashboardPageHeader title="Tambah Mapel" description="Isi kode dan nama mata pelajaran." />
+      <DashboardPageHeader title="Tambah Mata Pelajaran" description="Isi kode dan nama mata pelajaran." />
       <SubjectForm schools={schools} />
     </div>
   );

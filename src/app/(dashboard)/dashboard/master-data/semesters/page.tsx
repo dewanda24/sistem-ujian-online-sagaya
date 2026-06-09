@@ -1,5 +1,7 @@
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -84,9 +86,9 @@ export default async function SemestersPage({ searchParams }: PageProps) {
             Jadikan aktif
           </label>
           <div className="flex justify-end md:col-span-2">
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            <SubmitButton loadingText={editable ? "Memperbarui..." : "Menyimpan..."}>
               Simpan Semester
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </FormSection>
@@ -103,6 +105,8 @@ export default async function SemestersPage({ searchParams }: PageProps) {
           <EmptyState
             title="Belum ada semester"
             description="Tambahkan semester untuk mengatur periode akademik aktif."
+            actionHref="/dashboard/master-data/semesters"
+            actionLabel="Tambah Semester"
           />
         }
       >
@@ -138,9 +142,13 @@ export default async function SemestersPage({ searchParams }: PageProps) {
                     name="is_active"
                     value={semester.is_active ? "false" : "true"}
                   />
-                  <button className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                  <ConfirmSubmitButton
+                    confirmMessage={`${semester.is_active ? "Nonaktifkan" : "Aktifkan"} semester ${semester.name}?`}
+                    className="rounded-md px-3 py-1.5 text-xs"
+                    loadingText="Memperbarui..."
+                  >
                     {semester.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </td>

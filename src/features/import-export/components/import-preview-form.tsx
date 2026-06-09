@@ -14,6 +14,7 @@ import {
 } from "@/features/import-export/templates";
 import {
   importClassesCsvAction,
+  importSubjectsCsvAction,
   importStudentsCsvAction,
   importTeachersCsvAction,
 } from "@/lib/actions/master-data-actions";
@@ -27,6 +28,7 @@ type PreviewRow = Record<string, string>;
 const templateTypes: TemplateType[] = [
   "students",
   "teachers",
+  "subjects",
   "classes",
   "student-class-assignments",
   "teacher-subject-assignments",
@@ -84,13 +86,15 @@ export function ImportPreviewForm({
       ? importStudentsCsvAction
       : templateType === "teachers"
         ? importTeachersCsvAction
-        : templateType === "classes"
-          ? importClassesCsvAction
-          : templateType === "student-class-assignments"
-            ? studentAssignmentAction
-            : templateType === "teacher-subject-assignments"
-              ? teacherAssignmentAction
-              : null;
+        : templateType === "subjects"
+          ? importSubjectsCsvAction
+          : templateType === "classes"
+            ? importClassesCsvAction
+            : templateType === "student-class-assignments"
+              ? studentAssignmentAction
+              : templateType === "teacher-subject-assignments"
+                ? teacherAssignmentAction
+                : null;
   const actionState =
     templateType === "student-class-assignments"
       ? studentAssignmentState
@@ -229,7 +233,7 @@ export function ImportPreviewForm({
             <ConfirmSubmitButton
               confirmMessage={`Import ${rows.length} baris ${template.title} sekarang? Pastikan data sudah benar.`}
               confirmTitle="Konfirmasi Import"
-              loadingText="Mengimport..."
+              loadingText="Mengimpor..."
               variant="default"
               disabled={!selectedFile || !isValid}
             >

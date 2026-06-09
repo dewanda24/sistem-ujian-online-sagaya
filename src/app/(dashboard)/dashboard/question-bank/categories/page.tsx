@@ -1,6 +1,7 @@
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -99,9 +100,9 @@ export default async function QuestionCategoriesPage({
             Aktif
           </label>
           <div className="flex justify-end md:col-span-2">
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            <SubmitButton loadingText={editable ? "Memperbarui..." : "Menyimpan..."}>
               Simpan Kategori
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </FormSection>

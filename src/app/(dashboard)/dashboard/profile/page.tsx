@@ -1,5 +1,6 @@
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { FormSection } from "@/components/master-data/form-section";
 import { saveProfileSettingsAction } from "@/features/profile/actions";
@@ -73,9 +74,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             />
           </label>
           <div className="md:col-span-2">
-            <button className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <SubmitButton className="h-10 rounded-md" loadingText="Memperbarui...">
               Simpan Profil
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </FormSection>

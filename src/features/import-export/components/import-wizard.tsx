@@ -34,10 +34,11 @@ const masterModules: Array<{ value: TemplateType; label: string }> = [
   { value: "students", label: "Siswa" },
   { value: "teachers", label: "Guru" },
   { value: "classes", label: "Kelas" },
+  { value: "subjects", label: "Mata Pelajaran" },
   { value: "student-class-assignments", label: "Penugasan Siswa-Kelas" },
   {
     value: "teacher-subject-assignments",
-    label: "Penugasan Guru-Mapel-Kelas",
+    label: "Penugasan Guru-Mata Pelajaran-Kelas",
   },
 ];
 

@@ -1,6 +1,7 @@
 export type TemplateType =
   | "students"
   | "teachers"
+  | "subjects"
   | "questions"
   | "classes"
   | "student-class-assignments"
@@ -49,6 +50,16 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
       { key: "status", example: "active" },
     ],
   },
+  subjects: {
+    filename: "template-mata-pelajaran.csv",
+    title: "Template Mata Pelajaran",
+    description: "Kolom untuk menyiapkan data mata pelajaran sekolah.",
+    columns: [
+      { key: "code", example: "MTK" },
+      { key: "name", example: "Matematika" },
+      { key: "is_active", example: "true" },
+    ],
+  },
   questions: {
     filename: "template-bank-soal.csv",
     title: "Template Bank Soal",
@@ -92,9 +103,9 @@ export const importTemplates: Record<TemplateType, TemplateDefinition> = {
     ],
   },
   "teacher-subject-assignments": {
-    filename: "template-assignment-guru-mapel-kelas.csv",
-    title: "Template Penugasan Guru Mapel Kelas",
-    description: "Kolom untuk menugaskan guru ke mapel, kelas, dan tahun ajaran.",
+    filename: "template-penugasan-guru-mata-pelajaran-kelas.csv",
+    title: "Template Penugasan Guru Mata Pelajaran Kelas",
+    description: "Kolom untuk menugaskan guru ke mata pelajaran, kelas, dan tahun ajaran.",
     columns: [
       { key: "teacher_email", example: "rina.guru@sagaya.test" },
       { key: "subject_code", example: "MTK" },

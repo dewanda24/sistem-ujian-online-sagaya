@@ -55,7 +55,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
             <tr className="h-10">
               <th className="px-3 py-2 font-medium">Nama</th>
-              <th className="w-36 px-3 py-2 font-medium">Mapel</th>
+              <th className="w-36 px-3 py-2 font-medium">Mata Pelajaran</th>
               <th className="w-28 px-3 py-2 font-medium">Status</th>
               <th className="w-28 px-3 py-2 font-medium">Pengawas</th>
               <th className="w-40 px-3 py-2 font-medium">Aksi</th>
@@ -72,7 +72,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                     <div className="line-clamp-1 font-medium text-[#0F172A]">{name}</div>
                     <div className="line-clamp-1 text-xs text-[#64748B]">{profile?.nip ?? teacher.email}</div>
                   </td>
-                  <td className="px-3 py-2 text-[#0F172A]">{assignmentCounts.get(teacher.id) ?? 0} mapel</td>
+                  <td className="px-3 py-2 text-[#0F172A]">{assignmentCounts.get(teacher.id) ?? 0} mata pelajaran</td>
                   <td className="px-3 py-2"><StatusBadge active={teacher.status === "active"} /></td>
                   <td className="px-3 py-2"><span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-[#64748B]">Tidak</span></td>
                   <td className="px-3 py-2">
@@ -102,7 +102,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
             <article key={teacher.id} className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
               <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{profile?.full_name ?? teacher.username}</div>
               <div className="mt-1 flex items-center gap-2 text-xs text-[#64748B]">
-                <span>{assignmentCounts.get(teacher.id) ?? 0} mapel</span>
+                <span>{assignmentCounts.get(teacher.id) ?? 0} mata pelajaran</span>
                 <StatusBadge active={teacher.status === "active"} />
               </div>
               <Link href={`/dashboard/master-data/teachers/${teacher.id}/edit`} className="mt-2 inline-flex rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs">Edit</Link>
