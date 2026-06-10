@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
+import { ActionsMenu } from "@/components/dashboard/actions-menu";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -15,6 +17,7 @@ import {
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
 import { getRoleOptionsByNames } from "@/features/admin/queries";
+import { createBackupAction } from "@/features/super-admin/advanced-actions";
 import { SchoolForm } from "@/features/super-admin/components/school-form";
 import { getSuperAdminSchoolDetail } from "@/features/super-admin/school-management";
 import { toggleSchoolAction } from "@/lib/actions/master-data-actions";
@@ -44,7 +47,7 @@ export default async function SuperAdminSchoolDetailPage({
     notFound();
   }
 
-  const { school, stats, admins } = detail;
+  const { school, stats, admins, readiness, health } = detail;
   const adminRole = roles[0];
   const redirectPath = `/dashboard/super-admin/schools/${school.id}`;
 
@@ -79,9 +82,46 @@ export default async function SuperAdminSchoolDetailPage({
             {school.is_active ? "Nonaktifkan" : "Aktifkan"}
           </ConfirmSubmitButton>
         </form>
+        <ActionsMenu label="Aksi Cepat">
+          <MenuLink href={`/dashboard/super-admin/schools/${school.id}`}>
+            Lihat Detail
+          </MenuLink>
+          <MenuLink href={`/dashboard/super-admin/users?school_id=${school.id}`}>
+            Lihat User
+          </MenuLink>
+          <MenuLink href="#admin-sekolah">Reset Password Admin</MenuLink>
+          <form action={toggleSchoolAction}>
+            <input type="hidden" name="redirect_path" value={redirectPath} />
+            <input type="hidden" name="id" value={school.id} />
+            <input
+              type="hidden"
+              name="is_active"
+              value={school.is_active ? "false" : "true"}
+            />
+            <ConfirmSubmitButton
+              confirmMessage={`${
+                school.is_active ? "Nonaktifkan" : "Aktifkan"
+              } ${school.name}?`}
+              className="w-full justify-center"
+            >
+              {school.is_active ? "Nonaktifkan Sekolah" : "Aktifkan Sekolah"}
+            </ConfirmSubmitButton>
+          </form>
+          <form action={createBackupAction}>
+            <input type="hidden" name="scope" value="school" />
+            <input type="hidden" name="school_id" value={school.id} />
+            <ConfirmSubmitButton
+              confirmMessage={`Buat backup terbatas untuk ${school.name}?`}
+              confirmTitle="Konfirmasi Backup Sekolah"
+              className="w-full justify-center"
+            >
+              Backup Sekolah
+            </ConfirmSubmitButton>
+          </form>
+        </ActionsMenu>
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-4">
         <DashboardCard title="Profil Sekolah" className="lg:col-span-2">
           <dl className="grid gap-3 text-sm md:grid-cols-2">
             <ProfileItem label="Nama" value={school.name} />
@@ -113,7 +153,45 @@ export default async function SuperAdminSchoolDetailPage({
         >
           <StatusBadge active={Boolean(school.is_active)} />
         </DashboardCard>
+        <DashboardCard
+          title="Kesiapan CBT"
+          value={`${readiness.readyCount}/${readiness.totalCount}`}
+          description={readiness.missing.slice(0, 2).join(", ") || "Semua syarat utama siap."}
+        >
+          <ReadinessBadge status={readiness.status} />
+        </DashboardCard>
+        <DashboardCard
+          title="School Health"
+          description={health.issues.join(", ") || "Tidak ada masalah operasional utama."}
+        >
+          <SchoolHealthBadge status={health.status} />
+        </DashboardCard>
       </section>
+
+      <DashboardCard
+        title="School Readiness"
+        description="Indikator sederhana untuk kesiapan CBT sekolah."
+      >
+        <div className="grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+          {readiness.checks.map((check) => (
+            <div
+              key={check.key}
+              className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+            >
+              <span>{check.label}</span>
+              <span
+                className={
+                  check.ready
+                    ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                    : "rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
+                }
+              >
+                {check.ready ? "Ada" : "Belum"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </DashboardCard>
 
       {query.edit ? (
         <FormSection
@@ -213,6 +291,7 @@ export default async function SuperAdminSchoolDetailPage({
         </form>
       </FormSection>
 
+      <div id="admin-sekolah" />
       <DataTable
         columns={["Nama", "Email", "Username", "Auth User", "Status", "Aksi"]}
         isEmpty={admins.length === 0}
@@ -299,5 +378,58 @@ function ProfileItem({
       </dt>
       <dd className="mt-1">{value || "-"}</dd>
     </div>
+  );
+}
+
+function MenuLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function ReadinessBadge({ status }: { status: "ready" | "attention" | "not_ready" }) {
+  const label =
+    status === "ready"
+      ? "Siap"
+      : status === "attention"
+        ? "Perlu Perhatian"
+        : "Belum Siap";
+  const className =
+    status === "ready"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : status === "attention"
+        ? "bg-amber-50 text-amber-700 ring-amber-200"
+        : "bg-red-50 text-red-700 ring-red-200";
+
+  return (
+    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function SchoolHealthBadge({ status }: { status: "normal" | "attention" | "problem" }) {
+  const label =
+    status === "normal"
+      ? "Normal"
+      : status === "attention"
+        ? "Perlu Perhatian"
+        : "Bermasalah";
+  const className =
+    status === "normal"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : status === "attention"
+        ? "bg-amber-50 text-amber-700 ring-amber-200"
+        : "bg-red-50 text-red-700 ring-red-200";
+
+  return (
+    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ${className}`}>
+      {label}
+    </span>
   );
 }

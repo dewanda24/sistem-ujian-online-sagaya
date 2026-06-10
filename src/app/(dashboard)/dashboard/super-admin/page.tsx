@@ -1,174 +1,290 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { ActionsMenu } from "@/components/dashboard/actions-menu";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { StatusPill } from "@/components/dashboard/status-pill";
+import { DataTable } from "@/components/master-data/data-table";
+import { StatusBadge } from "@/components/master-data/status-badge";
 import { getSuperAdminDashboardData } from "@/features/super-admin/school-management";
 import { requireRole } from "@/lib/auth/require-role";
 
 export default async function SuperAdminDashboardPage() {
   await requireRole("super_admin");
-  const { summary, topSchools, recentActivities } =
+  const { summary, schools, attentionSchools, notifications } =
     await getSuperAdminDashboardData();
-
-  const stats = [
-    {
-      title: "Sekolah",
-      value: summary.totalSchools,
-      description: "Tenant terdaftar.",
-      href: "/dashboard/super-admin/schools",
-    },
-    {
-      title: "Admin Sekolah",
-      value: summary.totalAdmins,
-      description: "Operator tenant.",
-      href: "/dashboard/super-admin/admins",
-    },
-    {
-      title: "Guru",
-      value: summary.totalTeachers,
-      description: "Akun guru lintas sekolah.",
-      href: "/dashboard/super-admin/users",
-    },
-    {
-      title: "Siswa",
-      value: summary.totalStudents,
-      description: "Akun siswa lintas sekolah.",
-      href: "/dashboard/super-admin/users",
-    },
-    {
-      title: "Ujian",
-      value: summary.totalExams,
-      description: `${summary.totalActiveExams} aktif, ${summary.totalFinishedExams} selesai.`,
-      href: "/dashboard/super-admin/monitoring",
-    },
-  ];
+  const totalUsers =
+    summary.totalAdmins + summary.totalTeachers + summary.totalStudents;
 
   return (
     <div className="space-y-6">
       <DashboardPageHeader
         title="Dashboard Pusat"
-        description="Ringkasan global Sagaya untuk pengelolaan tenant sekolah, monitoring ujian, dan aktivitas sistem."
+        description="Pantau kesiapan sekolah, masalah operasional, dan tindakan cepat platform Sagaya."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {stats.map((stat) => (
-          <Link key={stat.title} href={stat.href}>
-            <DashboardCard
-              title={stat.title}
-              value={String(stat.value)}
-              description={stat.description}
-              className="h-full transition hover:border-primary/40 hover:shadow-md"
-            />
-          </Link>
-        ))}
-      </div>
+      <section className="grid gap-4 md:grid-cols-4">
+        <DashboardCard
+          title="Total Sekolah"
+          value={String(summary.totalSchools)}
+          description="Tenant terdaftar."
+        />
+        <DashboardCard
+          title="Sekolah Aktif"
+          value={String(summary.activeSchools)}
+          description="Sekolah yang dapat memakai layanan."
+        />
+        <DashboardCard
+          title="Total User"
+          value={String(totalUsers)}
+          description="Admin, guru, dan siswa."
+        />
+        <DashboardCard
+          title="Ujian Berjalan"
+          value={String(summary.totalActiveExams)}
+          description="Jadwal aktif lintas sekolah."
+        />
+      </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold">Sekolah Paling Aktif</h2>
-          <div className="mt-4 space-y-3">
-            {topSchools.length > 0 ? (
-              topSchools.map((school) => (
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <DashboardCard
+          title="Perlu Perhatian"
+          description="Masalah yang perlu ditindaklanjuti Super Admin."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <AttentionLink
+              label="Sekolah belum siap CBT"
+              value={summary.attentionSchools}
+              href="/dashboard/super-admin/support"
+            />
+            <AttentionLink
+              label="Backup gagal"
+              value={summary.backupFailed}
+              href="/dashboard/super-admin/backup-recovery"
+            />
+            <AttentionLink
+              label="Import gagal"
+              value={summary.importFailed}
+              href="/dashboard/super-admin/import-export?tab=history"
+            />
+            <AttentionLink
+              label="Login bermasalah"
+              value={summary.loginIssues}
+              href="/dashboard/super-admin/support"
+            />
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="Aksi Cepat" description="Jalur paling sering dipakai.">
+          <div className="grid gap-2 text-sm">
+            <QuickAction href="/dashboard/super-admin/schools/new" label="Tambah Sekolah" />
+            <QuickAction href="/dashboard/super-admin/admins" label="Tambah Admin Sekolah" />
+            <QuickAction href="/dashboard/super-admin/import-export?tab=import" label="Import Data" />
+            <QuickAction href="/dashboard/super-admin/backup-recovery" label="Backup Data" />
+          </div>
+        </DashboardCard>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <DashboardCard
+          title="Notification Center"
+          description="Notifikasi yang membutuhkan tindakan."
+        >
+          <div className="space-y-2">
+            {notifications.length > 0 ? (
+              notifications.map((item, index) => (
                 <Link
-                  key={school.id}
-                  href={`/dashboard/super-admin/schools/${school.id}`}
-                  className="grid gap-2 rounded-md border p-3 text-sm hover:bg-muted md:grid-cols-[1fr_auto]"
+                  key={`${item.title}-${item.description}-${index}`}
+                  href={item.href}
+                  className="block rounded-md border px-3 py-2 text-sm hover:bg-muted"
                 >
-                  <div>
-                    <div className="font-medium">{school.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {school.activeExamCount} aktif,{" "}
-                      {school.finishedExamCount} selesai
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{item.title}</span>
+                    <span
+                      className={
+                        item.priority === "high"
+                          ? "rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
+                          : "rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                      }
+                    >
+                      {item.priority === "high" ? "Tinggi" : "Sedang"}
+                    </span>
                   </div>
-                  <div className="font-semibold">{school.examCount} ujian</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {item.description}
+                  </div>
                 </Link>
               ))
             ) : (
               <EmptyState
-                title="Belum ada aktivitas ujian"
-                description="Aktivitas sekolah akan muncul setelah jadwal ujian dibuat."
+                title="Tidak ada notifikasi"
+                description="Semua sekolah terlihat aman untuk saat ini."
               />
             )}
           </div>
-        </section>
+        </DashboardCard>
 
-        <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold">Aktivitas Terbaru</h2>
-          <div className="mt-4 space-y-3">
-            {recentActivities.length > 0 ? (
-              recentActivities.map((activity, index) => (
-                <div key={`${activity.label}-${index}`} className="rounded-md border p-3 text-sm">
-                  <div className="font-medium">{activity.label}</div>
-                  <div className="text-muted-foreground">
-                    {activity.description}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {activity.created_at
-                      ? new Intl.DateTimeFormat("id-ID", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(activity.created_at))
-                      : "-"}
+        <DashboardCard
+          title="Sekolah Prioritas"
+          description="Sekolah yang belum siap CBT atau punya masalah operasional."
+        >
+          <div className="space-y-2">
+            {attentionSchools.slice(0, 6).map((school) => (
+              <Link
+                key={school.id}
+                href={`/dashboard/super-admin/schools/${school.id}`}
+                className="grid gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <div className="font-medium">{school.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {school.readiness.missing.slice(0, 2).join(", ") || "Perlu dicek"}
                   </div>
                 </div>
-              ))
-            ) : (
+                <SchoolHealthBadge status={school.health.status} />
+              </Link>
+            ))}
+            {attentionSchools.length === 0 ? (
               <EmptyState
-                title="Belum ada aktivitas"
-                description="Audit dan data baru akan tampil di sini."
+                title="Semua sekolah siap"
+                description="Tidak ada sekolah yang membutuhkan perhatian saat ini."
               />
-            )}
+            ) : null}
           </div>
-        </section>
-      </div>
-
-      <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold">Status Sistem</h2>
-            <p className="text-sm text-muted-foreground">
-              Pemeriksaan cepat kesiapan data pusat platform.
-            </p>
-          </div>
-          <StatusPill
-            value={
-              Object.values(summary.systemStatus).every(Boolean)
-                ? "ready"
-                : "pending"
-            }
-          />
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <SystemStatusItem
-            label="Tenant Sekolah"
-            ready={summary.systemStatus.schoolsReady}
-          />
-          <SystemStatusItem
-            label="Admin Sekolah"
-            ready={summary.systemStatus.adminsReady}
-          />
-          <SystemStatusItem
-            label="Data Ujian"
-            ready={summary.systemStatus.examsReady}
-          />
-          <SystemStatusItem
-            label="Audit Log"
-            ready={summary.systemStatus.auditReady}
-          />
-        </div>
+        </DashboardCard>
       </section>
+
+      <DataTable
+        columns={["Nama Sekolah", "Status", "Kesiapan CBT", "Health", "Admin", "Guru", "Siswa", "Aksi"]}
+        isEmpty={schools.length === 0}
+        empty={
+          <EmptyState
+            title="Belum ada sekolah"
+            description="Tambahkan sekolah untuk mulai memantau kesiapan CBT."
+          />
+        }
+      >
+        {schools.map((school) => (
+          <tr key={school.id}>
+            <td className="px-4 py-3">
+              <div className="font-medium">{school.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {[school.city, school.province].filter(Boolean).join(", ") || "-"}
+              </div>
+            </td>
+            <td className="px-4 py-3">
+              <StatusBadge active={Boolean(school.is_active)} />
+            </td>
+            <td className="px-4 py-3">
+              <ReadinessBadge status={school.readiness.status} />
+            </td>
+            <td className="px-4 py-3">
+              <SchoolHealthBadge status={school.health.status} />
+            </td>
+            <td className="px-4 py-3">{school.stats.adminCount}</td>
+            <td className="px-4 py-3">{school.stats.teacherCount}</td>
+            <td className="px-4 py-3">{school.stats.studentCount}</td>
+            <td className="px-4 py-3">
+              <ActionsMenu label="Aksi">
+                <MenuLink href={`/dashboard/super-admin/schools/${school.id}`}>
+                  Lihat Detail
+                </MenuLink>
+                <MenuLink href={`/dashboard/super-admin/users?school_id=${school.id}`}>
+                  Lihat User
+                </MenuLink>
+                <MenuLink href="/dashboard/super-admin/backup-recovery">
+                  Backup Sekolah
+                </MenuLink>
+              </ActionsMenu>
+            </td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
 
-function SystemStatusItem({ label, ready }: { label: string; ready: boolean }) {
+function AttentionLink({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: number;
+  href: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
-      <span className="truncate text-muted-foreground">{label}</span>
-      <StatusPill value={ready ? "ready" : "pending"} />
-    </div>
+    <Link
+      href={href}
+      className="rounded-md border px-3 py-2 transition hover:bg-muted"
+    >
+      <div className="text-2xl font-semibold">{value}</div>
+      <div className="text-sm text-muted-foreground">{label}</div>
+    </Link>
+  );
+}
+
+function QuickAction({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md border px-3 py-2 font-medium transition hover:bg-muted"
+    >
+      {label}
+    </Link>
+  );
+}
+
+function MenuLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function ReadinessBadge({ status }: { status: "ready" | "attention" | "not_ready" }) {
+  const label =
+    status === "ready"
+      ? "Siap"
+      : status === "attention"
+        ? "Perlu Perhatian"
+        : "Belum Siap";
+  const className =
+    status === "ready"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : status === "attention"
+        ? "bg-amber-50 text-amber-700 ring-amber-200"
+        : "bg-red-50 text-red-700 ring-red-200";
+
+  return (
+    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function SchoolHealthBadge({ status }: { status: "normal" | "attention" | "problem" }) {
+  const label =
+    status === "normal"
+      ? "Normal"
+      : status === "attention"
+        ? "Perlu Perhatian"
+        : "Bermasalah";
+  const className =
+    status === "normal"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : status === "attention"
+        ? "bg-amber-50 text-amber-700 ring-amber-200"
+        : "bg-red-50 text-red-700 ring-red-200";
+
+  return (
+    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ${className}`}>
+      {label}
+    </span>
   );
 }

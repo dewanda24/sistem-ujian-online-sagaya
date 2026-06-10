@@ -233,8 +233,8 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       },
       superAdminSettingsMenu,
       {
-        label: "Bantuan / Troubleshooting",
-        href: "/dashboard/super-admin/help",
+        label: "Bantuan Sekolah",
+        href: "/dashboard/super-admin/support",
         icon: "file-text",
         roles: ["super_admin"],
       },
