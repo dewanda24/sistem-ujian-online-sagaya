@@ -32,9 +32,13 @@ type PageProps = {
     status?: string;
     message?: string;
   }>;
+  basePath?: string;
 };
 
-export default async function UsersPage({ searchParams }: PageProps) {
+export default async function UsersPage({
+  searchParams,
+  basePath = "/dashboard/admin/users",
+}: PageProps) {
   const currentUser = await requirePermission("users.view");
   const params = await searchParams;
   const [users, roles, operationalRoles, summary, schools] = await Promise.all([
@@ -59,8 +63,12 @@ export default async function UsersPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Users"
-        description="Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan proctor diarahkan ke Master Data agar struktur operasional tetap rapi."
+        title={currentUser.roles?.name === "super_admin" ? "User Global" : "Users"}
+        description={
+          currentUser.roles?.name === "super_admin"
+            ? "Lihat semua user lintas sekolah, filter role/status/sekolah, reset password, dan aktif/nonaktifkan akun."
+            : "Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan proctor diarahkan ke Master Data agar struktur operasional tetap rapi."
+        }
       />
 
       <section className="grid gap-4 md:grid-cols-4">
@@ -127,6 +135,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
         description="Form ini tetap tersedia untuk akun umum. Role guru, siswa, admin sekolah, dan proctor sebaiknya dikelola dari Master Data masing-masing."
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
+          <input type="hidden" name="redirect_path" value={basePath} />
           <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
           <input
             type="hidden"
@@ -318,7 +327,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   <a
-                    href={`/dashboard/admin/users?edit=${item.id}${
+                    href={`${basePath}?edit=${item.id}${
                       params.school_id ? `&school_id=${params.school_id}` : ""
                     }`}
                     className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
@@ -326,6 +335,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                     Edit
                   </a>
                   <form action={toggleAdminUserStatusAction}>
+                    <input type="hidden" name="redirect_path" value={basePath} />
                     <input type="hidden" name="id" value={item.id} />
                     <input
                       type="hidden"
@@ -344,6 +354,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                     action={resetAdminUserPasswordAction}
                     className="flex flex-wrap gap-2"
                   >
+                    <input type="hidden" name="redirect_path" value={basePath} />
                     <input type="hidden" name="id" value={item.id} />
                     <input
                       name="password"

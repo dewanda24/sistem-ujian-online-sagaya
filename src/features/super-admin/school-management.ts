@@ -315,18 +315,30 @@ export async function getSuperAdminDashboardData() {
       totalSchools: schoolRows.length,
       activeSchools: schoolRows.filter((school) => school.is_active).length,
       inactiveSchools: schoolRows.filter((school) => !school.is_active).length,
+      totalAdmins: userRows.filter(
+        (user) => firstRelation(user.roles)?.name === "admin",
+      ).length,
       totalTeachers: userRows.filter(
         (user) => firstRelation(user.roles)?.name === "teacher",
       ).length,
       totalStudents: userRows.filter(
         (user) => firstRelation(user.roles)?.name === "student",
       ).length,
+      totalExams: scheduleRows.length,
       totalActiveExams: scheduleRows.filter(
         (schedule) => schedule.status === "active",
       ).length,
       totalFinishedExams: scheduleRows.filter(
         (schedule) => schedule.status === "finished",
       ).length,
+      systemStatus: {
+        schoolsReady: schoolRows.length > 0,
+        adminsReady: userRows.some(
+          (user) => firstRelation(user.roles)?.name === "admin",
+        ),
+        examsReady: scheduleRows.length > 0,
+        auditReady: Boolean(auditLogs),
+      },
     },
     topSchools,
     recentActivities: [
@@ -354,5 +366,15 @@ export async function getSuperAdminDashboardData() {
         String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")),
       )
       .slice(0, 8),
+  };
+}
+
+export async function getSuperAdminGlobalReportData() {
+  const data = await getSuperAdminDashboardData();
+  const schools = await getSuperAdminSchoolRows();
+
+  return {
+    ...data,
+    schools,
   };
 }

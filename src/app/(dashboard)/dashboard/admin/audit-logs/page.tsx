@@ -15,6 +15,7 @@ type PageProps = {
     date_to?: string;
     limit?: string;
   }>;
+  basePath?: string;
 };
 
 function formatPayload(value: unknown) {
@@ -39,7 +40,10 @@ function formatShortPayload(value: unknown) {
   return `${text.slice(0, 120)}...`;
 }
 
-export default async function AuditLogsPage({ searchParams }: PageProps) {
+export default async function AuditLogsPage({
+  searchParams,
+  basePath = "/dashboard/admin/audit-logs",
+}: PageProps) {
   await requirePermission("audit_logs.view");
   const params = await searchParams;
   const auditLogs = await getAuditLogs({
@@ -161,7 +165,16 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
           </p>
           <div className="flex gap-2">
             <a
-              href="/dashboard/admin/audit-logs"
+              download="audit-logs-export.json"
+              href={`data:application/json;charset=utf-8,${encodeURIComponent(
+                JSON.stringify(auditLogs.rows, null, 2),
+              )}`}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+            >
+              Export
+            </a>
+            <a
+              href={basePath}
               className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
             >
               Reset

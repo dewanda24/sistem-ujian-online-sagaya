@@ -61,18 +61,11 @@ const reportRoles: RoleName[] = ["super_admin", "admin", "principal", "teacher"]
 const commonPermissions = ["dashboard.view"];
 
 const superAdminSystemMenu: AccessMenuItem = {
-  label: UI_LABELS.navigation.system,
-  href: "/dashboard/admin/users",
+  label: "Role & Permission",
+  href: "/dashboard/super-admin/role-permission",
   icon: "shield-check",
   roles: ["super_admin"],
   children: [
-    {
-      label: UI_LABELS.navigation.users,
-      href: "/dashboard/admin/users",
-      icon: "users",
-      roles: ["super_admin"],
-      permission: "users.view",
-    },
     {
       label: UI_LABELS.navigation.roles,
       href: "/dashboard/admin/roles",
@@ -87,15 +80,25 @@ const superAdminSystemMenu: AccessMenuItem = {
       roles: ["super_admin"],
       permission: "roles.manage",
     },
+  ],
+};
+
+const superAdminAuditMenu: AccessMenuItem = {
+  label: "Audit Log",
+  href: "/dashboard/super-admin/audit-logs",
+  icon: "scroll-text",
+  roles: ["super_admin"],
+  permission: "audit_logs.view",
+};
+
+const superAdminSettingsMenu: AccessMenuItem = {
+  label: "Pengaturan Sistem",
+  href: "/dashboard/super-admin/settings",
+  icon: "settings",
+  roles: ["super_admin"],
+  children: [
     {
-      label: UI_LABELS.navigation.auditLogs,
-      href: "/dashboard/admin/audit-logs",
-      icon: "scroll-text",
-      roles: ["super_admin"],
-      permission: "audit_logs.view",
-    },
-    {
-      label: UI_LABELS.navigation.readiness,
+      label: "Status Sistem",
       href: "/dashboard/super-admin/readiness",
       icon: "shield-check",
       roles: ["super_admin"],
@@ -105,12 +108,6 @@ const superAdminSystemMenu: AccessMenuItem = {
       label: UI_LABELS.navigation.settings,
       href: "/dashboard/super-admin/settings",
       icon: "settings",
-      roles: ["super_admin"],
-    },
-    {
-      label: UI_LABELS.navigation.backup,
-      href: "/dashboard/super-admin/backup-recovery",
-      icon: "hard-drive",
       roles: ["super_admin"],
     },
   ],
@@ -141,7 +138,7 @@ const superAdminSchoolMenu: AccessMenuItem = {
 };
 
 const superAdminMonitoringMenu: AccessMenuItem = {
-  label: "Monitoring Ujian Global",
+  label: "Monitoring Sekolah",
   href: "/dashboard/super-admin/monitoring",
   icon: "activity",
   roles: ["super_admin"],
@@ -192,39 +189,54 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     dashboardPath: "/dashboard/super-admin",
     permissions: ["*"],
     menu: [
-      dashboardItem("super_admin", "/dashboard/super-admin"),
-      superAdminSchoolMenu,
-      superAdminMonitoringMenu,
-      superAdminSystemMenu,
       {
-        label: UI_LABELS.navigation.reports,
-        href: "/dashboard/reports",
+        ...dashboardItem("super_admin", "/dashboard/super-admin"),
+        label: "Dashboard Pusat",
+      },
+      superAdminSchoolMenu,
+      {
+        label: "Admin Sekolah",
+        href: "/dashboard/super-admin/admins",
+        icon: "users",
+        roles: ["super_admin"],
+        permission: "users.view",
+      },
+      {
+        label: "User Global",
+        href: "/dashboard/super-admin/users",
+        icon: "users",
+        roles: ["super_admin"],
+        permission: "users.view",
+      },
+      superAdminSystemMenu,
+      superAdminMonitoringMenu,
+      superAdminAuditMenu,
+      {
+        label: "Laporan Global",
+        href: "/dashboard/super-admin/reports",
         icon: "activity",
         roles: ["super_admin"],
         permission: "reports.view",
-        children: [
-          {
-            label: "Hasil Ujian",
-            href: "/dashboard/reports/students",
-            icon: "file-text",
-            roles: ["super_admin"],
-            permission: "reports.view",
-          },
-          {
-            label: "Rekap Nilai",
-            href: "/dashboard/reports/classes",
-            icon: "activity",
-            roles: ["super_admin"],
-            permission: "reports.view",
-          },
-          {
-            label: "Kartu Login Siswa",
-            href: "/dashboard/reports/login-cards",
-            icon: "file-text",
-            roles: ["super_admin"],
-            permission: "students.view",
-          },
-        ],
+      },
+      {
+        label: "Import & Export Global",
+        href: "/dashboard/super-admin/import-export",
+        icon: "download",
+        roles: ["super_admin"],
+        permission: "import_export.view",
+      },
+      {
+        label: "Backup & Recovery",
+        href: "/dashboard/super-admin/backup-recovery",
+        icon: "hard-drive",
+        roles: ["super_admin"],
+      },
+      superAdminSettingsMenu,
+      {
+        label: "Bantuan / Troubleshooting",
+        href: "/dashboard/super-admin/help",
+        icon: "file-text",
+        roles: ["super_admin"],
       },
       profileItem("super_admin"),
     ],

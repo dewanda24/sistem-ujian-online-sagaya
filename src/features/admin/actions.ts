@@ -47,6 +47,8 @@ function getOperationalUserRedirectPath(formData: FormData) {
     "/dashboard/admin/users",
     "/dashboard/master-data/admins",
     "/dashboard/master-data/proctors",
+    "/dashboard/super-admin/admins",
+    "/dashboard/super-admin/users",
     "/dashboard/super-admin/schools",
   ]);
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import { getSuperAdminDashboardData } from "@/features/super-admin/school-management";
 import { requireRole } from "@/lib/auth/require-role";
 
@@ -13,45 +14,33 @@ export default async function SuperAdminDashboardPage() {
 
   const stats = [
     {
-      title: "Total Sekolah",
+      title: "Sekolah",
       value: summary.totalSchools,
       description: "Tenant terdaftar.",
       href: "/dashboard/super-admin/schools",
     },
     {
-      title: "Sekolah Aktif",
-      value: summary.activeSchools,
-      description: "Tenant aktif.",
-      href: "/dashboard/super-admin/schools?status_filter=active",
+      title: "Admin Sekolah",
+      value: summary.totalAdmins,
+      description: "Operator tenant.",
+      href: "/dashboard/super-admin/admins",
     },
     {
-      title: "Sekolah Nonaktif",
-      value: summary.inactiveSchools,
-      description: "Tenant nonaktif.",
-      href: "/dashboard/super-admin/schools?status_filter=inactive",
-    },
-    {
-      title: "Total Guru",
+      title: "Guru",
       value: summary.totalTeachers,
       description: "Akun guru lintas sekolah.",
-      href: "/dashboard/admin/users",
+      href: "/dashboard/super-admin/users",
     },
     {
-      title: "Total Siswa",
+      title: "Siswa",
       value: summary.totalStudents,
       description: "Akun siswa lintas sekolah.",
-      href: "/dashboard/admin/users",
+      href: "/dashboard/super-admin/users",
     },
     {
-      title: "Ujian Aktif",
-      value: summary.totalActiveExams,
-      description: "Jadwal aktif lintas sekolah.",
-      href: "/dashboard/super-admin/monitoring",
-    },
-    {
-      title: "Ujian Selesai",
-      value: summary.totalFinishedExams,
-      description: "Jadwal selesai lintas sekolah.",
+      title: "Ujian",
+      value: summary.totalExams,
+      description: `${summary.totalActiveExams} aktif, ${summary.totalFinishedExams} selesai.`,
       href: "/dashboard/super-admin/monitoring",
     },
   ];
@@ -59,11 +48,11 @@ export default async function SuperAdminDashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Dashboard Platform"
+        title="Dashboard Pusat"
         description="Ringkasan global Sagaya untuk pengelolaan tenant sekolah, monitoring ujian, dan aktivitas sistem."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {stats.map((stat) => (
           <Link key={stat.title} href={stat.href}>
             <DashboardCard
@@ -76,7 +65,7 @@ export default async function SuperAdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
           <h2 className="text-base font-semibold">Sekolah Paling Aktif</h2>
           <div className="mt-4 space-y-3">
@@ -135,6 +124,51 @@ export default async function SuperAdminDashboardPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Status Sistem</h2>
+            <p className="text-sm text-muted-foreground">
+              Pemeriksaan cepat kesiapan data pusat platform.
+            </p>
+          </div>
+          <StatusPill
+            value={
+              Object.values(summary.systemStatus).every(Boolean)
+                ? "ready"
+                : "pending"
+            }
+          />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <SystemStatusItem
+            label="Tenant Sekolah"
+            ready={summary.systemStatus.schoolsReady}
+          />
+          <SystemStatusItem
+            label="Admin Sekolah"
+            ready={summary.systemStatus.adminsReady}
+          />
+          <SystemStatusItem
+            label="Data Ujian"
+            ready={summary.systemStatus.examsReady}
+          />
+          <SystemStatusItem
+            label="Audit Log"
+            ready={summary.systemStatus.auditReady}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SystemStatusItem({ label, ready }: { label: string; ready: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+      <span className="truncate text-muted-foreground">{label}</span>
+      <StatusPill value={ready ? "ready" : "pending"} />
     </div>
   );
 }
