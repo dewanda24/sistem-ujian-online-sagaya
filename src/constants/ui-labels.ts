@@ -102,7 +102,7 @@ export const UI_LABELS = {
     principal: "Kepala Sekolah",
     teacher: "Guru",
     student: "Siswa",
-    proctor: "Pengawas",
+    proctor: "Pengawas Khusus",
   },
 } as const;
 

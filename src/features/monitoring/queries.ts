@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/auth/has-permission";
 import {
   assertSameSchool,
   requireSchoolScope,
@@ -6,7 +7,7 @@ import {
 } from "@/lib/auth/school-scope";
 import type { CurrentUser } from "@/types/auth";
 
-type MonitoringScope = "all" | "teacher";
+export type MonitoringScope = "all" | "teacher";
 
 export async function getMonitoringSchedules(options?: {
   scope?: MonitoringScope;
@@ -38,13 +39,17 @@ export async function getMonitoringSchedules(options?: {
   let schedules = data;
 
   if (options?.scope === "teacher" && options.user?.id) {
-    const subjectIds = await getTeacherSubjectIds(options.user.id);
+    const [subjectIds, assignedScheduleIds] = await Promise.all([
+      getTeacherSubjectIds(options.user.id),
+      getTeacherProctorScheduleIds(options.user.id),
+    ]);
 
     schedules = schedules.filter((schedule) => {
       const examPackage = firstRelation(schedule.exam_packages);
 
       return (
         schedule.created_by === options.user?.id ||
+        assignedScheduleIds.includes(schedule.id as string) ||
         Boolean(
           examPackage?.subject_id &&
             subjectIds.includes(examPackage.subject_id as string),
@@ -80,6 +85,23 @@ async function getTeacherSubjectIds(teacherId: string) {
     .filter((subjectId): subjectId is string => Boolean(subjectId));
 }
 
+async function getTeacherProctorScheduleIds(teacherId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exam_proctors")
+    .select("exam_schedule_id")
+    .eq("teacher_id", teacherId)
+    .eq("is_active", true);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data
+    .map((item) => item.exam_schedule_id as string | null)
+    .filter((scheduleId): scheduleId is string => Boolean(scheduleId));
+}
+
 export type MonitoringFilters = {
   status?: string;
   class_id?: string;
@@ -88,12 +110,16 @@ export type MonitoringFilters = {
 export async function getScheduleMonitoring(
   scheduleId?: string,
   filters: MonitoringFilters = {},
+  options?: {
+    scope?: MonitoringScope;
+    user?: CurrentUser;
+  },
 ) {
   if (!scheduleId) {
     return [];
   }
 
-  await assertMonitoringScheduleInScope(scheduleId);
+  await assertMonitoringScheduleInScope(scheduleId, options);
 
   const supabase = await createClient();
   let query = supabase
@@ -121,12 +147,18 @@ export async function getScheduleMonitoring(
   return data;
 }
 
-export async function getMonitoringClasses(scheduleId?: string) {
+export async function getMonitoringClasses(
+  scheduleId?: string,
+  options?: {
+    scope?: MonitoringScope;
+    user?: CurrentUser;
+  },
+) {
   if (!scheduleId) {
     return [];
   }
 
-  await assertMonitoringScheduleInScope(scheduleId);
+  await assertMonitoringScheduleInScope(scheduleId, options);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -236,7 +268,32 @@ export function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
-async function assertMonitoringScheduleInScope(scheduleId: string) {
+export async function canControlMonitoringSchedule(
+  user: CurrentUser,
+  scheduleId?: string,
+) {
+  if (!scheduleId) {
+    return false;
+  }
+
+  if (hasPermission(user, "exam_sessions.control")) {
+    return true;
+  }
+
+  if (user.roles?.name !== "teacher") {
+    return false;
+  }
+
+  return hasActiveTeacherProctorAssignment(scheduleId, user.id);
+}
+
+async function assertMonitoringScheduleInScope(
+  scheduleId: string,
+  options?: {
+    scope?: MonitoringScope;
+    user?: CurrentUser;
+  },
+) {
   const schoolScope = await requireSchoolScope();
   const supabase = await createClient();
   const { data: schedule } = await supabase
@@ -246,4 +303,81 @@ async function assertMonitoringScheduleInScope(scheduleId: string) {
     .maybeSingle();
 
   assertSameSchool(schoolScope, schedule?.school_id);
+
+  if (options?.scope === "teacher" && options.user?.roles?.name === "teacher") {
+    const allowed = await canTeacherAccessMonitoringSchedule(
+      scheduleId,
+      options.user,
+    );
+
+    if (!allowed) {
+      assertSameSchool(schoolScope, null);
+    }
+  }
+}
+
+async function canTeacherAccessMonitoringSchedule(
+  scheduleId: string,
+  user: CurrentUser,
+) {
+  const supabase = await createClient();
+  const { data: schedule } = await supabase
+    .from("exam_schedules")
+    .select("created_by, exam_packages(subject_id)")
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  if (!schedule) {
+    return false;
+  }
+
+  if (schedule.created_by === user.id) {
+    return true;
+  }
+
+  const { data: proctorAssignment } = await supabase
+    .from("exam_proctors")
+    .select("id")
+    .eq("exam_schedule_id", scheduleId)
+    .eq("teacher_id", user.id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (proctorAssignment) {
+    return true;
+  }
+
+  const examPackage = firstRelation(schedule.exam_packages);
+
+  if (!examPackage?.subject_id) {
+    return false;
+  }
+
+  const { data: subjectAssignment } = await supabase
+    .from("teacher_subjects")
+    .select("id")
+    .eq("teacher_id", user.id)
+    .eq("subject_id", examPackage.subject_id)
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(subjectAssignment);
+}
+
+async function hasActiveTeacherProctorAssignment(
+  scheduleId: string,
+  teacherId: string,
+) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("exam_proctors")
+    .select("id")
+    .eq("exam_schedule_id", scheduleId)
+    .eq("teacher_id", teacherId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(data);
 }

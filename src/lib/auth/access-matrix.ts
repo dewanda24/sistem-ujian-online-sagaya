@@ -375,6 +375,13 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             permission: "exam_schedules.view",
           },
           {
+            label: "Penugasan Pengawas",
+            href: "/dashboard/exams/proctors",
+            icon: "shield-check",
+            roles: ["admin"],
+            permission: "exam_schedules.manage",
+          },
+          {
             label: "Monitoring Ujian",
             href: "/dashboard/admin/monitoring",
             icon: "activity",
@@ -527,6 +534,20 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             roles: ["teacher"],
             permission: "exam_schedules.view",
           },
+          {
+            label: "Penugasan Pengawas",
+            href: "/dashboard/exams/proctors",
+            icon: "shield-check",
+            roles: ["teacher"],
+            permission: "exam_schedules.manage",
+          },
+          {
+            label: "Pengawasan Ujian",
+            href: "/dashboard/teacher/monitoring",
+            icon: "activity",
+            roles: ["teacher"],
+            permission: "exam_monitoring.view",
+          },
         ],
       },
       {
@@ -606,9 +627,12 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "exam_sessions.control",
     ],
     menu: [
-      dashboardItem("proctor", "/dashboard/proctor"),
       {
-        label: "Jadwal Pengawasan",
+        ...dashboardItem("proctor", "/dashboard/proctor"),
+        label: "Beranda Pengawas Khusus",
+      },
+      {
+        label: "Jadwal Pengawasan Khusus",
         href: "/dashboard/proctor/schedules",
         icon: "calendar-days",
         roles: ["proctor"],

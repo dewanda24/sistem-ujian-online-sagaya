@@ -26,8 +26,8 @@ export default async function ProctorSchedulesPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Jadwal Pengawasan"
-        description="Daftar jadwal yang dapat dipantau proctor berdasarkan permission monitoring saat ini. Scoping pengawas per ruang/jadwal dapat ditambahkan nanti dengan tabel assignment khusus."
+        title="Jadwal Pengawasan Khusus"
+        description="Daftar jadwal yang dapat dipantau akun pengawas khusus non-guru berdasarkan permission monitoring saat ini."
       />
 
       <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">

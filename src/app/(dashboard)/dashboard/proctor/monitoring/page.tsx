@@ -6,11 +6,11 @@ import { MonitoringAutoRefresh } from "@/features/monitoring/components/monitori
 import { MonitoringParticipantTable } from "@/features/monitoring/components/monitoring-participant-table";
 import {
   firstRelation,
+  canControlMonitoringSchedule,
   getMonitoringClasses,
   getMonitoringSchedules,
   getScheduleMonitoring,
 } from "@/features/monitoring/queries";
-import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type PageProps = {
@@ -43,8 +43,14 @@ export default async function MonitoringPage({
     getScheduleMonitoring(selectedScheduleId, {
       class_id: params.class_id,
       status: params.status,
+    }, {
+      scope,
+      user,
     }),
-    getMonitoringClasses(selectedScheduleId),
+    getMonitoringClasses(selectedScheduleId, {
+      scope,
+      user,
+    }),
   ]);
   const stats = participants.reduce(
     (summary, participant) => {
@@ -62,7 +68,10 @@ export default async function MonitoringPage({
     },
     { total: 0, inProgress: 0, submitted: 0, problem: 0 },
   );
-  const canControlSessions = hasPermission(user, "exam_sessions.control");
+  const canControlSessions = await canControlMonitoringSchedule(
+    user,
+    selectedScheduleId,
+  );
 
   return (
     <div className="space-y-5">

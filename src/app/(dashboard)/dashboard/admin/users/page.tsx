@@ -67,7 +67,7 @@ export default async function UsersPage({
         description={
           currentUser.roles?.name === "super_admin"
             ? "Lihat semua user lintas sekolah, filter role/status/sekolah, reset password, dan aktif/nonaktifkan akun."
-            : "Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan proctor diarahkan ke Master Data agar struktur operasional tetap rapi."
+            : "Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan pengawas khusus diarahkan ke Master Data agar struktur operasional tetap rapi."
         }
       />
 
@@ -123,7 +123,7 @@ export default async function UsersPage({
         >
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <QuickLink href="/dashboard/master-data/admins" label="Admin Sekolah" />
-            <QuickLink href="/dashboard/master-data/proctors" label="Proctor" />
+            <QuickLink href="/dashboard/master-data/proctors" label="Pengawas Khusus" />
             <QuickLink href="/dashboard/master-data/teachers" label="Guru" />
             <QuickLink href="/dashboard/master-data/students" label="Siswa" />
           </div>
@@ -132,7 +132,7 @@ export default async function UsersPage({
 
       <FormSection
         title={editable ? "Edit User Operasional Umum" : "Tambah User Operasional Umum"}
-        description="Form ini tetap tersedia untuk akun umum. Role guru, siswa, admin sekolah, dan proctor sebaiknya dikelola dari Master Data masing-masing."
+        description="Form ini tetap tersedia untuk akun umum. Role guru, siswa, admin sekolah, dan pengawas khusus sebaiknya dikelola dari Master Data masing-masing."
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
           <input type="hidden" name="redirect_path" value={basePath} />

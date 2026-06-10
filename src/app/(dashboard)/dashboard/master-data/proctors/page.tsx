@@ -16,10 +16,10 @@ export default async function MasterDataProctorsPage({ searchParams }: PageProps
 
   return (
     <OperationalRoleUsersPage
-      title="Proctor / Pengawas"
-      description="Kelola akun pengawas ujian. Penugasan pengawas ke jadwal atau ruang dapat ditambahkan pada tahap berikutnya."
-      emptyTitle="Belum ada proctor"
-      emptyDescription="Tambahkan akun proctor agar pengawas dapat membuka monitoring ujian."
+      title="Pengawas Khusus"
+      description="Kelola akun pengawas non-guru seperti operator lab, panitia CBT, teknisi, atau pengawas eksternal."
+      emptyTitle="Belum ada pengawas khusus"
+      emptyDescription="Tambahkan akun pengawas khusus hanya jika sekolah membutuhkan pengawas non-guru."
       redirectPath="/dashboard/master-data/proctors"
       roleNames={["proctor"]}
       searchParams={params}

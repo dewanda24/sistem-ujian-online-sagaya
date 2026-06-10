@@ -63,7 +63,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       status: operationalUsersWithoutSchool === 0 ? "ready" : "warning",
       value: String(operationalUsersWithoutSchool),
       description:
-        "Guru, siswa, proctor, principal, dan admin sebaiknya terhubung ke sekolah untuk mode multi-school.",
+        "Guru, siswa, pengawas khusus, principal, dan admin sebaiknya terhubung ke sekolah untuk mode multi-school.",
       href: "/dashboard/admin/users",
     },
     {

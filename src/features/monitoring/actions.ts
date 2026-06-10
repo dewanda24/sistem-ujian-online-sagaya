@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { hasPermission } from "@/lib/auth/has-permission";
+import { requireAuth } from "@/lib/auth/require-auth";
+import {
+  assertSameSchool,
+  requireSchoolScope,
+} from "@/lib/auth/school-scope";
 import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentUser } from "@/types/auth";
@@ -25,12 +30,46 @@ function redirectBack(formData: FormData, ok: boolean, message: string): never {
   redirect(`${path}?${params.toString()}`);
 }
 
+async function requireMonitoringControlForAttempt(
+  formData: FormData,
+  attemptId: string,
+) {
+  const user = await requireAuth();
+
+  if (!hasPermission(user, "exam_monitoring.view")) {
+    redirectBack(formData, false, "Akses monitoring ujian ditolak.");
+  }
+
+  if (!(await canControlAttempt(attemptId, user))) {
+    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
+  }
+
+  return user;
+}
+
+async function requireMonitoringControlForSchedule(
+  formData: FormData,
+  scheduleId: string,
+) {
+  const user = await requireAuth();
+
+  if (!hasPermission(user, "exam_monitoring.view")) {
+    redirectBack(formData, false, "Akses monitoring ujian ditolak.");
+  }
+
+  if (!(await canControlSchedule(scheduleId, user))) {
+    redirectBack(formData, false, "Akses kontrol peserta ujian ditolak.");
+  }
+
+  return user;
+}
+
 async function canControlAttempt(attemptId: string, user: CurrentUser) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
     .select(
-      "id, exam_schedules(created_by, exam_packages(subject_id))",
+      "id, exam_schedule_id, exam_schedules(school_id)",
     )
     .eq("id", attemptId)
     .maybeSingle();
@@ -39,30 +78,38 @@ async function canControlAttempt(attemptId: string, user: CurrentUser) {
     return false;
   }
 
+  return canControlSchedule(attempt.exam_schedule_id as string, user);
+}
+
+async function canControlSchedule(scheduleId: string, user: CurrentUser) {
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: schedule } = await supabase
+    .from("exam_schedules")
+    .select("school_id")
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  if (!schedule) {
+    return false;
+  }
+
+  assertSameSchool(scope, schedule.school_id);
+
+  if (hasPermission(user, "exam_sessions.control")) {
+    return true;
+  }
+
   if (user.roles?.name !== "teacher") {
-    return true;
-  }
-
-  const schedule = Array.isArray(attempt.exam_schedules)
-    ? attempt.exam_schedules[0]
-    : attempt.exam_schedules;
-  const examPackage = Array.isArray(schedule?.exam_packages)
-    ? schedule?.exam_packages[0]
-    : schedule?.exam_packages;
-
-  if (schedule?.created_by === user.id) {
-    return true;
-  }
-
-  if (!examPackage?.subject_id) {
     return false;
   }
 
   const { data: assignment } = await supabase
-    .from("teacher_subjects")
+    .from("exam_proctors")
     .select("id")
+    .eq("exam_schedule_id", scheduleId)
     .eq("teacher_id", user.id)
-    .eq("subject_id", examPackage.subject_id)
+    .eq("is_active", true)
     .limit(1)
     .maybeSingle();
 
@@ -70,16 +117,13 @@ async function canControlAttempt(attemptId: string, user: CurrentUser) {
 }
 
 export async function forceSubmitAttemptAction(formData: FormData) {
-  const user = await requirePermission("exam_sessions.control");
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
     redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
-  if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
-  }
+  const user = await requireMonitoringControlForAttempt(formData, attemptId);
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -163,16 +207,13 @@ export async function forceSubmitAttemptAction(formData: FormData) {
 }
 
 export async function resetAttemptAction(formData: FormData) {
-  const user = await requirePermission("exam_sessions.control");
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
     redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
-  if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
-  }
+  const user = await requireMonitoringControlForAttempt(formData, attemptId);
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -232,7 +273,6 @@ export async function resetAttemptAction(formData: FormData) {
 }
 
 export async function lockAttemptAction(formData: FormData) {
-  const user = await requirePermission("exam_sessions.control");
   const attemptId = formString(formData, "attempt_id");
   const reason =
     formString(formData, "lock_reason").trim() || "Dikunci oleh pengawas.";
@@ -241,9 +281,7 @@ export async function lockAttemptAction(formData: FormData) {
     redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
-  if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
-  }
+  const user = await requireMonitoringControlForAttempt(formData, attemptId);
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -298,16 +336,13 @@ export async function lockAttemptAction(formData: FormData) {
 }
 
 export async function unlockAttemptAction(formData: FormData) {
-  const user = await requirePermission("exam_sessions.control");
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
     redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
   }
 
-  if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses kontrol pengerjaan ujian ditolak.");
-  }
+  const user = await requireMonitoringControlForAttempt(formData, attemptId);
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -360,7 +395,6 @@ export async function unlockAttemptAction(formData: FormData) {
 }
 
 export async function markParticipantAbsentAction(formData: FormData) {
-  const user = await requirePermission("exam_sessions.control");
   const participantId = formString(formData, "participant_id");
 
   if (!participantId) {
@@ -379,6 +413,11 @@ export async function markParticipantAbsentAction(formData: FormData) {
   if (!participant) {
     redirectBack(formData, false, "Peserta tidak ditemukan.");
   }
+
+  const user = await requireMonitoringControlForSchedule(
+    formData,
+    participant.exam_schedule_id as string,
+  );
 
   const attempts = participant.exam_attempts ?? [];
   const hasStartedAttempt = attempts.some(

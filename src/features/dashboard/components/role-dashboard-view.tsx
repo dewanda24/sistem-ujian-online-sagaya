@@ -168,14 +168,14 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Saat guru atau proktor membuka ujian, daftar ujian peserta akan muncul di sini.",
   },
   proctor: {
-    title: "Beranda Pengawas",
+    title: "Beranda Pengawas Khusus",
     description:
-      "Pantau pelaksanaan ujian, kehadiran peserta, dan status pengerjaan.",
+      "Pantau pelaksanaan ujian sebagai akun pengawas non-guru.",
     stats: [
       {
         title: "Pengawasan",
         value: "Siap",
-        description: "Halaman pengawasan pengawas sudah tersedia.",
+        description: "Halaman pengawasan khusus sudah tersedia.",
       },
       {
         title: "Sesi Ujian",
@@ -184,8 +184,8 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       },
       {
         title: "Hak Akses",
-        value: "Pengawas",
-        description: "Halaman hanya dapat dibuka oleh pengawas.",
+        value: "Pengawas Khusus",
+        description: "Halaman hanya dapat dibuka oleh akun pengawas khusus.",
       },
     ],
     workbenchTitle: "Belum ada sesi ujian berjalan",
@@ -798,7 +798,7 @@ function AdminOperationalWorkbench() {
 function ProctorOperationalWorkbench() {
   const actions = [
     {
-      title: "Jadwal Pengawasan",
+      title: "Jadwal Pengawasan Khusus",
       description: "Lihat jadwal, kelas target, token terbatas, dan status peserta.",
       href: "/dashboard/proctor/schedules",
     },
@@ -828,8 +828,8 @@ function ProctorOperationalWorkbench() {
       href: "/dashboard/proctor/monitoring?status=submitted",
     },
     {
-      title: "Profil Pengawas",
-      description: "Perbarui data profil pengawas dan kontak operasional.",
+      title: "Profil Pengawas Khusus",
+      description: "Perbarui data profil pengawas khusus dan kontak operasional.",
       href: "/dashboard/profile",
     },
   ];

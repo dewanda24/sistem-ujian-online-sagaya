@@ -10,6 +10,7 @@ import {
   Pencil,
   ScreenShare,
   ToggleLeft,
+  UserCheck,
 } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
@@ -268,9 +269,16 @@ function MoreMenu({
             confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi."
             className="w-full justify-start rounded-lg border-0 px-2"
           >
-            {UI_LABELS.actions.generateToken}
+          {UI_LABELS.actions.generateToken}
           </ConfirmSubmitButton>
         </form>
+        <Link
+          href={`/dashboard/exams/proctors?schedule_id=${schedule.id}`}
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F8FAFC]"
+        >
+          <UserCheck className="size-3.5" />
+          Penugasan Pengawas
+        </Link>
         <form action={toggleExamScheduleActiveAction}>
           <input type="hidden" name="id" value={schedule.id} />
           <input

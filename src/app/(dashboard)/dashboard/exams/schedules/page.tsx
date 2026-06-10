@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, UserCheck } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -51,13 +51,22 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
           title="Jadwal Ujian"
           description="Kelola jadwal ujian, waktu pelaksanaan, peserta, token, dan monitoring dalam tampilan yang ringkas."
         />
-        <Link
-          href="/dashboard/exams/schedules/create"
-          className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1D4ED8]"
-        >
-          <Plus className="size-4" />
-          Buat Jadwal
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/exams/proctors"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
+          >
+            <UserCheck className="size-4" />
+            Penugasan Pengawas
+          </Link>
+          <Link
+            href="/dashboard/exams/schedules/create"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1D4ED8]"
+          >
+            <Plus className="size-4" />
+            Buat Jadwal
+          </Link>
+        </div>
       </div>
 
       <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-6">

@@ -31,9 +31,9 @@ export default async function SuperAdminRolePermissionPage() {
           description="Role inti ditandai sebagai tidak boleh dihapus."
         />
         <DashboardCard
-          title="Proctor"
+          title="Pengawas Khusus"
           value="Tetap Ada"
-          description="Role proctor tidak dimigrasikan pada tahap ini."
+          description="Role proctor dipertahankan untuk akun pengawas non-guru."
         />
       </section>
 
