@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, Save } from "lucide-react";
+import { Eye, Save, Upload } from "lucide-react";
 
 import { saveQuestionAction } from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
@@ -70,6 +70,21 @@ const steps = [
   "Lanjutan",
 ] as const;
 type StimulusMode = "none" | "existing" | "new";
+type UploadTarget = "attachment" | "stimulus";
+type UploadState = {
+  target: UploadTarget;
+  status: "uploading" | "error" | "done";
+  message: string;
+} | null;
+
+const mathTemplates = [
+  { label: "Pecahan", value: "\\frac{a}{b}" },
+  { label: "Akar", value: "\\sqrt{x}" },
+  { label: "Pangkat", value: "x^{2}" },
+  { label: "Integral", value: "\\int_{a}^{b} f(x)\\,dx" },
+  { label: "Sigma", value: "\\sum_{i=1}^{n} i" },
+  { label: "Limit", value: "\\lim_{x \\to a} f(x)" },
+] as const;
 
 function optionValue(question: EditableQuestion | null | undefined, label: string) {
   return (
@@ -200,11 +215,15 @@ export function QuestionForm({
     attachment?.media_type ?? "image",
   );
   const [attachmentUrl, setAttachmentUrl] = useState(attachment?.url ?? "");
+  const [attachmentFileName, setAttachmentFileName] = useState(
+    attachment?.file_name ?? "",
+  );
   const [attachmentCaption, setAttachmentCaption] = useState(
     attachment?.caption ?? "",
   );
   const [errors, setKesalahans] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [uploadState, setUploadState] = useState<UploadState>(null);
 
   const filteredCategories = useMemo(
     () =>
@@ -269,6 +288,51 @@ export function QuestionForm({
 
     setKesalahans(nextKesalahans);
     return nextKesalahans.length === 0;
+  }
+
+  function insertMathTemplate(template: string) {
+    setContent((current) => `${current}${current ? "\n" : ""}$$${template}$$`);
+  }
+
+  async function uploadMedia(file: File, target: UploadTarget) {
+    const payload = new FormData();
+
+    payload.set("file", file);
+    setUploadState({
+      target,
+      status: "uploading",
+      message: "Mengupload media...",
+    });
+
+    const response = await fetch("/api/question-bank/media", {
+      method: "POST",
+      body: payload,
+    }).catch(() => null);
+    const result = response ? await response.json().catch(() => null) : null;
+
+    if (!response?.ok || !result?.url) {
+      setUploadState({
+        target,
+        status: "error",
+        message: result?.message ?? "Upload media gagal.",
+      });
+      return;
+    }
+
+    if (target === "attachment") {
+      setAttachmentUrl(result.url);
+      setAttachmentMediaType(result.media_type ?? "file");
+      setAttachmentFileName(result.file_name ?? file.name);
+    } else {
+      setNewStimulusMediaUrl(result.url);
+      setNewStimulusMediaType(result.media_type ?? "file");
+    }
+
+    setUploadState({
+      target,
+      status: "done",
+      message: "Media berhasil diupload.",
+    });
   }
 
   return (
@@ -387,13 +451,33 @@ export function QuestionForm({
 
       <div className={step === 1 ? "block" : "hidden"}>
         <Panel title="Pertanyaan" description="Editor utama dibuat besar agar fokus ke isi soal.">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {mathTemplates.map((template) => (
+              <button
+                key={template.label}
+                type="button"
+                onClick={() => insertMathTemplate(template.value)}
+                className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs text-[#0F172A] hover:bg-[#F8FAFC]"
+              >
+                {template.label}
+              </button>
+            ))}
+          </div>
           <textarea
             name="content"
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            placeholder="Tulis konten soal"
+            placeholder="Tulis konten soal. Gunakan $...$ untuk rumus inline atau $$...$$ untuk rumus blok."
             className="min-h-72 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
           />
+          <div className="mt-3 rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm">
+            <div className="mb-2 font-medium text-[#0F172A]">Preview matematika</div>
+            {content ? (
+              <QuestionMathRenderer content={content} className="leading-7" />
+            ) : (
+              <p className="text-[#64748B]">Preview muncul saat konten soal diisi.</p>
+            )}
+          </div>
         </Panel>
       </div>
 
@@ -524,12 +608,52 @@ export function QuestionForm({
                   <option value="link">Link</option>
                 </select>
                 <input
+                  type="hidden"
                   name="new_stimulus_media_url"
                   value={newStimulusMediaUrl}
-                  onChange={(event) => setNewStimulusMediaUrl(event.target.value)}
-                  placeholder="URL media stimulus"
-                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
+                  readOnly
                 />
+                <div className="grid gap-2 rounded-xl border border-[#E2E8F0] p-3 text-sm md:col-span-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="font-medium text-[#0F172A]">Media stimulus</span>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
+                      <Upload className="size-4" />
+                      Upload media
+                      <input
+                        type="file"
+                        accept="image/*,audio/*,video/*,application/pdf"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+
+                          if (file) void uploadMedia(file, "stimulus");
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {newStimulusMediaUrl ? (
+                    <QuestionMediaPreview
+                      mediaType={newStimulusMediaType}
+                      url={newStimulusMediaUrl}
+                      title={newStimulusTitle || "Media stimulus"}
+                    />
+                  ) : (
+                    <p className="text-[#64748B]">Belum ada media stimulus.</p>
+                  )}
+                  {uploadState?.target === "stimulus" ? (
+                    <p
+                      className={cn(
+                        "text-xs",
+                        uploadState.status === "error"
+                          ? "text-[#EF4444]"
+                          : "text-[#64748B]",
+                      )}
+                    >
+                      {uploadState.message}
+                    </p>
+                  ) : null}
+                </div>
                 <textarea
                   name="new_stimulus_content"
                   value={newStimulusContent}
@@ -555,17 +679,59 @@ export function QuestionForm({
               </select>
               <input
                 name="attachment_file_name"
-                defaultValue={attachment?.file_name ?? ""}
+                value={attachmentFileName}
+                onChange={(event) => setAttachmentFileName(event.target.value)}
                 placeholder="Nama file/link"
                 className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
               />
               <input
+                type="hidden"
                 name="attachment_url"
                 value={attachmentUrl}
-                onChange={(event) => setAttachmentUrl(event.target.value)}
-                placeholder="https://..."
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
+                readOnly
               />
+              <div className="grid gap-2 rounded-xl border border-[#E2E8F0] p-3 text-sm md:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium text-[#0F172A]">Media soal</span>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
+                    <Upload className="size-4" />
+                    Upload media
+                    <input
+                      type="file"
+                      accept="image/*,audio/*,video/*,application/pdf"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+
+                        if (file) void uploadMedia(file, "attachment");
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                {attachmentUrl ? (
+                  <QuestionMediaPreview
+                    mediaType={attachmentMediaType}
+                    url={attachmentUrl}
+                    title={attachment?.file_name ?? "Media soal"}
+                    caption={attachmentCaption}
+                  />
+                ) : (
+                  <p className="text-[#64748B]">Belum ada media soal.</p>
+                )}
+                {uploadState?.target === "attachment" ? (
+                  <p
+                    className={cn(
+                      "text-xs",
+                      uploadState.status === "error"
+                        ? "text-[#EF4444]"
+                        : "text-[#64748B]",
+                    )}
+                  >
+                    {uploadState.message}
+                  </p>
+                ) : null}
+              </div>
               <input
                 name="attachment_caption"
                 value={attachmentCaption}

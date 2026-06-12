@@ -157,19 +157,21 @@ export function ExamRoomWorkspace({
   const debounceTimers = useRef<Record<string, number>>({});
   const retryTimers = useRef<Record<string, number>>({});
   const saveVersions = useRef<Record<string, number>>({});
+  const dirtyAnswerIdsRef = useRef<Set<string>>(new Set());
   const saveAnswerRef = useRef<
     | ((
         questionId: string,
         nextAnswer: AnswerState,
         attemptNumber?: number,
         version?: number,
-      ) => Promise<void>)
+      ) => Promise<boolean>)
     | null
   >(null);
   const answersRef = useRef<Record<string, AnswerState>>({});
   const saveStatusRef = useRef<Record<string, SaveState>>({});
   const submitFormRef = useRef<HTMLFormElement>(null);
   const submitConfirmedRef = useRef(false);
+  const submitFlushInProgressRef = useRef(false);
   const examRoomRef = useRef<HTMLDivElement>(null);
   const autoSubmittingRef = useRef(false);
   const timeExpiredSubmitRef = useRef(false);
@@ -526,7 +528,7 @@ export function ExamRoomWorkspace({
         setIsOnline(false);
         setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
         setSaveMessage("Browser offline. Jawaban belum tersimpan.");
-        return;
+        return false;
       }
 
       setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
@@ -549,7 +551,7 @@ export function ExamRoomWorkspace({
       }).catch(() => null);
 
       if (saveVersions.current[questionId] !== version) {
-        return;
+        return false;
       }
 
       if (!response?.ok) {
@@ -565,18 +567,20 @@ export function ExamRoomWorkspace({
               version,
             );
           }, 1200 * (attemptNumber + 1));
-          return;
+          return false;
         }
 
         setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
         setSaveMessage(body?.message ?? "Jawaban gagal disimpan.");
-        return;
+        return false;
       }
 
       setSaveStatus((current) => ({ ...current, [questionId]: "saved" }));
       setLastSavedAt(new Date().toISOString());
+      dirtyAnswerIdsRef.current.delete(questionId);
       clearAnswerDraft(attempt.id, questionId);
       setSaveMessage("Jawaban tersimpan.");
+      return true;
     },
     [attempt.id, examSessionId],
   );
@@ -586,6 +590,7 @@ export function ExamRoomWorkspace({
   }, [saveAnswer]);
 
   const updateAnswer = (questionId: string, nextAnswer: AnswerState) => {
+    dirtyAnswerIdsRef.current.add(questionId);
     persistAnswerDraft(attempt.id, questionId, nextAnswer);
     setAnswers((current) => ({
       ...current,
@@ -632,6 +637,38 @@ export function ExamRoomWorkspace({
     }
 
     void saveAnswer(questionId, answer);
+  };
+
+  const flushPendingAnswersBeforeSubmit = async () => {
+    const questionIds = Array.from(dirtyAnswerIdsRef.current);
+
+    if (questionIds.length === 0) {
+      return true;
+    }
+
+    questionIds.forEach((questionId) => {
+      window.clearTimeout(debounceTimers.current[questionId]);
+    });
+
+    setSaveMessage(
+      `Menyimpan ${questionIds.length} jawaban terakhir sebelum submit...`,
+    );
+
+    const results = await Promise.all(
+      questionIds.map((questionId) => {
+        const answer = answersRef.current[questionId];
+
+        return answer ? saveAnswer(questionId, answer) : Promise.resolve(true);
+      }),
+    );
+
+    const ok = results.every(Boolean);
+
+    if (!ok) {
+      setSaveMessage("Jawaban terakhir belum berhasil tersimpan. Coba lagi sebelum submit.");
+    }
+
+    return ok;
   };
 
   useEffect(() => {
@@ -1006,6 +1043,34 @@ export function ExamRoomWorkspace({
             ref={submitFormRef}
             action={submitAttemptAction}
             onSubmit={(event) => {
+              if (dirtyAnswerIdsRef.current.size > 0) {
+                event.preventDefault();
+
+                if (submitFlushInProgressRef.current) {
+                  return;
+                }
+
+                submitFlushInProgressRef.current = true;
+                const wasAutoSubmitting = autoSubmittingRef.current;
+                const wasConfirmed = submitConfirmedRef.current;
+
+                void flushPendingAnswersBeforeSubmit().then((ok) => {
+                  submitFlushInProgressRef.current = false;
+
+                  if (!ok) {
+                    autoSubmittingRef.current = false;
+                    submitConfirmedRef.current = false;
+                    setSubmitLocked(false);
+                    return;
+                  }
+
+                  autoSubmittingRef.current = wasAutoSubmitting;
+                  submitConfirmedRef.current = wasConfirmed;
+                  submitFormRef.current?.requestSubmit();
+                });
+                return;
+              }
+
               if (submitLocked && !autoSubmittingRef.current) {
                 event.preventDefault();
                 return;
