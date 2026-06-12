@@ -7,6 +7,8 @@ type PageProps = {
     class_id?: string;
     subject_id?: string;
     status?: string;
+    issue?: string;
+    q?: string;
     notice?: string;
     message?: string;
   }>;

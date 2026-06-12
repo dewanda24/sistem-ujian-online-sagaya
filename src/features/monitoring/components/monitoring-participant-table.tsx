@@ -61,6 +61,7 @@ type MonitoringAttempt = {
   started_at?: string | null;
   submitted_at?: string | null;
   last_saved_at?: string | null;
+  last_activity_at?: string | null;
   locked_at?: string | null;
   lock_reason?: string | null;
   exam_answers?: Array<{ id?: string | null }> | null;
@@ -69,6 +70,12 @@ type MonitoringAttempt = {
     event_type?: string | null;
     created_at?: string | null;
   }> | null;
+};
+
+type ParticipantIssue = {
+  label: string;
+  severity: "danger" | "warning" | "info";
+  recommendation: string;
 };
 
 type MonitoringParticipantTableProps = {
@@ -270,6 +277,7 @@ function ParticipantRow({
   onDetail: () => void;
 }) {
   const info = getParticipantInfo(participant);
+  const issue = getPrimaryIssue(participant);
 
   return (
     <tr className="h-16 hover:bg-[#F8FAFC]">
@@ -280,6 +288,7 @@ function ParticipantRow({
         <div className="mt-1 line-clamp-1 text-xs text-[#64748B]">
           {info.identity}
         </div>
+        {issue ? <IssueBadge issue={issue} className="mt-1" /> : null}
       </td>
       <td className="truncate px-3 py-2 text-[#0F172A]">{info.className}</td>
       <td className="px-3 py-2">
@@ -325,6 +334,7 @@ function ParticipantCard({
   onDetail: () => void;
 }) {
   const info = getParticipantInfo(participant);
+  const issue = getPrimaryIssue(participant);
 
   return (
     <article className="max-h-[124px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
@@ -336,6 +346,7 @@ function ParticipantCard({
         <StatusPill value={info.status} />
         <ViolationBadge count={info.eventCount} />
       </div>
+      {issue ? <IssueBadge issue={issue} className="mt-2" /> : null}
       <div className="mt-2 flex items-center justify-between gap-2">
         <Progress answerCount={info.answerCount} compact />
         <div className="flex items-center gap-1.5">
@@ -502,6 +513,7 @@ function DetailDrawer({
   const info = getParticipantInfo(participant);
   const attempt = firstRelation(participant.exam_attempts);
   const events = attempt?.exam_events ?? [];
+  const issues = getParticipantIssues(participant);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -533,6 +545,7 @@ function DetailDrawer({
             <DetailItem label="Waktu mulai" value={formatDateTime(attempt?.started_at ?? participant.started_at)} />
             <DetailItem label="Waktu selesai" value={formatDateTime(attempt?.submitted_at ?? participant.submitted_at)} />
             <DetailItem label="Terakhir tersimpan" value={formatDateTime(attempt?.last_saved_at)} />
+            <DetailItem label="Aktivitas terakhir" value={formatDateTime(attempt?.last_activity_at)} />
             <DetailItem label="Progres" value={`${info.answerCount} jawaban tersimpan`} />
           </div>
 
@@ -544,7 +557,36 @@ function DetailDrawer({
           </section>
 
           <section className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-            <h3 className="font-semibold text-[#0F172A]">Riwayat Pelanggaran</h3>
+            <h3 className="font-semibold text-[#0F172A]">Rekomendasi Tindakan</h3>
+            <div className="mt-3 grid gap-2">
+              {issues.length === 0 ? (
+                <p className="text-sm text-[#64748B]">
+                  Tidak ada masalah aktif. Lanjutkan pemantauan berkala.
+                </p>
+              ) : (
+                issues.map((issue) => (
+                  <div
+                    key={`${issue.label}-${issue.recommendation}`}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm",
+                      issue.severity === "danger" &&
+                        "border-[#EF4444]/25 bg-[#EF4444]/10 text-[#991B1B]",
+                      issue.severity === "warning" &&
+                        "border-[#F59E0B]/25 bg-[#F59E0B]/10 text-[#92400E]",
+                      issue.severity === "info" &&
+                        "border-[#2563EB]/20 bg-[#2563EB]/10 text-[#1E3A8A]",
+                    )}
+                  >
+                    <div className="font-medium">{issue.label}</div>
+                    <div className="mt-1">{issue.recommendation}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+            <h3 className="font-semibold text-[#0F172A]">Riwayat Kejadian</h3>
             <div className="mt-3 grid gap-2">
               {events.length === 0 ? (
                 <p className="text-sm text-[#64748B]">Tidak ada kejadian.</p>
@@ -555,7 +597,7 @@ function DetailDrawer({
                     className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm"
                   >
                     <div className="font-medium text-[#0F172A]">
-                      {event.event_type ?? "Kejadian"}
+                      {formatEventType(event.event_type)}
                     </div>
                     <div className="text-xs text-[#64748B]">
                       {formatDateTime(event.created_at)}
@@ -641,6 +683,32 @@ function ViolationBadge({ count }: { count: number }) {
   );
 }
 
+function IssueBadge({
+  issue,
+  className,
+}: {
+  issue: ParticipantIssue;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full truncate rounded-md px-2 py-1 text-xs font-medium ring-1",
+        issue.severity === "danger" &&
+          "bg-[#EF4444]/10 text-[#EF4444] ring-[#EF4444]/20",
+        issue.severity === "warning" &&
+          "bg-[#F59E0B]/10 text-[#92400E] ring-[#F59E0B]/20",
+        issue.severity === "info" &&
+          "bg-[#2563EB]/10 text-[#1D4ED8] ring-[#2563EB]/20",
+        className,
+      )}
+      title={issue.recommendation}
+    >
+      {issue.label}
+    </span>
+  );
+}
+
 function getParticipantInfo(participant: MonitoringParticipant) {
   const user = firstRelation(participant.users);
   const profile = firstRelation(user?.user_profiles);
@@ -658,4 +726,163 @@ function getParticipantInfo(participant: MonitoringParticipant) {
     eventCount,
     status: statusLabel(attempt?.status ?? participant.status, locked),
   };
+}
+
+function getPrimaryIssue(participant: MonitoringParticipant) {
+  return getParticipantIssues(participant)[0] ?? null;
+}
+
+function getParticipantIssues(participant: MonitoringParticipant): ParticipantIssue[] {
+  const attempt = firstRelation(participant.exam_attempts);
+  const events = attempt?.exam_events ?? [];
+  const status = attempt?.status ?? participant.status;
+  const violationCount = countViolationEvents(events);
+  const failedSubmitCount = countEvents(events, "failed_submit");
+  const latestEvent = getLatestEvent(events);
+  const latestEventType = latestEvent?.event_type ?? null;
+  const issues: ParticipantIssue[] = [];
+
+  if (attempt?.locked_at) {
+    issues.push({
+      label: "Attempt terkunci",
+      severity: "danger",
+      recommendation:
+        "Cek alasan kunci dan riwayat kejadian. Buka kunci hanya jika siswa sudah boleh melanjutkan.",
+    });
+  }
+
+  if (failedSubmitCount > 0) {
+    issues.push({
+      label: `${failedSubmitCount} gagal submit`,
+      severity: "danger",
+      recommendation:
+        "Periksa jumlah jawaban tersimpan dan aktivitas terakhir. Gunakan Selesaikan Manual bila jawaban sudah layak dikunci.",
+    });
+  }
+
+  if (violationCount >= 5) {
+    issues.push({
+      label: `${violationCount} pelanggaran`,
+      severity: "danger",
+      recommendation:
+        "Review riwayat kejadian. Pertimbangkan kunci attempt atau selesaikan manual sesuai kebijakan ujian.",
+    });
+  } else if (violationCount >= 3) {
+    issues.push({
+      label: `${violationCount} pelanggaran`,
+      severity: "warning",
+      recommendation:
+        "Beri peringatan ke siswa dan pantau apakah pelanggaran berulang.",
+    });
+  }
+
+  if (status === "in_progress" && isAttemptOffline(attempt)) {
+    issues.push({
+      label: "Offline",
+      severity: "warning",
+      recommendation:
+        "Hubungi siswa atau tunggu reconnect. Jangan force submit sebelum memastikan jawaban terakhir tersimpan.",
+    });
+  }
+
+  if (latestEventType === "disconnected" || latestEventType === "offline") {
+    issues.push({
+      label: formatEventType(latestEventType),
+      severity: "warning",
+      recommendation:
+        "Pantau heartbeat berikutnya. Jika siswa kembali online, pastikan autosave berjalan sebelum submit.",
+    });
+  }
+
+  if (latestEventType === "online" && status === "in_progress") {
+    issues.push({
+      label: "Baru reconnect",
+      severity: "info",
+      recommendation:
+        "Tunggu beberapa detik agar autosave tertunda tersinkron, lalu cek aktivitas terakhir.",
+    });
+  }
+
+  if (status === "expired") {
+    issues.push({
+      label: "Waktu habis",
+      severity: "warning",
+      recommendation:
+        "Pastikan attempt masuk laporan sebagai expired dan cek apakah perlu tindakan manual.",
+    });
+  }
+
+  return dedupeIssues(issues);
+}
+
+function countEvents(
+  events: NonNullable<MonitoringAttempt["exam_events"]>,
+  eventType: string,
+) {
+  return events.filter((event) => event.event_type === eventType).length;
+}
+
+function countViolationEvents(events: NonNullable<MonitoringAttempt["exam_events"]>) {
+  const violationTypes = new Set([
+    "tab_blur",
+    "visibility_hidden",
+    "copy_attempt",
+    "paste_attempt",
+    "fullscreen_exit",
+    "before_unload",
+  ]);
+
+  return events.filter((event) =>
+    event.event_type ? violationTypes.has(event.event_type) : false,
+  ).length;
+}
+
+function getLatestEvent(events: NonNullable<MonitoringAttempt["exam_events"]>) {
+  return events
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.created_at ?? 0).getTime() -
+        new Date(a.created_at ?? 0).getTime(),
+    )[0];
+}
+
+function isAttemptOffline(attempt: MonitoringAttempt | null) {
+  if (!attempt?.last_activity_at) {
+    return true;
+  }
+
+  return Date.now() - new Date(attempt.last_activity_at).getTime() > 5 * 60 * 1000;
+}
+
+function dedupeIssues(issues: ParticipantIssue[]) {
+  const seen = new Set<string>();
+
+  return issues.filter((issue) => {
+    if (seen.has(issue.label)) {
+      return false;
+    }
+
+    seen.add(issue.label);
+    return true;
+  });
+}
+
+function formatEventType(eventType?: string | null) {
+  const labels: Record<string, string> = {
+    tab_blur: "Jendela kehilangan fokus",
+    tab_focus: "Jendela aktif kembali",
+    visibility_hidden: "Tab disembunyikan",
+    visibility_visible: "Tab terlihat kembali",
+    copy_attempt: "Percobaan copy/shortcut",
+    paste_attempt: "Percobaan paste",
+    fullscreen_exit: "Keluar fullscreen",
+    before_unload: "Refresh/tutup halaman",
+    offline: "Offline",
+    online: "Online kembali",
+    disconnected: "Terputus",
+    failed_submit: "Gagal submit",
+  };
+
+  return eventType ? (labels[eventType] ?? eventType) : "Kejadian";
 }

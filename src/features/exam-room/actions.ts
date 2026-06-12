@@ -27,6 +27,8 @@ type AttemptTiming = {
   exam_participant_id: string;
   status: string;
   locked_at?: string | null;
+  active_session_id?: string | null;
+  active_session_seen_at?: string | null;
   exam_schedules?: {
     end_at?: string | null;
   } | Array<{
@@ -167,11 +169,23 @@ export async function startExamAction(formData: FormData) {
       exam_schedule_id: parsed.data.schedule_id,
       student_id: user.id,
       status: "in_progress",
+      last_activity_at: now,
     })
     .select("id")
     .single();
 
   if (attemptError || !attempt) {
+    const { data: activeAttempt } = await supabase
+      .from("exam_attempts")
+      .select("id")
+      .eq("exam_participant_id", participant.id)
+      .eq("status", "in_progress")
+      .maybeSingle();
+
+    if (activeAttempt?.id) {
+      redirect(`/dashboard/exam-room/${activeAttempt.id}`);
+    }
+
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
@@ -196,6 +210,7 @@ export async function saveAnswerAction(formData: FormData) {
   const parsed = saveAnswerSchema.safeParse({
     attempt_id: formString(formData, "attempt_id"),
     question_id: formString(formData, "question_id"),
+    session_id: formString(formData, "session_id"),
     selected_option_id: formString(formData, "selected_option_id"),
     essay_answer: formString(formData, "essay_answer"),
   });
@@ -211,7 +226,7 @@ export async function saveAnswerAction(formData: FormData) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, locked_at, exam_schedules(end_at)")
+    .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at)")
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
     .eq("status", "in_progress")
@@ -230,6 +245,14 @@ export async function saveAnswerAction(formData: FormData) {
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
       "Attempt sedang dikunci oleh pengawas.",
+    );
+  }
+
+  if (hasActiveSessionConflict(attempt as AttemptTiming, parsed.data.session_id)) {
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      "Attempt sedang aktif di perangkat atau tab lain.",
     );
   }
 
@@ -259,7 +282,15 @@ export async function saveAnswerAction(formData: FormData) {
 
   await supabase
     .from("exam_attempts")
-    .update({ last_saved_at: now })
+    .update({
+      active_session_id:
+        parsed.data.session_id ?? (attempt as AttemptTiming).active_session_id,
+      active_session_seen_at: parsed.data.session_id
+        ? now
+        : (attempt as AttemptTiming).active_session_seen_at,
+      last_saved_at: now,
+      last_activity_at: now,
+    })
     .eq("id", parsed.data.attempt_id);
 
   revalidatePath(`/dashboard/exam-room/${parsed.data.attempt_id}`);
@@ -274,6 +305,7 @@ export async function submitAttemptAction(formData: FormData) {
   const user = await requirePermission("exam_attempts.submit");
   const parsed = submitAttemptSchema.safeParse({
     attempt_id: formString(formData, "attempt_id"),
+    session_id: formString(formData, "session_id"),
   });
 
   if (!parsed.success) {
@@ -288,7 +320,7 @@ export async function submitAttemptAction(formData: FormData) {
   const { data: attempt } = await supabase
     .from("exam_attempts")
     .select(
-      "id, exam_participant_id, exam_schedule_id, status, locked_at, exam_schedules(exam_package_id, end_at)",
+      "id, exam_participant_id, exam_schedule_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(exam_package_id, end_at)",
     )
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
@@ -300,6 +332,18 @@ export async function submitAttemptAction(formData: FormData) {
       "/dashboard/student/active-exams",
       false,
       "Attempt tidak ditemukan atau sudah dikumpulkan.",
+    );
+  }
+
+  if (hasActiveSessionConflict(attempt as AttemptTiming, parsed.data.session_id)) {
+    await logExamAttemptEvent(attempt.id, attempt.exam_schedule_id, user.id, "failed_submit", {
+      reason: "session_conflict",
+    });
+
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      "Attempt sedang aktif di perangkat atau tab lain.",
     );
   }
 
@@ -332,6 +376,11 @@ export async function submitAttemptAction(formData: FormData) {
   });
 
   if (!scoring.ok) {
+    await logExamAttemptEvent(attempt.id, attempt.exam_schedule_id, user.id, "failed_submit", {
+      reason: "scoring_failed",
+      message: scoring.message,
+    });
+
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
@@ -340,12 +389,17 @@ export async function submitAttemptAction(formData: FormData) {
   }
 
   const now = new Date().toISOString();
-  await supabase
+  const { data: submittedAttempt, error: submitError } = await supabase
     .from("exam_attempts")
     .update({
       status: "submitted",
       submitted_at: now,
       last_saved_at: now,
+      active_session_id:
+        parsed.data.session_id ?? (attempt as AttemptTiming).active_session_id,
+      active_session_seen_at: parsed.data.session_id
+        ? now
+        : (attempt as AttemptTiming).active_session_seen_at,
       score: scoring.autoScore + scoring.essayScore,
       auto_score: scoring.autoScore,
       essay_score: scoring.hasEssay ? scoring.essayScore : null,
@@ -355,7 +409,31 @@ export async function submitAttemptAction(formData: FormData) {
       correct_answers: scoring.correctAnswers,
       grading_status: scoring.gradingStatus,
     })
-    .eq("id", attempt.id);
+    .eq("id", attempt.id)
+    .eq("status", "in_progress")
+    .select("id")
+    .maybeSingle();
+
+  if (submitError) {
+    await logExamAttemptEvent(attempt.id, attempt.exam_schedule_id, user.id, "failed_submit", {
+      reason: "status_update_failed",
+      message: submitError.message,
+    });
+
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      submitError.message,
+    );
+  }
+
+  if (!submittedAttempt) {
+    redirectWithNotice(
+      "/dashboard/student/history",
+      true,
+      "Ujian sudah dikumpulkan.",
+    );
+  }
 
   await supabase
     .from("exam_participants")
@@ -407,4 +485,44 @@ async function expireAttempt(attemptId: string, participantId: string) {
       submitted_at: now,
     })
     .eq("id", participantId);
+}
+
+function hasActiveSessionConflict(
+  attempt: AttemptTiming,
+  sessionId?: string,
+) {
+  if (!attempt.active_session_id || !sessionId) {
+    return false;
+  }
+
+  return (
+    attempt.active_session_id !== sessionId &&
+    !isSessionStale(attempt.active_session_seen_at)
+  );
+}
+
+function isSessionStale(value?: string | null) {
+  if (!value) {
+    return true;
+  }
+
+  return Date.now() - new Date(value).getTime() > 2 * 60 * 1000;
+}
+
+async function logExamAttemptEvent(
+  attemptId: string,
+  scheduleId: string,
+  studentId: string,
+  eventType: "failed_submit",
+  metadata: Record<string, unknown>,
+) {
+  const supabase = await createClient();
+
+  await supabase.from("exam_events").insert({
+    exam_attempt_id: attemptId,
+    exam_schedule_id: scheduleId,
+    student_id: studentId,
+    event_type: eventType,
+    metadata,
+  });
 }

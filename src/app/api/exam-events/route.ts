@@ -49,5 +49,11 @@ export async function POST(request: Request) {
     metadata: parsed.data.metadata ?? {},
   });
 
+  await supabase
+    .from("exam_attempts")
+    .update({ last_activity_at: new Date().toISOString() })
+    .eq("id", attempt.id)
+    .eq("status", "in_progress");
+
   return NextResponse.json({ ok: !error }, { status: error ? 500 : 200 });
 }

@@ -10,6 +10,10 @@ export const startExamSchema = z.object({
 export const saveAnswerSchema = z.object({
   attempt_id: uuidField,
   question_id: uuidField,
+  session_id: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(12).max(128).optional(),
+  ),
   selected_option_id: z.preprocess(
     (value) => (value === "" ? undefined : value),
     uuidField.optional(),
@@ -19,4 +23,8 @@ export const saveAnswerSchema = z.object({
 
 export const submitAttemptSchema = z.object({
   attempt_id: uuidField,
+  session_id: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(12).max(128).optional(),
+  ),
 });

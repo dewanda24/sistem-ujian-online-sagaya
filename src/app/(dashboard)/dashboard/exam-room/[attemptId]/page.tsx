@@ -55,6 +55,7 @@ export default async function ExamRoomPage({ params, searchParams }: PageProps) 
         attempt={attempt}
         questions={questions}
         answers={serializedAnswers}
+        serverNow={new Date().toISOString()}
       />
     </div>
   );

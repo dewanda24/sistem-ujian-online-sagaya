@@ -125,7 +125,7 @@ export async function getScheduleMonitoring(
   let query = supabase
     .from("exam_participants")
     .select(
-      "*, users(id, username, email, user_profiles(full_name, nis)), classes(name), exam_attempts(id, status, started_at, submitted_at, last_saved_at, locked_at, locked_by, lock_reason, exam_answers(id), exam_events(id, event_type, created_at))",
+      "*, users(id, username, email, user_profiles(full_name, nis)), classes(name), exam_attempts(id, status, started_at, submitted_at, last_saved_at, last_activity_at, locked_at, locked_by, lock_reason, exam_answers(id), exam_events(id, event_type, created_at))",
     )
     .eq("exam_schedule_id", scheduleId)
     .order("created_at", { ascending: true });
@@ -207,7 +207,7 @@ export async function getProctorScheduleOverview() {
   let query = supabase
     .from("exam_schedules")
     .select(
-      "id, title, status, start_at, end_at, token_required, access_token, exam_packages(title, subjects(code, name)), exam_schedule_classes(classes(id, name)), exam_participants(id, status, class_id, exam_attempts(id, status, locked_at, exam_events(id, event_type, created_at)))",
+      "id, title, status, start_at, end_at, token_required, access_token, exam_packages(title, subjects(code, name)), exam_schedule_classes(classes(id, name)), exam_participants(id, status, class_id, exam_attempts(id, status, last_activity_at, locked_at, exam_events(id, event_type, created_at)))",
     )
     .is("deleted_at", null)
     .in("status", ["scheduled", "active", "finished"])

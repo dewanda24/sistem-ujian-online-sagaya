@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
 import { StatusPill } from "@/components/dashboard/status-pill";
@@ -18,7 +18,11 @@ type ExamEventType =
   | "copy_attempt"
   | "paste_attempt"
   | "fullscreen_exit"
-  | "before_unload";
+  | "before_unload"
+  | "offline"
+  | "online"
+  | "disconnected"
+  | "failed_submit";
 
 type QuestionOption = {
   id: string;
@@ -91,6 +95,7 @@ type ExamRoomWorkspaceProps = {
   };
   questions: ExamQuestion[];
   answers: AttemptAnswer[];
+  serverNow: string;
 };
 
 type AnswerState = {
@@ -114,6 +119,7 @@ export function ExamRoomWorkspace({
   attempt,
   questions,
   answers: initialAnswers,
+  serverNow,
 }: ExamRoomWorkspaceProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>(() =>
@@ -135,6 +141,8 @@ export function ExamRoomWorkspace({
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
+  const [examSessionId] = useState(() => getOrCreateExamSessionId(attempt.id));
+  const [sessionConflict, setSessionConflict] = useState(false);
   const [submitLocked, setSubmitLocked] = useState(false);
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
   const [warning, setWarning] = useState<{
@@ -144,11 +152,22 @@ export function ExamRoomWorkspace({
   } | null>(null);
   const [violationCount, setViolationCount] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
-    getRemainingSeconds(attempt.exam_schedules?.end_at),
+    getRemainingSeconds(attempt.exam_schedules?.end_at, new Date(serverNow).getTime()),
   );
   const debounceTimers = useRef<Record<string, number>>({});
   const retryTimers = useRef<Record<string, number>>({});
   const saveVersions = useRef<Record<string, number>>({});
+  const saveAnswerRef = useRef<
+    | ((
+        questionId: string,
+        nextAnswer: AnswerState,
+        attemptNumber?: number,
+        version?: number,
+      ) => Promise<void>)
+    | null
+  >(null);
+  const answersRef = useRef<Record<string, AnswerState>>({});
+  const saveStatusRef = useRef<Record<string, SaveState>>({});
   const submitFormRef = useRef<HTMLFormElement>(null);
   const submitConfirmedRef = useRef(false);
   const examRoomRef = useRef<HTMLDivElement>(null);
@@ -156,8 +175,9 @@ export function ExamRoomWorkspace({
   const timeExpiredSubmitRef = useRef(false);
   const violationCountRef = useRef(violationCount);
   const lastViolationAtRef = useRef(0);
+  const restoredDraftRef = useRef(false);
   const isLocked = Boolean(attempt.locked_at);
-  const isReadOnly = attempt.status !== "in_progress" || isLocked;
+  const isReadOnly = attempt.status !== "in_progress" || isLocked || sessionConflict;
   const schedule = attempt.exam_schedules;
   const examPackage = schedule?.exam_packages;
   const currentItem = questions[activeIndex];
@@ -174,6 +194,44 @@ export function ExamRoomWorkspace({
   const canSubmitManually =
     !isReadOnly && !submitLocked && pendingSaveCount === 0 && failedSaveCount === 0;
 
+  const sendExamEvent = useCallback(
+    (eventType: ExamEventType, metadata?: Record<string, unknown>) => {
+      const payload = JSON.stringify({
+        attempt_id: attempt.id,
+        event_type: eventType,
+        metadata: {
+          path: window.location.pathname,
+          at: new Date().toISOString(),
+          ...metadata,
+        },
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/exam-events",
+          new Blob([payload], { type: "application/json" }),
+        );
+        return;
+      }
+
+      void fetch("/api/exam-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    },
+    [attempt.id],
+  );
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    saveStatusRef.current = saveStatus;
+  }, [saveStatus]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const storedCount = getStoredViolationCount(attempt.id);
@@ -188,11 +246,13 @@ export function ExamRoomWorkspace({
   useEffect(() => {
     const onOnline = () => {
       setIsOnline(true);
-      setSaveMessage("Koneksi kembali. Periksa jawaban yang belum tersimpan.");
+      setSaveMessage("Koneksi kembali. Jawaban tertunda akan disimpan ulang.");
+      sendExamEvent("online");
     };
     const onOffline = () => {
       setIsOnline(false);
       setSaveMessage("Browser offline. Jawaban akan perlu disimpan ulang.");
+      sendExamEvent("offline");
     };
 
     window.addEventListener("online", onOnline);
@@ -202,19 +262,55 @@ export function ExamRoomWorkspace({
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, []);
+  }, [sendExamEvent]);
 
   useEffect(() => {
     if (!schedule?.end_at) {
       return;
     }
 
+    const serverTimeOffsetMs = Date.now() - new Date(serverNow).getTime();
     const timer = window.setInterval(() => {
-      setRemainingSeconds(getRemainingSeconds(schedule.end_at));
+      setRemainingSeconds(
+        getRemainingSeconds(schedule.end_at, Date.now() - serverTimeOffsetMs),
+      );
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [schedule?.end_at]);
+  }, [schedule?.end_at, serverNow]);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      return;
+    }
+
+    const sendHeartbeat = async () => {
+      const response = await fetch("/api/exam-heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attempt_id: attempt.id,
+          session_id: examSessionId,
+        }),
+        keepalive: true,
+      }).catch(() => null);
+
+      if (response?.status === 409) {
+        setSessionConflict(true);
+        setSaveMessage("Attempt sedang aktif di perangkat atau tab lain.");
+        return;
+      }
+
+      if (response?.ok) {
+        setSessionConflict(false);
+      }
+    };
+
+    void sendHeartbeat();
+    const timer = window.setInterval(sendHeartbeat, 30000);
+
+    return () => window.clearInterval(timer);
+  }, [attempt.id, examSessionId, isReadOnly]);
 
   useEffect(() => {
     if (
@@ -243,33 +339,6 @@ export function ExamRoomWorkspace({
       return;
     }
 
-    const sendEvent = (eventType: ExamEventType, metadata?: Record<string, unknown>) => {
-      const payload = JSON.stringify({
-        attempt_id: attempt.id,
-        event_type: eventType,
-        metadata: {
-          path: window.location.pathname,
-          at: new Date().toISOString(),
-          ...metadata,
-        },
-      });
-
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          "/api/exam-events",
-          new Blob([payload], { type: "application/json" }),
-        );
-        return;
-      }
-
-      void fetch("/api/exam-events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-        keepalive: true,
-      });
-    };
-
     const registerViolation = (
       eventType: ExamEventType,
       title: string,
@@ -283,7 +352,7 @@ export function ExamRoomWorkspace({
       }
 
       lastViolationAtRef.current = now;
-      sendEvent(eventType, metadata);
+      sendExamEvent(eventType, metadata);
 
       if (!seriousEventTypes.includes(eventType)) {
         return;
@@ -323,7 +392,7 @@ export function ExamRoomWorkspace({
         "Peringatan ujian",
         "Jendela ujian kehilangan fokus. Tetap berada di halaman ujian sampai selesai.",
       );
-    const onFocus = () => sendEvent("tab_focus");
+    const onFocus = () => sendExamEvent("tab_focus");
     const onVisibilityChange = () => {
       if (document.hidden) {
         registerViolation(
@@ -334,7 +403,7 @@ export function ExamRoomWorkspace({
         return;
       }
 
-      sendEvent("visibility_visible");
+      sendExamEvent("visibility_visible");
     };
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) {
@@ -396,7 +465,10 @@ export function ExamRoomWorkspace({
         "Print tidak diizinkan selama ujian berlangsung.",
         { blocked_action: "print" },
       );
-    const onBeforeUnload = () => sendEvent("before_unload");
+    const onBeforeUnload = () => {
+      sendExamEvent("before_unload");
+      sendExamEvent("disconnected");
+    };
 
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
@@ -421,7 +493,7 @@ export function ExamRoomWorkspace({
       document.removeEventListener("visibilitychange", onVisibilityChange);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
     };
-  }, [attempt.id, isReadOnly]);
+  }, [attempt.id, isReadOnly, sendExamEvent]);
 
   useEffect(() => {
     const timers = debounceTimers.current;
@@ -437,69 +509,84 @@ export function ExamRoomWorkspace({
     };
   }, []);
 
-  const saveAnswer = async (
-    questionId: string,
-    nextAnswer: AnswerState,
-    attemptNumber = 0,
-    version = (saveVersions.current[questionId] ?? 0) + 1,
-  ) => {
-    if (attemptNumber === 0) {
-      saveVersions.current[questionId] = version;
-    }
+  const saveAnswer = useCallback(
+    async (
+      questionId: string,
+      nextAnswer: AnswerState,
+      attemptNumber = 0,
+      version = (saveVersions.current[questionId] ?? 0) + 1,
+    ) => {
+      if (attemptNumber === 0) {
+        saveVersions.current[questionId] = version;
+      }
 
-    window.clearTimeout(retryTimers.current[questionId]);
+      window.clearTimeout(retryTimers.current[questionId]);
 
-    if (!navigator.onLine) {
-      setIsOnline(false);
-      setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
-      setSaveMessage("Browser offline. Jawaban belum tersimpan.");
-      return;
-    }
-
-    setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
-    setSaveMessage(
-      attemptNumber > 0
-        ? `Mencoba simpan ulang jawaban (${attemptNumber + 1}/3)...`
-        : "Menyimpan jawaban...",
-    );
-
-    const response = await fetch("/api/exam-answers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        attempt_id: attempt.id,
-        question_id: questionId,
-        selected_option_id: nextAnswer.selected_option_id ?? "",
-        essay_answer: nextAnswer.essay_answer ?? "",
-      }),
-    }).catch(() => null);
-
-    if (saveVersions.current[questionId] !== version) {
-      return;
-    }
-
-    if (!response?.ok) {
-      const body = response ? await response.json().catch(() => null) : null;
-
-      if (attemptNumber < 2 && navigator.onLine) {
-        setSaveMessage(body?.message ?? "Gagal menyimpan. Mencoba ulang...");
-        retryTimers.current[questionId] = window.setTimeout(() => {
-          void saveAnswer(questionId, nextAnswer, attemptNumber + 1, version);
-        }, 1200 * (attemptNumber + 1));
+      if (!navigator.onLine) {
+        setIsOnline(false);
+        setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
+        setSaveMessage("Browser offline. Jawaban belum tersimpan.");
         return;
       }
 
-      setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
-      setSaveMessage(body?.message ?? "Jawaban gagal disimpan.");
-      return;
-    }
+      setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
+      setSaveMessage(
+        attemptNumber > 0
+          ? `Mencoba simpan ulang jawaban (${attemptNumber + 1}/3)...`
+          : "Menyimpan jawaban...",
+      );
 
-    setSaveStatus((current) => ({ ...current, [questionId]: "saved" }));
-    setLastSavedAt(new Date().toISOString());
-    setSaveMessage("Jawaban tersimpan.");
-  };
+      const response = await fetch("/api/exam-answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attempt_id: attempt.id,
+          question_id: questionId,
+          session_id: examSessionId,
+          selected_option_id: nextAnswer.selected_option_id ?? "",
+          essay_answer: nextAnswer.essay_answer ?? "",
+        }),
+      }).catch(() => null);
+
+      if (saveVersions.current[questionId] !== version) {
+        return;
+      }
+
+      if (!response?.ok) {
+        const body = response ? await response.json().catch(() => null) : null;
+
+        if (attemptNumber < 2 && navigator.onLine) {
+          setSaveMessage(body?.message ?? "Gagal menyimpan. Mencoba ulang...");
+          retryTimers.current[questionId] = window.setTimeout(() => {
+            void saveAnswerRef.current?.(
+              questionId,
+              nextAnswer,
+              attemptNumber + 1,
+              version,
+            );
+          }, 1200 * (attemptNumber + 1));
+          return;
+        }
+
+        setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
+        setSaveMessage(body?.message ?? "Jawaban gagal disimpan.");
+        return;
+      }
+
+      setSaveStatus((current) => ({ ...current, [questionId]: "saved" }));
+      setLastSavedAt(new Date().toISOString());
+      clearAnswerDraft(attempt.id, questionId);
+      setSaveMessage("Jawaban tersimpan.");
+    },
+    [attempt.id, examSessionId],
+  );
+
+  useEffect(() => {
+    saveAnswerRef.current = saveAnswer;
+  }, [saveAnswer]);
 
   const updateAnswer = (questionId: string, nextAnswer: AnswerState) => {
+    persistAnswerDraft(attempt.id, questionId, nextAnswer);
     setAnswers((current) => ({
       ...current,
       [questionId]: {
@@ -546,6 +633,81 @@ export function ExamRoomWorkspace({
 
     void saveAnswer(questionId, answer);
   };
+
+  useEffect(() => {
+    if (restoredDraftRef.current || isReadOnly) {
+      return;
+    }
+
+    restoredDraftRef.current = true;
+    const draftAnswers = readAnswerDrafts(attempt.id);
+    const questionIds = new Set(questions.map(({ question }) => question.id));
+    const draftEntries = Object.entries(draftAnswers).filter(([questionId]) =>
+      questionIds.has(questionId),
+    );
+
+    if (draftEntries.length === 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAnswers((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          draftEntries.map(([questionId, answer]) => [
+            questionId,
+            {
+              ...current[questionId],
+              ...answer,
+            },
+          ]),
+        ),
+      }));
+      setSaveStatus((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          draftEntries.map(([questionId]) => [questionId, "error" as SaveState]),
+        ),
+      }));
+      setSaveMessage(
+        `Draft lokal dipulihkan. Menyimpan ulang ${draftEntries.length} jawaban...`,
+      );
+
+      if (navigator.onLine) {
+        draftEntries.forEach(([questionId, answer]) => {
+          void saveAnswer(questionId, answer);
+        });
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [attempt.id, isReadOnly, questions, saveAnswer]);
+
+  useEffect(() => {
+    if (!isOnline || isReadOnly) {
+      return;
+    }
+
+    const failedQuestionIds = Object.entries(saveStatusRef.current)
+      .filter(([, status]) => status === "error")
+      .map(([questionId]) => questionId);
+
+    if (failedQuestionIds.length === 0) {
+      return;
+    }
+
+    setSaveMessage(
+      `Koneksi kembali. Menyimpan ulang ${failedQuestionIds.length} jawaban tertunda...`,
+    );
+
+    failedQuestionIds.forEach((questionId) => {
+      const answer = answersRef.current[questionId];
+
+      if (answer) {
+        void saveAnswer(questionId, answer);
+      }
+    });
+  }, [isOnline, isReadOnly, saveAnswer]);
 
   const closeWarningAndRefocus = () => {
     setWarning(null);
@@ -639,6 +801,13 @@ export function ExamRoomWorkspace({
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           Attempt dikunci oleh pengawas.{" "}
           {attempt.lock_reason ?? "Tunggu instruksi sebelum melanjutkan."}
+        </div>
+      ) : null}
+
+      {sessionConflict ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          Attempt sedang aktif di perangkat atau tab lain. Tutup sesi lain atau
+          tunggu sekitar 2 menit sebelum melanjutkan di perangkat ini.
         </div>
       ) : null}
 
@@ -847,6 +1016,11 @@ export function ExamRoomWorkspace({
                 (pendingSaveCount > 0 || failedSaveCount > 0)
               ) {
                 event.preventDefault();
+                sendExamEvent("failed_submit", {
+                  reason: pendingSaveCount > 0 ? "pending_save" : "failed_save",
+                  pending_save_count: pendingSaveCount,
+                  failed_save_count: failedSaveCount,
+                });
                 setSaveMessage(
                   pendingSaveCount > 0
                     ? "Tunggu proses simpan selesai sebelum submit."
@@ -866,6 +1040,7 @@ export function ExamRoomWorkspace({
             }}
           >
             <input type="hidden" name="attempt_id" value={attempt.id} />
+            <input type="hidden" name="session_id" value={examSessionId} />
             <button
               type="submit"
               disabled={!canSubmitManually}
@@ -1087,12 +1262,12 @@ function formatDateTime(value?: string | null) {
   return formatJakartaDateTime(value);
 }
 
-function getRemainingSeconds(value?: string | null) {
+function getRemainingSeconds(value?: string | null, nowMs = Date.now()) {
   if (!value) {
     return 0;
   }
 
-  return Math.max(0, Math.floor((new Date(value).getTime() - Date.now()) / 1000));
+  return Math.max(0, Math.floor((new Date(value).getTime() - nowMs) / 1000));
 }
 
 function formatRemainingTime(totalSeconds: number) {
@@ -1111,6 +1286,108 @@ function formatRemainingTime(totalSeconds: number) {
 
 function getViolationStorageKey(attemptId: string) {
   return `exam-violations:${attemptId}`;
+}
+
+function getExamSessionStorageKey(attemptId: string) {
+  return `exam-session:${attemptId}`;
+}
+
+function getOrCreateExamSessionId(attemptId: string) {
+  if (typeof window === "undefined") {
+    return "server-render-placeholder";
+  }
+
+  const key = getExamSessionStorageKey(attemptId);
+  const storedSessionId = window.localStorage.getItem(key);
+
+  if (storedSessionId) {
+    return storedSessionId;
+  }
+
+  const sessionId =
+    window.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  window.localStorage.setItem(key, sessionId);
+
+  return sessionId;
+}
+
+function getAnswerDraftStorageKey(attemptId: string) {
+  return `exam-answer-drafts:${attemptId}`;
+}
+
+function readAnswerDrafts(attemptId: string): Record<string, AnswerState> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const storedDrafts = window.localStorage.getItem(
+    getAnswerDraftStorageKey(attemptId),
+  );
+
+  if (!storedDrafts) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(storedDrafts) as Record<string, AnswerState>;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function persistAnswerDraft(
+  attemptId: string,
+  questionId: string,
+  answer: AnswerState,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const drafts = readAnswerDrafts(attemptId);
+
+    window.localStorage.setItem(
+      getAnswerDraftStorageKey(attemptId),
+      JSON.stringify({
+        ...drafts,
+        [questionId]: {
+          selected_option_id: answer.selected_option_id ?? null,
+          essay_answer: answer.essay_answer ?? null,
+        },
+      }),
+    );
+  } catch {}
+}
+
+function clearAnswerDraft(attemptId: string, questionId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const drafts = readAnswerDrafts(attemptId);
+
+    delete drafts[questionId];
+
+    if (Object.keys(drafts).length === 0) {
+      window.localStorage.removeItem(getAnswerDraftStorageKey(attemptId));
+      return;
+    }
+
+    window.localStorage.setItem(
+      getAnswerDraftStorageKey(attemptId),
+      JSON.stringify(drafts),
+    );
+  } catch {}
 }
 
 function getStoredViolationCount(attemptId: string) {

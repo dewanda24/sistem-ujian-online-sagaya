@@ -11,22 +11,52 @@ export function MonitoringAutoRefresh({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(intervalSeconds);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      setSecondsUntilRefresh((current) => {
+        if (current > 1) {
+          return current - 1;
+        }
+
+        startTransition(() => {
+          router.refresh();
+          setLastUpdatedAt(new Date());
+        });
+
+        return intervalSeconds;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [intervalSeconds, router]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        return;
+      }
+
+      setSecondsUntilRefresh(intervalSeconds);
       startTransition(() => {
         router.refresh();
         setLastUpdatedAt(new Date());
       });
-    }, intervalSeconds * 1000);
+    };
 
-    return () => window.clearInterval(timer);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [intervalSeconds, router]);
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-4 py-3 text-xs text-muted-foreground">
       <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
       <span>Auto-refresh aktif setiap {intervalSeconds} detik</span>
+      <span className="hidden sm:inline">|</span>
+      <span>Refresh berikutnya: {secondsUntilRefresh} detik</span>
       <span className="hidden sm:inline">|</span>
       <span>
         Terakhir diperbarui:{" "}

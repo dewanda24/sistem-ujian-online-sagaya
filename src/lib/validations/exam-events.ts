@@ -11,6 +11,10 @@ export const examEventSchema = z.object({
     "paste_attempt",
     "fullscreen_exit",
     "before_unload",
+    "offline",
+    "online",
+    "disconnected",
+    "failed_submit",
   ]),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
