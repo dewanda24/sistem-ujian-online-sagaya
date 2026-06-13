@@ -81,11 +81,11 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       href: "/dashboard/admin/audit-logs",
     },
     {
-      title: "Attempt Lock Fields",
+      title: "Fitur Kunci Pengerjaan",
       status: lockFieldsAvailable ? "ready" : "missing",
       value: lockFieldsAvailable ? "Siap" : "Belum Siap",
       description:
-        "Wajib untuk fitur lock/unlock attempt dari monitoring pengawas.",
+        "Wajib untuk fitur kunci dan buka kunci pengerjaan dari pemantauan pengawas.",
       href: "/dashboard/proctor/monitoring",
     },
     {
@@ -120,7 +120,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       title: "Jadwal Aktif Tanpa Peserta",
       status: activeSchedulesWithoutParticipants === 0 ? "ready" : "missing",
       value: String(activeSchedulesWithoutParticipants),
-      description: "Jalankan Sync Peserta sebelum ujian dimulai.",
+      description: "Sinkronkan peserta sebelum ujian dimulai.",
       href: "/dashboard/exams/schedules",
     },
   ];

@@ -46,7 +46,7 @@ export default async function CreateExamPackagePage({ searchParams }: PageProps)
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <DashboardPageHeader
           title={isEditing ? "Edit Paket" : "Buat Paket"}
-          description="Susun paket ujian melalui wizard singkat. Daftar soal dibuat compact dan hanya menampilkan detail saat Preview."
+          description="Susun paket ujian melalui langkah singkat. Daftar soal dibuat ringkas dan hanya menampilkan detail saat pratinjau."
         />
         <Link
           href="/dashboard/exams/packages"

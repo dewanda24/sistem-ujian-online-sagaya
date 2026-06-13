@@ -25,7 +25,7 @@ export default async function ImportExcelPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Import Excel / CSV Bank Soal"
-        description="Preview template Excel/CSV lalu simpan baris valid sebagai draft."
+        description="Pratinjau template Excel/CSV lalu simpan baris valid sebagai draft."
       />
       <ExcelImportForm notice={params.notice} message={params.message} />
     </div>

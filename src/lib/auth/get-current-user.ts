@@ -3,6 +3,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
+import { hasAnyActiveProctorAssignment } from "@/lib/auth/proctor-scope";
 import type { CurrentUser, RoleName, UserPermission } from "@/types/auth";
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -63,6 +64,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     permissions = await getRolePermissions(appUser.role_id);
   }
 
+  const roleName = role?.name as RoleName | undefined;
+  const hasActiveProctorAssignment =
+    roleName === "teacher" || roleName === "proctor"
+      ? await hasAnyActiveProctorAssignment(appUser.id)
+      : false;
+
   return {
     id: appUser.id,
     email: appUser.email,
@@ -74,12 +81,13 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     roles: role
       ? {
           id: role.id,
-          name: role.name as RoleName,
+          name: roleName as RoleName,
           label: role.label,
         }
       : null,
     user_profiles: profile ?? null,
     permissions,
+    has_active_proctor_assignment: hasActiveProctorAssignment,
   };
 }
 

@@ -35,40 +35,40 @@ export default async function RolesPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Roles"
-        description="Pantau role aplikasi, jumlah user, dan jumlah permission. Struktur role tidak dihapus dari UI ini."
+        title="Peran"
+        description="Pantau peran aplikasi, jumlah pengguna, dan jumlah izin. Struktur peran tidak dihapus dari halaman ini."
       />
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
-          title="Total Roles"
+          title="Total Peran"
           value={String(roles.length)}
-          description="Role aktif di sistem RBAC."
+          description="Peran aktif di sistem akses."
         />
         <DashboardCard
-          title="Total Users"
+          title="Total Pengguna"
           value={String(totalUsers)}
-          description="User yang sudah terikat ke role."
+          description="Pengguna yang sudah terikat ke peran."
         />
         <DashboardCard
-          title="Role Kosong"
+          title="Peran Kosong"
           value={String(emptyRoles)}
-          description="Role tanpa user aktif/internal."
+          description="Peran tanpa pengguna aktif/internal."
         />
         <DashboardCard
-          title="Permission Terbanyak"
+          title="Izin Terbanyak"
           value={highestPermissionRole?.label ?? "-"}
-          description={`${highestPermissionRole?.permissionCount ?? 0} permission`}
+          description={`${highestPermissionRole?.permissionCount ?? 0} izin`}
         />
       </section>
 
       <DataTable
-        columns={["Role", "Label", "Users", "Permissions", "Aksi"]}
+        columns={["Peran", "Label", "Pengguna", "Izin", "Aksi"]}
         isEmpty={roles.length === 0}
         empty={
           <EmptyState
-            title="Role belum tersedia"
-            description="Seed role perlu dijalankan sebelum RBAC bisa digunakan."
+            title="Peran belum tersedia"
+            description="Data peran perlu disiapkan sebelum akses pengguna bisa digunakan."
           />
         }
       >
@@ -86,8 +86,8 @@ export default async function RolesPage({ searchParams }: PageProps) {
                 />
                 <ConfirmSubmitButton
                   disabled={!canManage}
-                  confirmMessage={`Simpan perubahan label role ${role.name}?`}
-                  confirmTitle="Konfirmasi Role"
+                  confirmMessage={`Simpan perubahan label peran ${role.name}?`}
+                  confirmTitle="Konfirmasi Peran"
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Simpan
@@ -97,7 +97,7 @@ export default async function RolesPage({ searchParams }: PageProps) {
             <td className="px-4 py-3">{role.userCount}</td>
             <td className="px-4 py-3">{role.permissionCount}</td>
             <td className="px-4 py-3 text-xs text-muted-foreground">
-              Permission matrix ada di halaman Permissions
+              Matriks izin ada di halaman Izin
             </td>
           </tr>
         ))}

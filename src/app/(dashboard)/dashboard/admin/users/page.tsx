@@ -63,41 +63,41 @@ export default async function UsersPage({
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title={currentUser.roles?.name === "super_admin" ? "User Global" : "Users"}
+        title={currentUser.roles?.name === "super_admin" ? "Pengguna Global" : "Pengguna"}
         description={
           currentUser.roles?.name === "super_admin"
-            ? "Lihat semua user lintas sekolah, filter role/status/sekolah, reset password, dan aktif/nonaktifkan akun."
-            : "Direktori akun dan governance user aplikasi. CRUD spesifik guru, siswa, admin sekolah, dan pengawas khusus diarahkan ke Master Data agar struktur operasional tetap rapi."
+            ? "Lihat semua pengguna lintas sekolah, filter peran/status/sekolah, reset password, dan aktif/nonaktifkan akun."
+            : "Direktori akun aplikasi. Akun guru, siswa, admin sekolah, dan pengawas khusus dikelola dari Data Sekolah agar lebih rapi."
         }
       />
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
-          title="Total Users"
+          title="Total Pengguna"
           value={String(summary.total)}
           description="Semua akun internal yang terdaftar."
         />
         <DashboardCard
-          title="Tanpa Auth"
+          title="Belum Terhubung"
           value={String(summary.withoutAuth)}
-          description="Belum tersambung ke Supabase Auth."
+          description="Belum tersambung ke akun login."
         />
         <DashboardCard
-          title="Tanpa Role"
+          title="Tanpa Peran"
           value={String(summary.withoutRole)}
           description="Berisiko gagal akses dashboard."
         />
         <DashboardCard
-          title="Inactive"
+          title="Tidak Aktif"
           value={String(summary.inactive)}
-          description="Akun nonaktif atau status tidak active."
+          description="Akun nonaktif atau status belum aktif."
         />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <DashboardCard
-          title="Role Distribution"
-          description="Ringkasan jumlah akun per role untuk audit cepat."
+          title="Sebaran Peran"
+          description="Ringkasan jumlah akun per peran untuk pengecekan cepat."
         >
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             {summary.byRole.map((item) => (
@@ -118,8 +118,8 @@ export default async function UsersPage({
         </DashboardCard>
 
         <DashboardCard
-          title="CRUD Operasional"
-          description="Gunakan jalur Master Data untuk role yang punya konteks akademik atau operasional khusus."
+          title="Data Operasional"
+          description="Gunakan Data Sekolah untuk akun yang memiliki konteks akademik atau tugas khusus."
         >
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <QuickLink href="/dashboard/master-data/admins" label="Admin Sekolah" />
@@ -131,8 +131,8 @@ export default async function UsersPage({
       </section>
 
       <FormSection
-        title={editable ? "Edit User Operasional Umum" : "Tambah User Operasional Umum"}
-        description="Form ini tetap tersedia untuk akun umum. Role guru, siswa, admin sekolah, dan pengawas khusus sebaiknya dikelola dari Master Data masing-masing."
+        title={editable ? "Edit Pengguna Umum" : "Tambah Pengguna Umum"}
+        description="Form ini tersedia untuk akun umum. Guru, siswa, admin sekolah, dan pengawas khusus sebaiknya dikelola dari Data Sekolah masing-masing."
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
           <input type="hidden" name="redirect_path" value={basePath} />
@@ -202,22 +202,22 @@ export default async function UsersPage({
             defaultValue={editable?.status ?? "active"}
             className="rounded-md border px-3 py-2 text-sm"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Tidak Aktif</option>
           </select>
           <div className="flex justify-end md:col-span-2">
             <ConfirmSubmitButton
               confirmMessage={
                 editable
-                  ? "Simpan perubahan user, termasuk role/status bila diubah?"
-                  : "Tambah user operasional baru?"
+                  ? "Simpan perubahan pengguna, termasuk peran/status bila diubah?"
+                  : "Tambah pengguna operasional baru?"
               }
-              confirmTitle="Konfirmasi User"
+              confirmTitle="Konfirmasi Pengguna"
               loadingText={editable ? "Memperbarui..." : "Menyimpan..."}
               variant="default"
               className="px-4 py-2 text-sm"
             >
-              {editable ? "Update User" : "Tambah User"}
+              {editable ? "Simpan Pengguna" : "Tambah Pengguna"}
             </ConfirmSubmitButton>
           </div>
         </form>
@@ -235,7 +235,7 @@ export default async function UsersPage({
           defaultValue={params.role_id ?? ""}
           className="rounded-md border px-3 py-2 text-sm"
         >
-          <option value="">Semua role</option>
+          <option value="">Semua peran</option>
           {roles.map((role) => (
             <option key={role.id} value={role.id}>
               {role.label}
@@ -248,8 +248,8 @@ export default async function UsersPage({
           className="rounded-md border px-3 py-2 text-sm"
         >
           <option value="">Semua status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         {currentUser.roles?.name === "super_admin" ? (
           <select
@@ -274,17 +274,17 @@ export default async function UsersPage({
         columns={[
           "Nama",
           "Email",
-          "Role",
+          "Peran",
           "Sekolah",
-          "Auth User",
+          "Akun Login",
           "Status",
           "Aksi",
         ]}
         isEmpty={users.length === 0}
         empty={
           <EmptyState
-            title="User belum ditemukan"
-            description="Data user akan muncul setelah akun aplikasi dibuat."
+            title="Pengguna belum ditemukan"
+            description="Data pengguna akan muncul setelah akun aplikasi dibuat."
           />
         }
       >
@@ -322,7 +322,7 @@ export default async function UsersPage({
             <td className="px-4 py-3">
               {item.role?.name === "teacher" || item.role?.name === "student" ? (
                 <span className="text-xs text-muted-foreground">
-                  Kelola di Master Data
+                  Kelola di Data Sekolah
                 </span>
               ) : (
                 <div className="flex flex-wrap gap-2">

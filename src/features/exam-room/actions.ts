@@ -236,7 +236,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Attempt tidak aktif.",
+      "Pengerjaan tidak aktif.",
     );
   }
 
@@ -244,7 +244,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Attempt sedang dikunci oleh pengawas.",
+      "Pengerjaan sedang dikunci oleh pengawas.",
     );
   }
 
@@ -252,7 +252,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Attempt sedang aktif di perangkat atau tab lain.",
+      "Pengerjaan sedang aktif di perangkat atau tab lain.",
     );
   }
 
@@ -261,7 +261,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Waktu ujian sudah berakhir. Attempt dikunci.",
+      "Waktu ujian sudah berakhir. Pengerjaan dikunci.",
     );
   }
 
@@ -331,7 +331,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Attempt tidak ditemukan atau sudah dikumpulkan.",
+      "Pengerjaan tidak ditemukan atau sudah dikumpulkan.",
     );
   }
 
@@ -343,7 +343,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Attempt sedang aktif di perangkat atau tab lain.",
+      "Pengerjaan sedang aktif di perangkat atau tab lain.",
     );
   }
 
@@ -351,7 +351,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Attempt sedang dikunci oleh pengawas.",
+      "Pengerjaan sedang dikunci oleh pengawas.",
     );
   }
 
@@ -360,7 +360,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/history",
       false,
-      "Waktu ujian sudah berakhir. Attempt ditandai expired.",
+      "Waktu ujian sudah berakhir. Pengerjaan ditandai waktu habis.",
     );
   }
 

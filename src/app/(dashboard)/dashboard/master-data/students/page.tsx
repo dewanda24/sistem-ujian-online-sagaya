@@ -93,8 +93,8 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         </select>
         <select name="status" defaultValue={params.status ?? ""} className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
           <option value="">Semua status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         <div className="flex gap-2">
           <Link href="/dashboard/master-data/students" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]">Reset</Link>

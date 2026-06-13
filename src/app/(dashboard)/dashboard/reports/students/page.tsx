@@ -67,13 +67,13 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <DashboardPageHeader
           title="Hasil Ujian"
-          description="Lihat status submit, nilai siswa, dan hasil yang perlu dikoreksi."
+          description="Lihat status pengumpulan, nilai siswa, dan hasil yang perlu dikoreksi."
         />
         <Link
           href={buildExportHref(params)}
           className="inline-flex rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC]"
         >
-          Export CSV
+          Unduh CSV
         </Link>
       </div>
 
@@ -108,8 +108,8 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
           className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
         >
           <option value="">Semua status</option>
-          <option value="submitted">Submit</option>
-          <option value="expired">Expired</option>
+          <option value="submitted">Sudah Dikumpulkan</option>
+          <option value="expired">Waktu Habis</option>
         </select>
         <input
           name="q"
@@ -131,8 +131,8 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
       </form>
 
       <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-medium text-[#0F172A] shadow-sm">
-        Peserta {summary.participants} · Submit {summary.submitted} · Rata-rata{" "}
-        {summary.average} · Tertinggi {summary.highest}
+        Peserta {summary.participants} - Sudah Dikumpulkan {summary.submitted} - Rata-rata{" "}
+        {summary.average} - Tertinggi {summary.highest}
       </div>
 
       <ReportResultTable rows={rows} />

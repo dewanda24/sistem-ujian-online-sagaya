@@ -26,7 +26,7 @@ export default async function NewSuperAdminSchoolPage({
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
         title="Tambah Sekolah"
-        description="Daftarkan tenant sekolah baru beserta profil, kontak, dan status aktif platform."
+        description="Daftarkan sekolah baru beserta profil, kontak, dan status aktif platform."
       />
       <Link
         href="/dashboard/super-admin/schools"

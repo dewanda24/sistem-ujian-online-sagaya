@@ -27,17 +27,17 @@ type PageProps = {
 const exportRows = [
   {
     module: "Sekolah",
-    description: "Data tenant sekolah.",
+    description: "Data sekolah.",
     href: "/api/super-admin/export/schools",
   },
   {
-    module: "User",
-    description: "Semua user lintas sekolah dan role.",
+    module: "Pengguna",
+    description: "Semua pengguna lintas sekolah dan peran.",
     href: "/api/super-admin/export/users",
   },
   {
     module: "Laporan Global",
-    description: "Ringkasan sekolah, user, dan ujian.",
+    description: "Ringkasan sekolah, pengguna, dan ujian.",
     href: "/api/super-admin/export/reports",
   },
 ];
@@ -63,8 +63,8 @@ export default async function SuperAdminImportExportPage({
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Import & Export Global"
-        description="Import sekolah/admin sekolah dengan preview validasi, serta export sekolah, user, dan laporan global."
+        title="Import & Unduh Data Global"
+        description="Import sekolah/admin sekolah dengan pratinjau validasi, serta unduh data sekolah, pengguna, dan laporan global."
       />
 
       <nav className="flex flex-wrap gap-2 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-sm">
@@ -72,7 +72,7 @@ export default async function SuperAdminImportExportPage({
           Import
         </TabLink>
         <TabLink active={activeTab === "export"} href="/dashboard/super-admin/import-export?tab=export">
-          Export
+          Unduh Data
         </TabLink>
         <TabLink active={activeTab === "history"} href="/dashboard/super-admin/import-export?tab=history">
           Log Import
@@ -83,7 +83,7 @@ export default async function SuperAdminImportExportPage({
         <div className="space-y-6">
           <section className="grid gap-4 lg:grid-cols-2">
             <DashboardCard
-              title="Preview Import"
+              title="Pratinjau Import"
               description="Upload CSV untuk validasi template sebelum data diproses."
             >
               <form action={previewGlobalImportAction} className="space-y-3 text-sm">
@@ -108,11 +108,11 @@ export default async function SuperAdminImportExportPage({
                   required
                 />
                 <ConfirmSubmitButton
-                  confirmMessage="Validasi file dan buat preview import?"
-                  confirmTitle="Konfirmasi Preview Import"
+                  confirmMessage="Validasi file dan buat pratinjau import?"
+                  confirmTitle="Konfirmasi Pratinjau Import"
                   variant="default"
                 >
-                  Preview Import
+                  Pratinjau Import
                 </ConfirmSubmitButton>
               </form>
             </DashboardCard>
@@ -136,8 +136,8 @@ export default async function SuperAdminImportExportPage({
 
           {selectedJob ? (
             <DashboardCard
-              title="Preview Terakhir"
-              description="Commit hanya tersedia jika semua baris valid."
+              title="Pratinjau Terakhir"
+              description="Proses import hanya tersedia jika semua baris valid."
             >
               <div className="grid gap-3 text-sm md:grid-cols-4">
                 <Metric label="Jenis" value={selectedJob.type} />
@@ -149,11 +149,11 @@ export default async function SuperAdminImportExportPage({
                 <form action={commitGlobalImportAction} className="mt-4">
                   <input type="hidden" name="job_id" value={selectedJob.id} />
                   <ConfirmSubmitButton
-                    confirmMessage="Commit import valid ke database sekarang?"
-                    confirmTitle="Konfirmasi Commit Import"
+                    confirmMessage="Proses import valid ke database sekarang?"
+                    confirmTitle="Konfirmasi Proses Import"
                     variant="default"
                   >
-                    Commit Import
+                    Proses Import
                   </ConfirmSubmitButton>
                 </form>
               ) : null}

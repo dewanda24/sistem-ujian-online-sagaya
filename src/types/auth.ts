@@ -34,4 +34,5 @@ export interface CurrentUser {
   } | null;
 
   permissions: UserPermission[];
+  has_active_proctor_assignment?: boolean;
 }

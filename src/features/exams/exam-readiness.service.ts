@@ -644,8 +644,8 @@ export async function getScheduleExamReadiness(
   addCheck(checks, {
     key: "proctor:teacher-valid",
     category: "proctor",
-    title: "Teacher proctor valid",
-    description: "Pengawas guru harus aktif, berperan guru, dan satu sekolah.",
+    title: "Pengawas valid",
+    description: "Pengawas harus akun aktif, berperan guru atau pengawas khusus, dan satu sekolah.",
     severity: "critical",
     passed: activeProctors.every((proctor) => {
       const user = firstRelation(proctor.users);
@@ -654,7 +654,7 @@ export async function getScheduleExamReadiness(
       return (
         Boolean(user?.id) &&
         user?.status === "active" &&
-        role === "teacher" &&
+        (role === "teacher" || role === "proctor") &&
         user?.school_id === schedule.school_id
       );
     }),

@@ -114,6 +114,18 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
         </DashboardCard>
       </section>
 
+      <DashboardCard
+        title="Cakupan Backup Aplikasi"
+        description="Snapshot dari halaman ini bersifat terbatas. Backup penuh database dan storage tetap dilakukan dari Supabase."
+      >
+        <div className="grid gap-2 text-sm md:grid-cols-2">
+          <ReadinessRow label="Dicadangkan penuh oleh fitur ini" value="System settings, metadata sekolah" ready />
+          <ReadinessRow label="Dicatat sebagai ringkasan" value="Users, jadwal, attempts" />
+          <ReadinessRow label="Tidak dipulihkan oleh fitur ini" value="User, soal, ujian, jawaban, nilai" />
+          <ReadinessRow label="Media question-media" value="Tidak ikut snapshot" />
+        </div>
+      </DashboardCard>
+
       <section className="grid gap-4 lg:grid-cols-2">
         <DashboardCard
           title="Buat Backup"

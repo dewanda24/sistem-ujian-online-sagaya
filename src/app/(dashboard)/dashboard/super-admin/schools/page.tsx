@@ -33,7 +33,7 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
         title="Manajemen Sekolah"
-        description="Kelola tenant sekolah, status layanan, dan ringkasan aktivitas lintas platform Sagaya."
+        description="Kelola sekolah, status layanan, dan ringkasan aktivitas lintas platform Sagaya."
       />
       <div className="flex justify-end">
         <Link
@@ -48,7 +48,7 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
         <DashboardCard
           title="Total Sekolah"
           value={String(schools.length)}
-          description="Tenant sekolah terdaftar di platform."
+          description="Sekolah yang terdaftar di platform."
         />
         <DashboardCard
           title="Sekolah Aktif"
@@ -75,8 +75,8 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
           className="rounded-md border px-3 py-2 text-sm"
         >
           <option value="">Semua status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
           Filter
@@ -101,7 +101,7 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
         empty={
           <EmptyState
             title="Belum ada sekolah"
-            description="Tambahkan sekolah pertama untuk mulai mengelola tenant platform."
+            description="Tambahkan sekolah pertama untuk mulai mengelola platform."
           />
         }
       >

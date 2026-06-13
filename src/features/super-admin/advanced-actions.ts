@@ -220,7 +220,7 @@ export async function previewGlobalImportAction(formData: FormData) {
       : redirectPath,
     {
       ok: !error,
-      message: error ? getFriendlyErrorMessage(error) : "Preview import berhasil dibuat.",
+      message: error ? getFriendlyErrorMessage(error) : "Pratinjau import berhasil dibuat.",
     },
   );
 }
@@ -520,7 +520,7 @@ async function commitAdminRows(rows: Array<Record<string, string>>) {
       total_rows: rows.length,
       success_count: 0,
       error_count: rows.length,
-      errors: [{ row_number: 0, errors: ["Role admin tidak ditemukan"] }],
+      errors: [{ row_number: 0, errors: ["Peran admin tidak ditemukan"] }],
     };
   }
 

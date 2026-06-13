@@ -20,44 +20,44 @@ function formatDateTime(value?: string | null) {
 }
 
 export default async function ProctorSchedulesPage() {
-  await requirePermission("exam_monitoring.view");
-  const summary = await getProctorOperationalSummary();
+  const user = await requirePermission("exam_monitoring.view");
+  const summary = await getProctorOperationalSummary(user);
 
   return (
     <div className="space-y-6">
       <DashboardPageHeader
         title="Jadwal Pengawasan Khusus"
-        description="Daftar jadwal yang dapat dipantau akun pengawas khusus non-guru berdasarkan permission monitoring saat ini."
+        description="Daftar jadwal yang ditugaskan kepada pengawas."
       />
 
       <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
         <SummaryCard label="Jadwal" value={summary.schedules.length} />
-        <SummaryCard label="Active" value={summary.activeSchedules.length} />
+        <SummaryCard label="Aktif" value={summary.activeSchedules.length} />
         <SummaryCard label="Mendatang" value={summary.upcomingSchedules.length} />
         <SummaryCard label="Peserta" value={summary.participants.length} />
-        <SummaryCard label="In Progress" value={summary.inProgress} />
-        <SummaryCard label="Event" value={summary.events.length} />
+        <SummaryCard label="Sedang Ujian" value={summary.inProgress} />
+        <SummaryCard label="Kejadian" value={summary.events.length} />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <QuickLink
-          title="Monitoring Live"
-          description="Buka dashboard monitoring dengan auto-refresh, filter kelas/status, dan aksi kontrol peserta."
+          title="Pengawasan Langsung"
+          description="Buka halaman pengawasan dengan pembaruan otomatis, filter kelas/status, dan aksi bantuan peserta."
           href="/dashboard/proctor/monitoring"
         />
         <QuickLink
           title="Peserta Sedang Ujian"
-          description="Langsung fokus ke attempt yang sedang berjalan."
+          description="Langsung fokus ke peserta yang sedang mengerjakan."
           href="/dashboard/proctor/monitoring?status=in_progress"
         />
         <QuickLink
           title="Peserta Belum Mulai"
-          description="Cek peserta assigned yang belum membuka ujian."
+          description="Cek peserta yang belum membuka ujian."
           href="/dashboard/proctor/monitoring?status=assigned"
         />
         <QuickLink
           title="Token Ujian"
-          description="Buka tampilan token read-only yang siap dicetak untuk ruang ujian."
+          description="Buka tampilan token yang siap dicetak untuk ruang ujian."
           href="/dashboard/proctor/tokens"
         />
       </div>
@@ -67,7 +67,7 @@ export default async function ProctorSchedulesPage() {
           href="/api/monitoring/export"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export Monitoring CSV
+          Unduh Data Pemantauan
         </Link>
       </div>
 
@@ -79,15 +79,15 @@ export default async function ProctorSchedulesPage() {
           "Kelas",
           "Token",
           "Peserta",
-          "Progress",
-          "Event",
+          "Progres",
+          "Kejadian",
           "Aksi",
         ]}
         isEmpty={summary.schedules.length === 0}
         empty={
           <EmptyState
             title="Belum ada jadwal pengawasan"
-            description="Jadwal akan tampil setelah admin/guru membuat jadwal dengan status scheduled, active, atau finished."
+            description="Jadwal akan tampil setelah admin atau guru menugaskan pengawas pada jadwal ujian."
           />
         }
       >
@@ -156,7 +156,7 @@ export default async function ProctorSchedulesPage() {
                       href="/dashboard/proctor/tokens"
                       className="mt-1 inline-flex text-xs text-primary hover:underline"
                     >
-                      Print
+                      Cetak
                     </Link>
                   </div>
                 ) : (
@@ -166,7 +166,7 @@ export default async function ProctorSchedulesPage() {
               <td className="px-4 py-3">{participants.length}</td>
               <td className="px-4 py-3">
                 <div className="text-xs text-muted-foreground">
-                  {submitted} submitted / {inProgress} berjalan
+                  {submitted} sudah dikumpulkan / {inProgress} sedang ujian
                 </div>
                 <div className="mt-2 h-2 w-28 overflow-hidden rounded-full bg-muted">
                   <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
@@ -179,13 +179,13 @@ export default async function ProctorSchedulesPage() {
                     href={monitoringHref}
                     className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                   >
-                    Monitoring
+                    Pantau
                   </Link>
                   <Link
                     href="/api/monitoring/export"
                     className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                   >
-                    Export CSV
+                    Unduh CSV
                   </Link>
                 </div>
               </td>

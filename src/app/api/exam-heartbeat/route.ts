@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         code: "session_conflict",
-        message: "Attempt sedang aktif di perangkat atau tab lain.",
+        message: "Pengerjaan sedang aktif di perangkat atau tab lain.",
       },
       { status: 409 },
     );

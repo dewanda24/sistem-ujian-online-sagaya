@@ -33,10 +33,14 @@ export default async function MonitoringPage({
   basePath = "/dashboard/proctor/monitoring",
 }: PageProps) {
   const user = await requirePermission("exam_monitoring.view");
+  const effectiveScope =
+    user.roles?.name === "proctor" || user.roles?.name === "teacher"
+      ? "teacher"
+      : scope;
   const params = await searchParams;
   const returnTo = buildReturnTo(basePath, params);
   const schedules = await getMonitoringSchedules({
-    scope,
+    scope: effectiveScope,
     user,
   });
   const selectedScheduleId = params.schedule_id ?? schedules[0]?.id;
@@ -45,11 +49,11 @@ export default async function MonitoringPage({
       class_id: params.class_id,
       status: params.status,
     }, {
-      scope,
+      scope: effectiveScope,
       user,
     }),
     getMonitoringClasses(selectedScheduleId, {
-      scope,
+      scope: effectiveScope,
       user,
     }),
   ]);
@@ -83,7 +87,7 @@ export default async function MonitoringPage({
       <ActionToast status={params.notice} message={params.message} />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <DashboardPageHeader
-          title="Pengawasan Ujian"
+          title="Pemantauan Ujian"
           description="Pantau status peserta, progres pengerjaan, dan kejadian selama ujian."
         />
         <div className="flex flex-wrap gap-2">
@@ -92,13 +96,13 @@ export default async function MonitoringPage({
             className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
           >
             <RefreshCw className="size-4" />
-            Refresh
+            Muat Ulang
           </a>
           <a
             href="/api/monitoring/export"
             className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
           >
-            Export
+            Unduh Data
           </a>
         </div>
       </div>
@@ -129,7 +133,7 @@ export default async function MonitoringPage({
         >
           <option value="">Semua status</option>
           <option value="assigned">Belum Mulai</option>
-          <option value="in_progress">Mengerjakan</option>
+          <option value="in_progress">Sedang Ujian</option>
           <option value="submitted">Selesai</option>
           <option value="expired">Keluar</option>
           <option value="absent">Tidak hadir</option>
@@ -165,7 +169,7 @@ export default async function MonitoringPage({
             href={basePath}
             className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]"
           >
-            Reset
+            Bersihkan Filter
           </a>
           <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8]">
             Tampilkan

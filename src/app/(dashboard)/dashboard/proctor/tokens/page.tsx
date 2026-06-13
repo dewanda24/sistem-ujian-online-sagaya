@@ -20,8 +20,8 @@ function formatDateTime(value?: string | null) {
 }
 
 export default async function ProctorTokensPage() {
-  await requirePermission("exam_monitoring.view");
-  const schedules = (await getProctorScheduleOverview()).filter(
+  const user = await requirePermission("exam_monitoring.view");
+  const schedules = (await getProctorScheduleOverview(user)).filter(
     (schedule) => schedule.token_required,
   );
 
@@ -30,15 +30,15 @@ export default async function ProctorTokensPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <DashboardPageHeader
           title="Token Ujian"
-          description="Tampilan token read-only untuk pengawas. Regenerate token tetap dilakukan dari halaman jadwal oleh role yang memiliki permission token."
+          description="Tampilan token untuk pengawas. Perubahan token tetap dilakukan dari halaman jadwal oleh petugas yang berwenang."
         />
-        <PrintButton label="Print Token" />
+        <PrintButton label="Cetak Token" />
       </div>
 
       {schedules.length === 0 ? (
         <EmptyState
           title="Tidak ada token aktif"
-          description="Token akan tampil jika jadwal memakai token_required."
+          description="Token akan tampil jika jadwal ujian mewajibkan token."
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -98,7 +98,7 @@ export default async function ProctorTokensPage() {
                   href={`/dashboard/proctor/monitoring?schedule_id=${schedule.id}`}
                   className="mt-4 inline-flex rounded-md border px-3 py-1.5 text-xs hover:bg-muted print:hidden"
                 >
-                  Monitoring
+                  Pantau Ujian
                 </Link>
               </section>
             );

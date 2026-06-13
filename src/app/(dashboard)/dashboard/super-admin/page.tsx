@@ -7,13 +7,17 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
+import { getBackupStatusSummary } from "@/features/super-admin/advanced";
 import { getSuperAdminDashboardData } from "@/features/super-admin/school-management";
 import { requireRole } from "@/lib/auth/require-role";
 
 export default async function SuperAdminDashboardPage() {
   await requireRole("super_admin");
-  const { summary, schools, attentionSchools, notifications } =
-    await getSuperAdminDashboardData();
+  const [{ summary, schools, attentionSchools, notifications }, backupStatus] =
+    await Promise.all([
+      getSuperAdminDashboardData(),
+      getBackupStatusSummary(),
+    ]);
   const totalUsers =
     summary.totalAdmins + summary.totalTeachers + summary.totalStudents;
 
@@ -28,7 +32,7 @@ export default async function SuperAdminDashboardPage() {
         <DashboardCard
           title="Total Sekolah"
           value={String(summary.totalSchools)}
-          description="Tenant terdaftar."
+          description="Sekolah terdaftar."
         />
         <DashboardCard
           title="Sekolah Aktif"
@@ -36,7 +40,7 @@ export default async function SuperAdminDashboardPage() {
           description="Sekolah yang dapat memakai layanan."
         />
         <DashboardCard
-          title="Total User"
+          title="Total Pengguna"
           value={String(totalUsers)}
           description="Admin, guru, dan siswa."
         />
@@ -86,9 +90,43 @@ export default async function SuperAdminDashboardPage() {
         </DashboardCard>
       </section>
 
+      <DashboardCard
+        title="Backup Status"
+        description="Ringkasan cadangan aplikasi untuk Super Admin. Coverage saat ini masih snapshot terbatas."
+      >
+        <div className="grid gap-3 text-sm sm:grid-cols-4">
+          <BackupStatusItem
+            label="Backup terakhir"
+            value={formatDateTime(backupStatus.latestBackup?.created_at)}
+          />
+          <BackupStatusItem
+            label="Status backup"
+            value={backupStatus.latestBackup?.status ?? "Belum ada"}
+            tone={backupStatus.latestBackup?.status === "completed" ? "ok" : "warn"}
+          />
+          <BackupStatusItem
+            label="Jumlah backup"
+            value={backupStatus.unavailable ? "Tidak tersedia" : String(backupStatus.total)}
+          />
+          <BackupStatusItem
+            label="Restore terakhir"
+            value={formatDateTime(backupStatus.latestRestore?.restored_at)}
+            tone={backupStatus.latestRestore ? "ok" : "warn"}
+          />
+        </div>
+        <div className="mt-3">
+          <Link
+            href="/dashboard/super-admin/backup-recovery"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Buka Cadangan & Pemulihan
+          </Link>
+        </div>
+      </DashboardCard>
+
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <DashboardCard
-          title="Notification Center"
+          title="Pusat Notifikasi"
           description="Notifikasi yang membutuhkan tindakan."
         >
           <div className="space-y-2">
@@ -156,7 +194,7 @@ export default async function SuperAdminDashboardPage() {
       </section>
 
       <DataTable
-        columns={["Nama Sekolah", "Status", "Kesiapan CBT", "Health", "Admin", "Guru", "Siswa", "Aksi"]}
+        columns={["Nama Sekolah", "Status", "Kesiapan CBT", "Kondisi", "Admin", "Guru", "Siswa", "Aksi"]}
         isEmpty={schools.length === 0}
         empty={
           <EmptyState
@@ -191,7 +229,7 @@ export default async function SuperAdminDashboardPage() {
                   Lihat Detail
                 </MenuLink>
                 <MenuLink href={`/dashboard/super-admin/users?school_id=${school.id}`}>
-                  Lihat User
+                  Lihat Pengguna
                 </MenuLink>
                 <MenuLink href="/dashboard/super-admin/backup-recovery">
                   Backup Sekolah
@@ -201,6 +239,39 @@ export default async function SuperAdminDashboardPage() {
           </tr>
         ))}
       </DataTable>
+    </div>
+  );
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function BackupStatusItem({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "warn" | "neutral";
+}) {
+  const className =
+    tone === "ok"
+      ? "text-emerald-700"
+      : tone === "warn"
+        ? "text-amber-700"
+        : "text-foreground";
+
+  return (
+    <div className="rounded-md border px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-semibold ${className}`}>{value}</div>
     </div>
   );
 }

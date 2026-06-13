@@ -79,22 +79,22 @@ export function MonitoringDetailDrawer({
                 </div>
               </div>
               <DetailItem label="Mulai" value={startedAt} />
-              <DetailItem label="Submit" value={submittedAt} />
-              <DetailItem label="Last Save" value={lastSavedAt} />
+              <DetailItem label="Dikumpulkan" value={submittedAt} />
+              <DetailItem label="Terakhir Tersimpan" value={lastSavedAt} />
               <DetailItem label="Jawaban" value={String(answerCount)} />
-              <DetailItem label="Event" value={String(eventCount)} />
+              <DetailItem label="Kejadian" value={String(eventCount)} />
               <DetailItem
-                label="Last Event"
+                label="Kejadian Terakhir"
                 value={lastEventType ? `${lastEventType} (${lastEventAt})` : "-"}
               />
               {lockedReason ? (
-                <DetailItem label="Lock Reason" value={lockedReason} />
+                <DetailItem label="Alasan Dikunci" value={lockedReason} />
               ) : null}
             </div>
 
             {actions ? (
               <div className="mt-5 rounded-lg border p-3">
-                <div className="mb-3 text-sm font-medium">Actions</div>
+                <div className="mb-3 text-sm font-medium">Aksi</div>
                 <div className="grid gap-2">{actions}</div>
               </div>
             ) : null}

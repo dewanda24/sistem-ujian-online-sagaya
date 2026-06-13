@@ -45,7 +45,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
       <FormSection
         title="Update Profil"
-        description="Perubahan terbatas pada nama, telepon, dan avatar. Email, username, role, NIS/NIP dikelola admin."
+        description="Perubahan terbatas pada nama, telepon, dan avatar. Email, username, peran, NIS/NIP dikelola admin."
       >
         <form action={saveProfileSettingsAction} className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">

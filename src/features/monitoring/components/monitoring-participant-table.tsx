@@ -167,7 +167,7 @@ export function MonitoringParticipantTable({
               <th className="w-32 px-3 py-2 font-medium">Kelas</th>
               <th className="w-36 px-3 py-2 font-medium">Progres</th>
               <th className="w-32 px-3 py-2 font-medium">Status</th>
-              <th className="w-24 px-3 py-2 font-medium">Pelanggaran</th>
+              <th className="w-24 px-3 py-2 font-medium">Kejadian</th>
               <th className="w-24 px-3 py-2 font-medium">Aksi</th>
             </tr>
           </thead>
@@ -429,7 +429,7 @@ function ActionForms({
             confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
           >
             <Send className="size-3.5" />
-            Selesaikan Manual
+            Selesaikan Ujian
           </MonitoringActionButton>
         </form>
         {attempt.locked_at ? (
@@ -470,7 +470,7 @@ function ActionForms({
             className="w-full justify-start rounded-lg border-0 px-2"
             variant="danger"
             disabled={attempt.status === "cancelled"}
-            confirmMessage="Reset pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai ulang."
+            confirmMessage="Mulai ulang pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai dari awal."
           >
             <RotateCcw className="size-3.5" />
             {UI_LABELS.actions.resetAttempt}
@@ -744,7 +744,7 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
 
   if (attempt?.locked_at) {
     issues.push({
-      label: "Attempt terkunci",
+      label: "Pengerjaan terkunci",
       severity: "danger",
       recommendation:
         "Cek alasan kunci dan riwayat kejadian. Buka kunci hanya jika siswa sudah boleh melanjutkan.",
@@ -753,10 +753,10 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
 
   if (failedSubmitCount > 0) {
     issues.push({
-      label: `${failedSubmitCount} gagal submit`,
+      label: `${failedSubmitCount} gagal mengumpulkan`,
       severity: "danger",
       recommendation:
-        "Periksa jumlah jawaban tersimpan dan aktivitas terakhir. Gunakan Selesaikan Manual bila jawaban sudah layak dikunci.",
+        "Periksa jumlah jawaban tersimpan dan aktivitas terakhir. Gunakan Selesaikan Ujian bila jawaban sudah layak dikunci.",
     });
   }
 
@@ -765,7 +765,7 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
       label: `${violationCount} pelanggaran`,
       severity: "danger",
       recommendation:
-        "Review riwayat kejadian. Pertimbangkan kunci attempt atau selesaikan manual sesuai kebijakan ujian.",
+        "Tinjau riwayat kejadian. Pertimbangkan kunci pengerjaan atau selesaikan ujian sesuai kebijakan.",
     });
   } else if (violationCount >= 3) {
     issues.push({
@@ -778,10 +778,10 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
 
   if (status === "in_progress" && isAttemptOffline(attempt)) {
     issues.push({
-      label: "Offline",
+      label: "Tidak Terhubung",
       severity: "warning",
       recommendation:
-        "Hubungi siswa atau tunggu reconnect. Jangan force submit sebelum memastikan jawaban terakhir tersimpan.",
+        "Hubungi siswa atau tunggu tersambung kembali. Jangan selesaikan ujian sebelum memastikan jawaban terakhir tersimpan.",
     });
   }
 
@@ -790,16 +790,16 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
       label: formatEventType(latestEventType),
       severity: "warning",
       recommendation:
-        "Pantau heartbeat berikutnya. Jika siswa kembali online, pastikan autosave berjalan sebelum submit.",
+        "Pantau koneksi berikutnya. Jika siswa kembali tersambung, pastikan jawaban tersimpan sebelum dikumpulkan.",
     });
   }
 
   if (latestEventType === "online" && status === "in_progress") {
     issues.push({
-      label: "Baru reconnect",
+      label: "Baru tersambung kembali",
       severity: "info",
       recommendation:
-        "Tunggu beberapa detik agar autosave tertunda tersinkron, lalu cek aktivitas terakhir.",
+        "Tunggu beberapa detik agar penyimpanan tertunda tersinkron, lalu cek aktivitas terakhir.",
     });
   }
 
@@ -808,7 +808,7 @@ function getParticipantIssues(participant: MonitoringParticipant): ParticipantIs
       label: "Waktu habis",
       severity: "warning",
       recommendation:
-        "Pastikan attempt masuk laporan sebagai expired dan cek apakah perlu tindakan manual.",
+        "Pastikan pengerjaan masuk laporan sebagai waktu habis dan cek apakah perlu tindakan manual.",
     });
   }
 
@@ -878,10 +878,10 @@ function formatEventType(eventType?: string | null) {
     paste_attempt: "Percobaan paste",
     fullscreen_exit: "Keluar fullscreen",
     before_unload: "Refresh/tutup halaman",
-    offline: "Offline",
+    offline: "Tidak terhubung",
     online: "Online kembali",
     disconnected: "Terputus",
-    failed_submit: "Gagal submit",
+    failed_submit: "Gagal mengumpulkan",
   };
 
   return eventType ? (labels[eventType] ?? eventType) : "Kejadian";

@@ -299,7 +299,7 @@ export function ExamRoomWorkspace({
 
       if (response?.status === 409) {
         setSessionConflict(true);
-        setSaveMessage("Attempt sedang aktif di perangkat atau tab lain.");
+        setSaveMessage("Pengerjaan sedang aktif di perangkat atau tab lain.");
         return;
       }
 
@@ -836,14 +836,14 @@ export function ExamRoomWorkspace({
 
       {isLocked ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          Attempt dikunci oleh pengawas.{" "}
+          Pengerjaan dikunci oleh pengawas.{" "}
           {attempt.lock_reason ?? "Tunggu instruksi sebelum melanjutkan."}
         </div>
       ) : null}
 
       {sessionConflict ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          Attempt sedang aktif di perangkat atau tab lain. Tutup sesi lain atau
+          Pengerjaan sedang aktif di perangkat atau tab lain. Tutup sesi lain atau
           tunggu sekitar 2 menit sebelum melanjutkan di perangkat ini.
         </div>
       ) : null}

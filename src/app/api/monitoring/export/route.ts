@@ -18,7 +18,10 @@ export async function GET(request: Request) {
     subject_id: url.searchParams.get("subject_id") || undefined,
     status: url.searchParams.get("status") || undefined,
   };
-  const scope = user.roles?.name === "teacher" ? "teacher" : "all";
+  const scope =
+    user.roles?.name === "teacher" || user.roles?.name === "proctor"
+      ? "teacher"
+      : "all";
   const schedules = await getMonitoringSchedules({
     scope,
     user,

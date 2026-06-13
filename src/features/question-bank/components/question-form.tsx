@@ -471,11 +471,11 @@ export function QuestionForm({
             className="min-h-72 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
           />
           <div className="mt-3 rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm">
-            <div className="mb-2 font-medium text-[#0F172A]">Preview matematika</div>
+            <div className="mb-2 font-medium text-[#0F172A]">Pratinjau matematika</div>
             {content ? (
               <QuestionMathRenderer content={content} className="leading-7" />
             ) : (
-              <p className="text-[#64748B]">Preview muncul saat konten soal diisi.</p>
+              <p className="text-[#64748B]">Pratinjau muncul saat konten soal diisi.</p>
             )}
           </div>
         </Panel>
@@ -792,7 +792,7 @@ export function QuestionForm({
             className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC]"
           >
             <Eye className="size-4" />
-            Preview
+            Pratinjau
           </button>
           <button className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]">
             <Save className="size-4" />

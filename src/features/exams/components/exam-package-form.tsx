@@ -350,7 +350,7 @@ export function ExamPackageForm({
                     className="inline-flex h-7 items-center gap-1 rounded-xl border border-[#E2E8F0] px-2 text-xs"
                   >
                     <Eye className="size-3.5" />
-                    Preview
+                    Pratinjau
                   </button>
                 </div>
               </div>
@@ -430,7 +430,7 @@ export function ExamPackageForm({
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
           <div className="max-h-[88vh] w-full max-w-2xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-[#0F172A]">Preview Soal</h2>
+              <h2 className="text-lg font-semibold text-[#0F172A]">Pratinjau Soal</h2>
               <button
                 type="button"
                 onClick={() => setPreviewQuestion(null)}

@@ -56,7 +56,7 @@ export default async function SuperAdminSchoolDetailPage({
       <ActionToast status={query.status} message={query.message} />
       <DashboardPageHeader
         title={school.name}
-        description="Detail tenant sekolah, statistik lintas modul, dan admin sekolah terkait."
+        description="Detail sekolah, statistik lintas modul, dan admin sekolah terkait."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -87,7 +87,7 @@ export default async function SuperAdminSchoolDetailPage({
             Lihat Detail
           </MenuLink>
           <MenuLink href={`/dashboard/super-admin/users?school_id=${school.id}`}>
-            Lihat User
+            Lihat Pengguna
           </MenuLink>
           <MenuLink href="#admin-sekolah">Reset Password Admin</MenuLink>
           <form action={toggleSchoolAction}>
@@ -129,7 +129,7 @@ export default async function SuperAdminSchoolDetailPage({
             <ProfileItem label="Jenjang" value={school.education_level} />
             <ProfileItem
               label="Status"
-              value={school.is_active ? "Active" : "Inactive"}
+              value={school.is_active ? "Aktif" : "Tidak Aktif"}
             />
             <ProfileItem label="Telepon" value={school.phone} />
             <ProfileItem label="Email" value={school.email} />
@@ -147,8 +147,8 @@ export default async function SuperAdminSchoolDetailPage({
           </dl>
         </DashboardCard>
         <DashboardCard
-          title="Status Tenant"
-          value={school.is_active ? "Active" : "Inactive"}
+          title="Status Sekolah"
+          value={school.is_active ? "Aktif" : "Tidak Aktif"}
           description="Kontrol aktif/nonaktif berlaku untuk administrasi platform."
         >
           <StatusBadge active={Boolean(school.is_active)} />
@@ -161,7 +161,7 @@ export default async function SuperAdminSchoolDetailPage({
           <ReadinessBadge status={readiness.status} />
         </DashboardCard>
         <DashboardCard
-          title="School Health"
+          title="Kondisi Sekolah"
           description={health.issues.join(", ") || "Tidak ada masalah operasional utama."}
         >
           <SchoolHealthBadge status={health.status} />
@@ -169,7 +169,7 @@ export default async function SuperAdminSchoolDetailPage({
       </section>
 
       <DashboardCard
-        title="School Readiness"
+        title="Kesiapan Sekolah"
         description="Indikator sederhana untuk kesiapan CBT sekolah."
       >
         <div className="grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -196,7 +196,7 @@ export default async function SuperAdminSchoolDetailPage({
       {query.edit ? (
         <FormSection
           title="Edit Profil Sekolah"
-          description="Perbarui data tenant tanpa mengubah data operasional sekolah."
+          description="Perbarui data sekolah tanpa mengubah data operasional sekolah."
         >
           <SchoolForm school={school} redirectPath={redirectPath} />
         </FormSection>
@@ -206,7 +206,7 @@ export default async function SuperAdminSchoolDetailPage({
         <DashboardCard
           title="Admin Sekolah"
           value={String(stats.adminCount)}
-          description="Admin tenant terkait."
+          description="Admin sekolah terkait."
         />
         <DashboardCard
           title="Guru"
@@ -237,7 +237,7 @@ export default async function SuperAdminSchoolDetailPage({
 
       <FormSection
         title="Tambah Admin Sekolah"
-        description="Super Admin hanya menambahkan akun admin tenant. Guru dan siswa tetap dikelola Admin Sekolah."
+        description="Super Admin hanya menambahkan akun admin sekolah. Guru dan siswa tetap dikelola Admin Sekolah."
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
           <input type="hidden" name="redirect_path" value={redirectPath} />
@@ -274,8 +274,8 @@ export default async function SuperAdminSchoolDetailPage({
             defaultValue="active"
             className="rounded-md border px-3 py-2 text-sm"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Tidak Aktif</option>
           </select>
           <div className="flex justify-end md:col-span-2">
             <ConfirmSubmitButton
@@ -293,12 +293,12 @@ export default async function SuperAdminSchoolDetailPage({
 
       <div id="admin-sekolah" />
       <DataTable
-        columns={["Nama", "Email", "Username", "Auth User", "Status", "Aksi"]}
+        columns={["Nama", "Email", "Username", "Akun Login", "Status", "Aksi"]}
         isEmpty={admins.length === 0}
         empty={
           <EmptyState
             title="Belum ada admin sekolah"
-            description="Tambahkan admin sekolah agar tenant dapat mengelola operasionalnya sendiri."
+            description="Tambahkan admin sekolah agar sekolah dapat mengelola operasionalnya sendiri."
           />
         }
       >

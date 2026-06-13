@@ -48,15 +48,15 @@ export default async function ExamReportsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Report Per Ujian"
-        description="Agregasi hasil berdasarkan jadwal ujian."
+        title="Laporan Per Ujian"
+        description="Ringkasan hasil berdasarkan jadwal ujian."
       />
       <div className="flex justify-end">
         <Link
           href="/api/reports/export?type=exams"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export CSV
+          Unduh CSV
         </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-7">
@@ -99,9 +99,9 @@ export default async function ExamReportsPage({ searchParams }: PageProps) {
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">Filter</button>
       </form>
       <DataTable
-        columns={["Ujian", "Peserta", "Submitted", "Finalized", "Pending", "Expired", "Absent", "Rata-rata", "Rata-rata %", "Detail"]}
+        columns={["Ujian", "Peserta", "Sudah Dikumpulkan", "Nilai Final", "Menunggu Koreksi", "Waktu Habis", "Tidak Hadir", "Rata-rata", "Rata-rata %", "Detail"]}
         isEmpty={rows.length === 0}
-        empty={<EmptyState title="Belum ada data" description="Laporan muncul setelah peserta submit ujian." />}
+        empty={<EmptyState title="Belum ada data" description="Laporan muncul setelah peserta mengumpulkan ujian." />}
       >
         {rows.map((row) => (
           <tr key={row.title}>

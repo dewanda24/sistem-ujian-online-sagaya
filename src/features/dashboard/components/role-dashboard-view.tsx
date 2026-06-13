@@ -165,7 +165,7 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
     ],
     workbenchTitle: "Tidak ada ujian aktif",
     workbenchDescription:
-      "Saat guru atau proktor membuka ujian, daftar ujian peserta akan muncul di sini.",
+      "Saat guru atau pengawas membuka ujian, daftar ujian peserta akan muncul di sini.",
   },
   proctor: {
     title: "Beranda Pengawas Khusus",
@@ -190,7 +190,7 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
     ],
     workbenchTitle: "Belum ada sesi ujian berjalan",
     workbenchDescription:
-      "Area ini disiapkan untuk daftar peserta, status koneksi, dan progress pengerjaan ujian.",
+      "Area ini disiapkan untuk daftar peserta, status koneksi, dan progres pengerjaan ujian.",
   },
 };
 
@@ -708,17 +708,17 @@ function RecoveryCenterWidget({
 }) {
   const items = [
     {
-      label: "Critical",
+      label: "Mendesak",
       value: summary.critical,
       className: "bg-red-50 text-red-700 ring-red-100",
     },
     {
-      label: "Warning",
+      label: "Perlu Dicek",
       value: summary.warning,
       className: "bg-amber-50 text-amber-700 ring-amber-100",
     },
     {
-      label: "Info",
+      label: "Informasi",
       value: summary.info,
       className: "bg-blue-50 text-blue-700 ring-blue-100",
     },
@@ -727,9 +727,9 @@ function RecoveryCenterWidget({
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Recovery Center</h2>
+        <h2 className="text-base font-semibold">Pusat Pemulihan</h2>
         <p className="mt-1 text-sm text-[#64748B]">
-          Queue pemulihan failed submit, conflict, locked, offline, dan expired.
+          Daftar tindak lanjut untuk ujian yang perlu dibantu.
         </p>
       </div>
       <Link
@@ -767,7 +767,7 @@ function ExamReadinessWidget({
       className: "bg-emerald-50 text-emerald-700 ring-emerald-100",
     },
     {
-      label: "Jadwal warning",
+      label: "Jadwal perlu dicek",
       value: readiness.warning,
       href: "/dashboard/exams/schedules?readiness=warning",
       className: "bg-amber-50 text-amber-700 ring-amber-100",
@@ -785,7 +785,7 @@ function ExamReadinessWidget({
       <div className="mb-4">
         <h2 className="text-base font-semibold">Kesiapan Ujian</h2>
         <p className="mt-1 text-sm text-[#64748B]">
-          Status readiness jadwal sebelum publish dan pelaksanaan.
+          Status kesiapan jadwal sebelum diterbitkan dan dilaksanakan.
         </p>
       </div>
       <div className="grid gap-2">
@@ -852,10 +852,10 @@ function DataIssueSummary({
 }
 
 function issueBadgeLabel(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
-  if (severity === "critical") return "Critical";
-  if (severity === "warning") return "Warning";
+  if (severity === "critical") return "Mendesak";
+  if (severity === "warning") return "Perlu Dicek";
 
-  return "Info";
+  return "Informasi";
 }
 
 function issueBadgeClass(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
@@ -926,7 +926,7 @@ function AdminOperationalWorkbench() {
       icon: Upload,
     },
     {
-      title: "Export Data",
+      title: "Unduh Data",
       description: "Unduh data sekolah yang dibutuhkan operator.",
       href: "/dashboard/import-export?tab=export",
       icon: Download,

@@ -49,21 +49,21 @@ export async function POST(request: Request) {
 
   if (!attempt) {
     return NextResponse.json(
-      { ok: false, message: "Attempt tidak aktif." },
+      { ok: false, message: "Pengerjaan tidak aktif." },
       { status: 409 },
     );
   }
 
   if ((attempt as AttemptTiming).locked_at) {
     return NextResponse.json(
-      { ok: false, message: "Attempt sedang dikunci oleh pengawas." },
+      { ok: false, message: "Pengerjaan sedang dikunci oleh pengawas." },
       { status: 423 },
     );
   }
 
   if (hasActiveSessionConflict(attempt as AttemptTiming, parsed.data.session_id)) {
     return NextResponse.json(
-      { ok: false, message: "Attempt sedang aktif di perangkat atau tab lain." },
+      { ok: false, message: "Pengerjaan sedang aktif di perangkat atau tab lain." },
       { status: 409 },
     );
   }

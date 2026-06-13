@@ -22,7 +22,7 @@ const statusConfig: Record<
     className: "bg-blue-50 text-blue-700 ring-blue-200",
   },
   submitted: {
-    label: "Sudah submit",
+    label: "Sudah Dikumpulkan",
     className: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   },
   late: {

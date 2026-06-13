@@ -77,22 +77,22 @@ export default async function AuditLogsPage({
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
-          title="Events"
+          title="Kejadian"
           value={String(auditLogs.rows.length)}
           description="Jumlah event sesuai filter."
         />
         <DashboardCard
-          title="Actions"
+          title="Aksi"
           value={String(actionOptions.length)}
-          description="Jenis action pada hasil saat ini."
+          description="Jenis aksi pada hasil saat ini."
         />
         <DashboardCard
-          title="Users"
+          title="Pengguna"
           value={String(uniqueUsers)}
-          description="User unik yang tercatat."
+          description="Pengguna unik yang tercatat."
         />
         <DashboardCard
-          title="Latest Event"
+          title="Kejadian Terbaru"
           value={latestEvent}
           description="Aktivitas terbaru pada hasil filter."
         />
@@ -102,14 +102,14 @@ export default async function AuditLogsPage({
         <input
           name="q"
           defaultValue={params.q ?? ""}
-          placeholder="Cari action, entity, payload"
+          placeholder="Cari aksi, data, atau catatan"
           className="rounded-md border px-3 py-2 text-sm md:col-span-2"
         />
         <input
           name="action"
           list="audit-action-options"
           defaultValue={params.action ?? ""}
-          placeholder="Action"
+          placeholder="Aksi"
           className="rounded-md border px-3 py-2 text-sm"
         />
         <datalist id="audit-action-options">
@@ -121,7 +121,7 @@ export default async function AuditLogsPage({
           name="entity_type"
           list="audit-entity-options"
           defaultValue={params.entity_type ?? ""}
-          placeholder="Entity"
+          placeholder="Data"
           className="rounded-md border px-3 py-2 text-sm"
         />
         <datalist id="audit-entity-options">
@@ -132,7 +132,7 @@ export default async function AuditLogsPage({
         <input
           name="user_id"
           defaultValue={params.user_id ?? ""}
-          placeholder="User ID"
+          placeholder="ID Pengguna"
           className="rounded-md border px-3 py-2 text-sm"
         />
         <select
@@ -171,7 +171,7 @@ export default async function AuditLogsPage({
               )}`}
               className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
             >
-              Export
+              Unduh
             </a>
             <a
               href={basePath}
@@ -187,7 +187,7 @@ export default async function AuditLogsPage({
       </form>
 
       <DataTable
-        columns={["Waktu", "Action", "Entity", "Record", "User", "Payload"]}
+        columns={["Waktu", "Aksi", "Data", "Record", "Pengguna", "Catatan"]}
         isEmpty={auditLogs.rows.length === 0}
         empty={
           <EmptyState

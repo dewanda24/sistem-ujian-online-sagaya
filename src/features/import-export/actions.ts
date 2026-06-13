@@ -134,7 +134,7 @@ export async function commitStudentClassAssignmentImportAction(
   if (!studentRoleId) {
     return {
       ok: false,
-      message: "Role student tidak ditemukan.",
+      message: "Peran siswa tidak ditemukan.",
     };
   }
 

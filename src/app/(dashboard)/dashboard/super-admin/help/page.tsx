@@ -39,7 +39,7 @@ export default async function SuperAdminHelpPage() {
         </DashboardCard>
         <DashboardCard
           title="Troubleshooting"
-          description="Mulai dari audit log, status environment, lalu data tenant."
+          description="Mulai dari catatan aktivitas, status sistem, lalu data sekolah."
         >
           <Link
             href="/dashboard/super-admin/audit-logs"
@@ -55,15 +55,15 @@ export default async function SuperAdminHelpPage() {
           <div className="space-y-3 text-sm leading-6">
             <HelpItem
               question="Admin sekolah tidak bisa login"
-              answer="Pastikan akun aktif, role admin terpasang, auth user tersedia, dan school_id sudah dipetakan."
+              answer="Pastikan akun aktif, peran admin terpasang, akun login tersedia, dan sekolah sudah dipetakan."
             />
             <HelpItem
               question="Sekolah tidak muncul di laporan"
               answer="Pastikan sekolah aktif dan data guru, siswa, atau jadwal ujian sudah terkait ke sekolah tersebut."
             />
             <HelpItem
-              question="Permission tidak berubah"
-              answer="Cek Role & Permission, lalu pastikan user memiliki permission DB yang sinkron dengan access matrix."
+              question="Izin tidak berubah"
+              answer="Cek Peran & Izin, lalu pastikan pengguna memiliki izin yang sinkron dengan matriks akses."
             />
           </div>
         </DashboardCard>

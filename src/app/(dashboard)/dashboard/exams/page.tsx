@@ -21,7 +21,7 @@ const modules = [
     title: "Kartu Ujian",
     href: "/dashboard/exams/cards",
     description:
-      "Preview, filter, dan cetak kartu ujian peserta dari dashboard khusus.",
+      "Pratinjau, filter, dan cetak kartu ujian peserta dari halaman khusus.",
   },
 ];
 

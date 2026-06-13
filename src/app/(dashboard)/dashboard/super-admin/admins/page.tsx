@@ -19,9 +19,9 @@ export default async function SuperAdminAdminsPage({ searchParams }: PageProps) 
   return (
     <OperationalRoleUsersPage
       title="Admin Sekolah"
-      description="Kelola akun admin sekolah, reset password, status akun, dan mapping tenant sekolah."
+      description="Kelola akun admin sekolah, reset password, status akun, dan hubungan akun ke sekolah."
       emptyTitle="Belum ada admin sekolah"
-      emptyDescription="Tambahkan admin sekolah agar setiap tenant punya operator utama."
+      emptyDescription="Tambahkan admin sekolah agar setiap sekolah punya operator utama."
       redirectPath="/dashboard/super-admin/admins"
       roleNames={["admin"]}
       searchParams={params}

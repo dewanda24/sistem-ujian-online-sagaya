@@ -15,54 +15,54 @@ export default async function SuperAdminRolePermissionPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Role & Permission"
-        description="Pusat ringkas untuk peran inti, hak akses penuh Super Admin, dan matriks permission."
+        title="Peran & Izin"
+        description="Pusat ringkas untuk peran inti, hak akses penuh Super Admin, dan matriks izin."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
           title="Akses Super Admin"
           value="Penuh"
-          description="Super Admin tetap memiliki akses penuh di application matrix."
+          description="Super Admin tetap memiliki akses penuh di matriks aplikasi."
         />
         <DashboardCard
-          title="Role Inti"
+          title="Peran Inti"
           value={String(coreRoles.length)}
-          description="Role inti ditandai sebagai tidak boleh dihapus."
+          description="Peran inti ditandai sebagai tidak boleh dihapus."
         />
         <DashboardCard
           title="Pengawas Khusus"
           value="Tetap Ada"
-          description="Role proctor dipertahankan untuk akun pengawas non-guru."
+          description="Peran pengawas khusus dipertahankan untuk akun pengawas non-guru."
         />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <DashboardCard
-          title="Kelola Role"
-          description="Ubah label role dan lihat jumlah user/permission."
+          title="Kelola Peran"
+          description="Ubah label peran dan lihat jumlah pengguna/izin."
         >
           <Link
             href="/dashboard/admin/roles"
             className="inline-flex rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
-            Buka Role
+            Buka Peran
           </Link>
         </DashboardCard>
         <DashboardCard
-          title="Kelola Permission"
-          description="Tinjau dan ubah matriks izin akses tiap role."
+          title="Kelola Izin"
+          description="Tinjau dan ubah matriks izin akses tiap peran."
         >
           <Link
             href="/dashboard/admin/permissions"
             className="inline-flex rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
-            Buka Permission
+            Buka Izin
           </Link>
         </DashboardCard>
       </section>
 
-      <DataTable columns={["Role", "Label", "Users", "Permissions", "Proteksi"]}>
+      <DataTable columns={["Peran", "Label", "Pengguna", "Izin", "Proteksi"]}>
         {roles.map((role) => (
           <tr key={role.id}>
             <td className="px-4 py-3 font-mono text-xs">{role.name}</td>
@@ -71,7 +71,7 @@ export default async function SuperAdminRolePermissionPage() {
             <td className="px-4 py-3">{role.permissionCount}</td>
             <td className="px-4 py-3">
               <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                {coreRoles.includes(role.name) ? "Role inti" : "Role operasional"}
+                {coreRoles.includes(role.name) ? "Peran inti" : "Peran operasional"}
               </span>
             </td>
           </tr>

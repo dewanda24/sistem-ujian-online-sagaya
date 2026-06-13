@@ -124,7 +124,7 @@ export async function getMasterDataReadinessIssues(
     ),
     issue(
       "users_without_role",
-      `${usersWithoutRole} user belum memiliki role`,
+      `${usersWithoutRole} pengguna belum memiliki peran`,
       usersWithoutRole,
       "critical",
       "/dashboard/admin/users",

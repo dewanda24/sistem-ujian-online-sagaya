@@ -52,7 +52,7 @@ export default async function ClassReportsPage({ searchParams }: PageProps) {
           href={buildExportHref(params)}
           className="inline-flex rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC]"
         >
-          Export CSV
+          Unduh CSV
         </Link>
       </div>
 

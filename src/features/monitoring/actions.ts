@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { hasPermission } from "@/lib/auth/has-permission";
+import { hasActiveProctorAssignment } from "@/lib/auth/proctor-scope";
 import { requireAuth } from "@/lib/auth/require-auth";
 import {
   assertSameSchool,
@@ -96,24 +97,18 @@ async function canControlSchedule(scheduleId: string, user: CurrentUser) {
 
   assertSameSchool(scope, schedule.school_id);
 
-  if (hasPermission(user, "exam_sessions.control")) {
+  if (
+    hasPermission(user, "exam_sessions.control") &&
+    ["super_admin", "admin"].includes(user.roles?.name ?? "")
+  ) {
     return true;
   }
 
-  if (user.roles?.name !== "teacher") {
+  if (!["teacher", "proctor"].includes(user.roles?.name ?? "")) {
     return false;
   }
 
-  const { data: assignment } = await supabase
-    .from("exam_proctors")
-    .select("id")
-    .eq("exam_schedule_id", scheduleId)
-    .eq("teacher_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-
-  return Boolean(assignment);
+  return hasActiveProctorAssignment(user.id, scheduleId);
 }
 
 export async function forceSubmitAttemptAction(formData: FormData) {

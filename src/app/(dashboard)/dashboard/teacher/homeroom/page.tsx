@@ -161,7 +161,7 @@ export default async function TeacherHomeroomPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Jadwal & Rekap Ujian Kelas</h2>
         <DataTable
-          columns={["Jadwal", "Mapel", "Status", "Waktu", "Peserta", "Submitted", "Monitoring"]}
+          columns={["Jadwal", "Mapel", "Status", "Waktu", "Peserta", "Sudah Dikumpulkan", "Pemantauan"]}
           isEmpty={schedules.length === 0}
           empty={
             <EmptyState

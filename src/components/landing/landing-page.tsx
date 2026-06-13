@@ -51,13 +51,13 @@ const features: IconItem[] = [
     icon: BookOpenCheck,
   },
   {
-    title: "Multi Role User",
-    description: "Akses khusus untuk super admin, admin sekolah, guru, siswa, proktor, dan kepala sekolah.",
+    title: "Akses Sesuai Peran",
+    description: "Akses khusus untuk super admin, admin sekolah, guru, siswa, pengawas, dan kepala sekolah.",
     icon: UsersRound,
   },
   {
     title: "Anti Kecurangan",
-    description: "Monitoring ujian, token sesi, audit aktivitas, dan kontrol proktor membantu menjaga integritas.",
+    description: "Pemantauan ujian, token, catatan aktivitas, dan kontrol pengawas membantu menjaga integritas.",
     icon: ShieldCheck,
   },
   {
@@ -76,17 +76,17 @@ const examFlow: IconItem[] = [
   { title: "Import Data", description: "Masukkan data sekolah, kelas, guru, siswa, dan mapel.", icon: DatabaseZap },
   { title: "Buat Soal", description: "Susun bank soal dan paket ujian sesuai kebutuhan.", icon: ClipboardList },
   { title: "Jadwalkan Ujian", description: "Atur sesi, durasi, kelas peserta, dan token ujian.", icon: Layers3 },
-  { title: "Ujian Berlangsung", description: "Siswa mengerjakan, proktor memantau sesi real time.", icon: MonitorCheck },
+  { title: "Ujian Berlangsung", description: "Siswa mengerjakan, pengawas memantau ujian secara langsung.", icon: MonitorCheck },
   { title: "Nilai Otomatis", description: "Sistem mengolah jawaban objektif dan skor akhir.", icon: CheckCircle2 },
   { title: "Laporan Hasil", description: "Rekap hasil dapat dilihat dan diunduh oleh pihak terkait.", icon: FileCheck2 },
 ];
 
 const modules: IconItem[] = [
-  { title: "Super Admin", description: "Mengelola sekolah, kesiapan sistem, dan monitoring global.", icon: UserCog },
-  { title: "Admin Sekolah", description: "Mengatur master data, user, ujian, laporan, dan audit sekolah.", icon: School },
+  { title: "Super Admin", description: "Mengelola sekolah, kesiapan sistem, dan pemantauan global.", icon: UserCog },
+  { title: "Admin Sekolah", description: "Mengatur data sekolah, pengguna, ujian, laporan, dan catatan aktivitas sekolah.", icon: School },
   { title: "Guru", description: "Membuat soal, menyusun paket, memantau kelas, dan koreksi manual.", icon: GraduationCap },
   { title: "Siswa", description: "Mengakses jadwal, ujian aktif, riwayat, dan hasil ujian.", icon: BookOpenCheck },
-  { title: "Proktor", description: "Mengelola token, sesi ujian, dan monitoring pelaksanaan.", icon: LockKeyhole },
+  { title: "Pengawas", description: "Mengelola token, pemantauan ujian, dan bantuan saat pelaksanaan.", icon: LockKeyhole },
 ];
 
 const faqItems = [
@@ -99,8 +99,8 @@ const faqItems = [
     answer: "Bisa. Sistem sudah mendukung alur bank soal dan import dokumen agar guru tidak perlu memasukkan semua soal satu per satu.",
   },
   {
-    question: "Bagaimana dengan akses siswa dan proktor?",
-    answer: "Setiap peran memiliki dashboard dan menu sendiri, sehingga siswa fokus mengerjakan ujian dan proktor fokus pada kontrol sesi.",
+    question: "Bagaimana dengan akses siswa dan pengawas?",
+    answer: "Setiap peran memiliki dashboard dan menu sendiri, sehingga siswa fokus mengerjakan ujian dan pengawas fokus membantu pelaksanaan.",
   },
   {
     question: "Apakah laporan hasil ujian tersedia otomatis?",
@@ -108,8 +108,8 @@ const faqItems = [
   },
 ] as const;
 
-const beforeItems = ["Data tersebar di banyak file", "Koreksi ujian memakan waktu", "Monitoring sesi sulit dilakukan", "Laporan harus direkap manual"] as const;
-const afterItems = ["Data sekolah terpusat", "Nilai objektif otomatis", "Proktor memantau sesi aktif", "Laporan siap dianalisis"] as const;
+const beforeItems = ["Data tersebar di banyak file", "Koreksi ujian memakan waktu", "Pemantauan ujian sulit dilakukan", "Laporan harus direkap manual"] as const;
+const afterItems = ["Data sekolah terpusat", "Nilai objektif otomatis", "Pengawas memantau ujian aktif", "Laporan siap dianalisis"] as const;
 
 export function LandingPage() {
   return (
@@ -158,7 +158,7 @@ export function LandingPage() {
               Ujian Online Jadi Mudah, Aman & Terintegrasi
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              Sagaya membantu sekolah mengelola CBT, bank soal, jadwal, proktor, penilaian, dan laporan dalam satu sistem yang rapi untuk semua peran.
+              Sagaya membantu sekolah mengelola CBT, bank soal, jadwal, pengawas, penilaian, dan laporan dalam satu sistem yang rapi untuk semua peran.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -230,7 +230,7 @@ export function LandingPage() {
         <SectionHeading
           kicker="Alur Ujian"
           title="Enam langkah dari data sampai laporan."
-          description="Alur ringkas untuk admin, guru, proktor, dan siswa agar ujian berjalan lebih terkendali."
+          description="Alur ringkas untuk admin, guru, pengawas, dan siswa agar ujian berjalan lebih terkendali."
         />
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {examFlow.map((step, index) => (

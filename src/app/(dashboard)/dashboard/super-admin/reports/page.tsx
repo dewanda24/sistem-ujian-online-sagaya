@@ -16,7 +16,7 @@ export default async function SuperAdminReportsPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Laporan Global"
-        description="Statistik sistem, laporan per sekolah, dan akses export data global."
+        description="Statistik sistem, laporan per sekolah, dan akses unduh data global."
       />
 
       <section className="grid gap-4 md:grid-cols-4">
@@ -26,7 +26,7 @@ export default async function SuperAdminReportsPage() {
           description={`${summary.activeSchools} aktif, ${summary.inactiveSchools} nonaktif.`}
         />
         <DashboardCard
-          title="User Operasional"
+          title="Pengguna Operasional"
           value={String(summary.totalAdmins + summary.totalTeachers + summary.totalStudents)}
           description="Admin sekolah, guru, dan siswa."
         />
@@ -36,16 +36,16 @@ export default async function SuperAdminReportsPage() {
           description={`${summary.totalActiveExams} aktif, ${summary.totalFinishedExams} selesai.`}
         />
         <DashboardCard
-          title="Export"
+          title="Unduh Data"
           value="CSV"
-          description="Export tersedia melalui endpoint laporan dan data."
+          description="Unduh data tersedia untuk laporan dan data utama."
         />
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
-          title="Export Sekolah"
-          description="Unduh ringkasan sekolah dari pusat export global."
+          title="Unduh Data Sekolah"
+          description="Unduh ringkasan sekolah dari pusat unduh data global."
         >
           <Link
             href="/api/super-admin/export/schools?format=xlsx"
@@ -55,8 +55,8 @@ export default async function SuperAdminReportsPage() {
           </Link>
         </DashboardCard>
         <DashboardCard
-          title="Export User"
-          description="Gunakan User Global untuk filter sekolah, role, dan status."
+          title="Unduh Data Pengguna"
+          description="Gunakan Pengguna Global untuk filter sekolah, peran, dan status."
         >
           <Link
             href="/api/super-admin/export/users?format=xlsx"
@@ -66,8 +66,8 @@ export default async function SuperAdminReportsPage() {
           </Link>
         </DashboardCard>
         <DashboardCard
-          title="Export Laporan"
-          description="Endpoint laporan operasional tetap tersedia."
+          title="Unduh Laporan"
+          description="Laporan operasional tetap tersedia untuk diunduh."
         >
           <Link
             href="/api/super-admin/export/reports?format=xlsx"
@@ -93,7 +93,7 @@ export default async function SuperAdminReportsPage() {
         empty={
           <EmptyState
             title="Belum ada laporan sekolah"
-            description="Laporan per sekolah akan muncul setelah tenant dibuat."
+            description="Laporan per sekolah akan muncul setelah sekolah dibuat."
           />
         }
       >

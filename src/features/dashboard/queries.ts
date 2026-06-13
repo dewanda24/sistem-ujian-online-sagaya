@@ -839,7 +839,7 @@ export async function getRoleDashboardStats(
   }
 
   if (role === "proctor") {
-    const summary = await getProctorOperationalSummary();
+    const summary = await getProctorOperationalSummary(user);
 
     return [
       {

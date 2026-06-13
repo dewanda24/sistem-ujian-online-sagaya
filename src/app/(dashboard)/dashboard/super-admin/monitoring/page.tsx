@@ -50,20 +50,20 @@ export default async function SuperAdminMonitoringPage({
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Monitoring Sekolah"
-        description="Pantau status tenant, jumlah pengguna akademik, aktivitas ujian, dan aktivitas sistem."
+        title="Pemantauan Sekolah"
+        description="Pantau status sekolah, jumlah pengguna, aktivitas ujian, dan aktivitas sistem."
       />
 
       <section className="grid gap-4 md:grid-cols-5">
         <DashboardCard
           title="Sekolah Aktif"
           value={String(activeSchools)}
-          description="Tenant yang dapat menggunakan layanan."
+          description="Sekolah yang dapat menggunakan layanan."
         />
         <DashboardCard
           title="Sekolah Nonaktif"
           value={String(inactiveSchools)}
-          description="Tenant yang sedang ditangguhkan."
+          description="Sekolah yang sedang ditangguhkan."
         />
         <DashboardCard
           title="Guru"
@@ -84,36 +84,36 @@ export default async function SuperAdminMonitoringPage({
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold">Live Monitoring Ujian</h2>
+          <h2 className="text-base font-semibold">Pemantauan Ujian Langsung</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Read-only untuk support lintas sekolah. Kontrol pengawasan tetap di role operasional.
+            Tampilan baca saja untuk bantuan lintas sekolah. Kontrol peserta tetap dilakukan oleh petugas operasional.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-5">
           <DashboardCard
             title="Ujian Berjalan"
             value={String(live.summary.runningExams)}
-            description="Jadwal aktif/in progress."
+            description="Jadwal yang sedang aktif."
           />
           <DashboardCard
             title="Peserta Online"
             value={String(live.summary.onlineParticipants)}
-            description="Aktivitas dalam 5 menit terakhir."
+            description="Terhubung dalam 5 menit terakhir."
           />
           <DashboardCard
             title="Peserta Bermasalah"
             value={String(live.summary.problematicParticipants)}
-            description="Expired atau dikunci."
+            description="Waktu habis atau dikunci."
           />
           <DashboardCard
-            title="Gagal Submit"
+            title="Gagal Mengumpulkan"
             value={String(live.summary.failedSubmits)}
-            description="Attempt expired/cancelled."
+            description="Pengerjaan waktu habis atau dibatalkan."
           />
           <DashboardCard
             title="Error Sistem"
             value={String(live.summary.systemErrors)}
-            description="Event bertipe error/failed."
+            description="Kejadian bermasalah."
           />
         </div>
         <DataTable
@@ -124,21 +124,21 @@ export default async function SuperAdminMonitoringPage({
             "Peserta",
             "Online",
             "Bermasalah",
-            "Gagal Submit",
+            "Gagal Mengumpulkan",
             "Error",
-            "Event",
+            "Kejadian",
           ]}
           isEmpty={live.rows.length === 0}
           empty={
             <EmptyState
               title={
                 live.unavailable
-                  ? "Live monitoring belum tersedia"
+                  ? "Pemantauan langsung belum tersedia"
                   : "Tidak ada ujian berjalan"
               }
               description={
                 live.unavailable
-                  ? "Data jadwal/attempt/event belum dapat dibaca."
+                  ? "Data jadwal, pengerjaan, atau kejadian belum dapat dibaca."
                   : "Ujian aktif lintas sekolah akan muncul di sini."
               }
             />
@@ -183,8 +183,8 @@ export default async function SuperAdminMonitoringPage({
           className="rounded-md border px-3 py-2 text-sm"
         >
           <option value="">Semua status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
           Filter
@@ -207,7 +207,7 @@ export default async function SuperAdminMonitoringPage({
         empty={
           <EmptyState
             title="Belum ada sekolah"
-            description="Monitoring sekolah akan muncul setelah tenant dibuat."
+            description="Pemantauan sekolah akan muncul setelah sekolah dibuat."
           />
         }
       >

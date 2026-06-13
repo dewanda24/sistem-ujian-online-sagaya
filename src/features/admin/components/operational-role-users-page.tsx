@@ -66,7 +66,7 @@ export async function OperationalRoleUsersPage({
 
       <FormSection
         title={editable ? `Edit ${title}` : `Tambah ${title}`}
-        description="Akun dibuat di Supabase Auth dan dipetakan ke user internal sesuai role operasional."
+        description="Akun dibuat di sistem login dan dipetakan ke pengguna internal sesuai peran operasional."
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
           <input type="hidden" name="redirect_path" value={redirectPath} />
@@ -145,17 +145,17 @@ export async function OperationalRoleUsersPage({
             defaultValue={editable?.status ?? "active"}
             className="rounded-md border px-3 py-2 text-sm"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Tidak Aktif</option>
           </select>
           <div className="flex justify-end md:col-span-2">
             <ConfirmSubmitButton
               confirmMessage={
                 editable
-                  ? "Simpan perubahan akun operasional, termasuk role/status bila diubah?"
+                  ? "Simpan perubahan akun operasional, termasuk peran/status bila diubah?"
                   : "Tambah akun operasional baru?"
               }
-              confirmTitle="Konfirmasi User"
+              confirmTitle="Konfirmasi Pengguna"
               loadingText={editable ? "Memperbarui..." : "Menyimpan..."}
               variant="default"
               className="px-4 py-2 text-sm"
@@ -179,8 +179,8 @@ export async function OperationalRoleUsersPage({
           className="rounded-md border px-3 py-2 text-sm"
         >
           <option value="">Semua status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         {currentUser.roles?.name === "super_admin" ? (
           <select
@@ -202,7 +202,7 @@ export async function OperationalRoleUsersPage({
       </form>
 
       <DataTable
-        columns={["Nama", "Email", "Role", "Sekolah", "Auth User", "Status", "Aksi"]}
+        columns={["Nama", "Email", "Peran", "Sekolah", "Akun Login", "Status", "Aksi"]}
         isEmpty={users.length === 0}
         empty={
           <EmptyState title={emptyTitle} description={emptyDescription} />

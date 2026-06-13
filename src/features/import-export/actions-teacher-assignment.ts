@@ -173,7 +173,7 @@ export async function commitTeacherSubjectAssignmentImportAction(
   if (!teacherRoleId) {
     return {
       ok: false,
-      message: "Role teacher tidak ditemukan.",
+      message: "Peran guru tidak ditemukan.",
     };
   }
 

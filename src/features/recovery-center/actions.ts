@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { hasPermission } from "@/lib/auth/has-permission";
+import { hasActiveProctorAssignment } from "@/lib/auth/proctor-scope";
 import { requireAuth } from "@/lib/auth/require-auth";
 import {
   assertSameSchool,
@@ -48,41 +49,35 @@ async function canControlAttempt(attemptId: string, user: CurrentUser) {
 
   assertSameSchool(scope, schedule?.school_id);
 
-  if (hasPermission(user, "exam_sessions.control")) {
+  if (
+    hasPermission(user, "exam_sessions.control") &&
+    ["super_admin", "admin"].includes(user.roles?.name ?? "")
+  ) {
     return true;
   }
 
-  if (user.roles?.name !== "teacher") {
+  if (!["teacher", "proctor"].includes(user.roles?.name ?? "")) {
     return false;
   }
 
-  const { data: assignment } = await supabase
-    .from("exam_proctors")
-    .select("id")
-    .eq("exam_schedule_id", attempt.exam_schedule_id)
-    .eq("teacher_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-
-  return Boolean(assignment);
+  return hasActiveProctorAssignment(user.id, attempt.exam_schedule_id as string);
 }
 
 export async function releaseActiveSessionAction(formData: FormData) {
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Data pengerjaan tidak valid.");
   }
 
   const user = await requireAuth();
 
   if (!hasPermission(user, "exam_monitoring.view")) {
-    redirectBack(formData, false, "Akses Recovery Center ditolak.");
+    redirectBack(formData, false, "Akses pusat pemulihan ditolak.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses release session ditolak.");
+    redirectBack(formData, false, "Anda tidak berhak membuka akses pengerjaan ini.");
   }
 
   const supabase = await createClient();
@@ -95,11 +90,11 @@ export async function releaseActiveSessionAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Data pengerjaan tidak ditemukan.");
   }
 
   if (attempt.status !== "in_progress") {
-    redirectBack(formData, false, "Hanya attempt aktif yang bisa release session.");
+    redirectBack(formData, false, "Hanya pengerjaan yang sedang berjalan yang bisa dibuka aksesnya.");
   }
 
   const now = new Date().toISOString();
@@ -133,24 +128,24 @@ export async function releaseActiveSessionAction(formData: FormData) {
   revalidatePath("/dashboard/admin/monitoring");
   revalidatePath("/dashboard/super-admin/monitoring");
   revalidatePath("/dashboard/teacher/monitoring");
-  redirectBack(formData, true, "Session aktif berhasil dilepas.");
+  redirectBack(formData, true, "Akses perangkat lama berhasil dibuka.");
 }
 
 export async function retryRecoveryAction(formData: FormData) {
   const attemptId = formString(formData, "attempt_id");
 
   if (!attemptId) {
-    redirectBack(formData, false, "Attempt tidak valid.");
+    redirectBack(formData, false, "Data pengerjaan tidak valid.");
   }
 
   const user = await requireAuth();
 
   if (!hasPermission(user, "exam_monitoring.view")) {
-    redirectBack(formData, false, "Akses Recovery Center ditolak.");
+    redirectBack(formData, false, "Akses pusat pemulihan ditolak.");
   }
 
   if (!(await canControlAttempt(attemptId, user))) {
-    redirectBack(formData, false, "Akses retry recovery ditolak.");
+    redirectBack(formData, false, "Anda tidak berhak meminta coba lagi untuk pengerjaan ini.");
   }
 
   const supabase = await createClient();
@@ -161,7 +156,7 @@ export async function retryRecoveryAction(formData: FormData) {
     .maybeSingle();
 
   if (!attempt) {
-    redirectBack(formData, false, "Attempt tidak ditemukan.");
+    redirectBack(formData, false, "Data pengerjaan tidak ditemukan.");
   }
 
   await logAuditEvent({
@@ -174,7 +169,7 @@ export async function retryRecoveryAction(formData: FormData) {
       status: attempt.status,
       last_activity_at: attempt.last_activity_at,
       last_saved_at: attempt.last_saved_at,
-      note: "Operator meminta siswa retry submit dari Recovery Center.",
+      note: "Operator meminta siswa mencoba mengumpulkan ujian ulang dari pusat pemulihan.",
     },
   });
 
@@ -182,6 +177,6 @@ export async function retryRecoveryAction(formData: FormData) {
   redirectBack(
     formData,
     true,
-    "Retry recovery dicatat. Minta siswa submit ulang dari ruang ujian.",
+    "Permintaan coba lagi dicatat. Minta siswa mengumpulkan ujian ulang dari ruang ujian.",
   );
 }

@@ -33,7 +33,7 @@ export default async function QuestionBankPage() {
     <div>
       <DashboardPageHeader
         title="Bank Soal"
-        description="Pilih workflow yang dibutuhkan. Import dan export soal dikelola terpusat melalui Import Export Center."
+        description="Pilih alur yang dibutuhkan. Import dan unduh soal dikelola terpusat melalui pusat import."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {modules.map((module) => {

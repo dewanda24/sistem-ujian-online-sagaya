@@ -36,12 +36,12 @@ type RecoveryCenterViewProps = {
 };
 
 const issueLabels: Record<RecoveryQueueItem["issueType"], string> = {
-  failed_submit: "Failed Submit",
-  session_conflict: "Session Conflict",
-  problem_attempt: "Attempt Bermasalah",
-  offline_long: "Offline Berkepanjangan",
-  locked_attempt: "Locked Attempt",
-  expired_attempt: "Expired Attempt",
+  failed_submit: "Gagal Mengumpulkan",
+  session_conflict: "Akses Ganda",
+  problem_attempt: "Perlu Dicek",
+  offline_long: "Koneksi Terputus Lama",
+  locked_attempt: "Pengerjaan Terkunci",
+  expired_attempt: "Waktu Habis",
 };
 
 export function RecoveryCenterView({ data, returnTo }: RecoveryCenterViewProps) {
@@ -62,47 +62,47 @@ export function RecoveryCenterView({ data, returnTo }: RecoveryCenterViewProps) 
   return (
     <div className="space-y-5">
       <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <SummaryCard title="Failed Submit" value={data.summary.failedSubmit} tone="critical" />
-        <SummaryCard title="Session Conflict" value={data.summary.sessionConflict} tone="warning" />
-        <SummaryCard title="Attempt Bermasalah" value={data.summary.problemAttempt} tone="info" />
-        <SummaryCard title="Offline Lama" value={data.summary.offlineLong} tone="warning" />
-        <SummaryCard title="Locked" value={data.summary.lockedAttempt} tone="critical" />
-        <SummaryCard title="Expired" value={data.summary.expiredAttempt} tone="warning" />
+        <SummaryCard title="Gagal Mengumpulkan" value={data.summary.failedSubmit} tone="critical" />
+        <SummaryCard title="Akses Ganda" value={data.summary.sessionConflict} tone="warning" />
+        <SummaryCard title="Perlu Dicek" value={data.summary.problemAttempt} tone="info" />
+        <SummaryCard title="Koneksi Terputus" value={data.summary.offlineLong} tone="warning" />
+        <SummaryCard title="Terkunci" value={data.summary.lockedAttempt} tone="critical" />
+        <SummaryCard title="Waktu Habis" value={data.summary.expiredAttempt} tone="warning" />
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <SeverityCard label="Critical" value={data.summary.critical} severity="critical" />
-        <SeverityCard label="Warning" value={data.summary.warning} severity="warning" />
-        <SeverityCard label="Info" value={data.summary.info} severity="info" />
+        <SeverityCard label="Mendesak" value={data.summary.critical} severity="critical" />
+        <SeverityCard label="Perlu Dicek" value={data.summary.warning} severity="warning" />
+        <SeverityCard label="Informasi" value={data.summary.info} severity="info" />
       </section>
 
       <RecoverySection
-        title="Failed Submit Center"
-        description="Peserta dengan event gagal submit dan rekomendasi pemulihan."
+        title="Pengumpulan Gagal"
+        description="Peserta yang belum berhasil mengumpulkan ujian dan perlu tindak lanjut."
         items={grouped.failedSubmit}
         returnTo={returnTo}
         onDetail={setSelected}
       />
 
       <RecoverySection
-        title="Session Conflict Center"
-        description="Attempt aktif yang masih memiliki session aktif dan perlu release."
+        title="Akses Perangkat"
+        description="Peserta yang perlu dibantu karena akses ujian masih tertahan di perangkat atau halaman lain."
         items={grouped.sessionConflict}
         returnTo={returnTo}
         onDetail={setSelected}
       />
 
       <RecoverySection
-        title="Attempt Recovery"
-        description="Attempt offline, locked, expired, atau bermasalah operasional."
+        title="Pemulihan Pengerjaan"
+        description="Pengerjaan yang terkunci, waktu habis, atau kehilangan koneksi terlalu lama."
         items={grouped.attemptRecovery}
         returnTo={returnTo}
         onDetail={setSelected}
       />
 
       <RecoverySection
-        title="Recovery Queue"
-        description="Gabungan semua masalah aktif, diurutkan dari critical ke info."
+        title="Daftar Tindak Lanjut"
+        description="Semua masalah aktif, diurutkan dari yang paling mendesak."
         items={data.queue}
         returnTo={returnTo}
         onDetail={setSelected}
@@ -189,7 +189,7 @@ function RecoverySection({
       {items.length === 0 ? (
         <EmptyState
           title="Tidak ada masalah aktif"
-          description="Queue recovery untuk kategori ini sedang kosong."
+          description="Daftar pemulihan untuk kategori ini sedang kosong."
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
@@ -198,7 +198,7 @@ function RecoverySection({
               <tr>
                 <th className="px-3 py-2 font-medium">Peserta</th>
                 <th className="hidden px-3 py-2 font-medium md:table-cell">Jadwal</th>
-                <th className="hidden w-32 px-3 py-2 font-medium lg:table-cell">Last Sync</th>
+                <th className="hidden w-32 px-3 py-2 font-medium lg:table-cell">Terakhir Tersimpan</th>
                 <th className="w-32 px-3 py-2 font-medium">Masalah</th>
                 <th className="hidden w-36 px-3 py-2 font-medium xl:table-cell">Rekomendasi</th>
                 <th className="w-28 px-3 py-2 font-medium">Aksi</th>
@@ -272,7 +272,7 @@ function QuickAction({
       <form action={releaseActiveSessionAction}>
         <input type="hidden" name="attempt_id" value={item.attemptId} />
         <input type="hidden" name="return_to" value={returnTo} />
-        <IconSubmit confirmMessage="Release active session attempt ini?">
+        <IconSubmit confirmMessage="Buka akses perangkat lama untuk peserta ini?">
           <Unplug className="size-3.5" />
         </IconSubmit>
       </form>
@@ -284,7 +284,7 @@ function QuickAction({
       <form action={unlockAttemptAction}>
         <input type="hidden" name="attempt_id" value={item.attemptId} />
         <input type="hidden" name="return_to" value={returnTo} />
-        <IconSubmit confirmMessage="Buka kunci attempt ini?">
+        <IconSubmit confirmMessage="Buka kunci pengerjaan peserta ini?">
           <Unlock className="size-3.5" />
         </IconSubmit>
       </form>
@@ -296,7 +296,7 @@ function QuickAction({
       <form action={resetAttemptAction}>
         <input type="hidden" name="attempt_id" value={item.attemptId} />
         <input type="hidden" name="return_to" value={returnTo} />
-        <IconSubmit confirmMessage="Reset attempt ini?" variant="danger">
+        <IconSubmit confirmMessage="Mulai ulang pengerjaan peserta ini?" variant="danger">
           <RotateCcw className="size-3.5" />
         </IconSubmit>
       </form>
@@ -308,7 +308,7 @@ function QuickAction({
       <form action={forceSubmitAttemptAction}>
         <input type="hidden" name="attempt_id" value={item.attemptId} />
         <input type="hidden" name="return_to" value={returnTo} />
-        <IconSubmit confirmMessage="Force submit attempt ini?">
+        <IconSubmit confirmMessage="Selesaikan ujian peserta ini sekarang?">
           <Send className="size-3.5" />
         </IconSubmit>
       </form>
@@ -335,7 +335,6 @@ function IconSubmit({
     <ConfirmSubmitButton
       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] p-0"
       confirmMessage={confirmMessage}
-      confirmationText={variant === "danger" ? "RESET" : undefined}
       variant={variant === "danger" ? "danger" : "outline"}
     >
       {children}
@@ -356,7 +355,7 @@ function RecoveryDetailDrawer({
     <div className="fixed inset-0 z-50">
       <button
         type="button"
-        aria-label="Tutup detail recovery"
+        aria-label="Tutup detail pemulihan"
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
@@ -381,14 +380,14 @@ function RecoveryDetailDrawer({
 
         <div className="mt-5 grid gap-3 text-sm">
           <div className="grid gap-3 sm:grid-cols-2">
-            <DetailItem label="Attempt" value={item.attemptId ?? "-"} />
-            <DetailItem label="Status" value={item.status} badge />
-            <DetailItem label="Last Sync" value={formatDateTime(item.lastSyncAt)} />
-            <DetailItem label="Last Activity" value={formatDateTime(item.lastActivityAt)} />
+            <DetailItem label="Kode Pengerjaan" value={item.attemptId ?? "-"} />
+            <DetailItem label="Status" value={formatStatus(item.status)} badge />
+            <DetailItem label="Terakhir Tersimpan" value={formatDateTime(item.lastSyncAt)} />
+            <DetailItem label="Aktivitas Terakhir" value={formatDateTime(item.lastActivityAt)} />
             <DetailItem label="Waktu Gagal" value={formatDateTime(item.failedAt)} />
-            <DetailItem label="Retry Count" value={String(item.retryCount)} />
-            <DetailItem label="Device Lama" value={shortSession(item.activeSessionId)} />
-            <DetailItem label="Last Session Seen" value={formatDateTime(item.activeSessionSeenAt)} />
+            <DetailItem label="Jumlah Gagal" value={String(item.retryCount)} />
+            <DetailItem label="Akses Lama" value={shortSession(item.activeSessionId)} />
+            <DetailItem label="Akses Terakhir" value={formatDateTime(item.activeSessionSeenAt)} />
           </div>
 
           <section className="rounded-xl border border-[#E2E8F0] bg-white p-4">
@@ -410,10 +409,10 @@ function RecoveryDetailDrawer({
                     <input type="hidden" name="return_to" value={returnTo} />
                     <ConfirmSubmitButton
                       className="h-8 rounded-lg px-3 text-xs"
-                      confirmMessage="Catat retry recovery dan minta siswa submit ulang?"
+                      confirmMessage="Catat permintaan coba lagi dan minta siswa mengumpulkan ulang?"
                       variant="outline"
                     >
-                      Retry Recovery
+                      Minta Coba Lagi
                     </ConfirmSubmitButton>
                   </form>
                 ) : null}
@@ -423,11 +422,10 @@ function RecoveryDetailDrawer({
                     <input type="hidden" name="return_to" value={returnTo} />
                     <ConfirmSubmitButton
                       className="h-8 rounded-lg px-3 text-xs"
-                      confirmMessage="Reset attempt ini?"
-                      confirmationText="RESET"
+                      confirmMessage="Mulai ulang pengerjaan ini?"
                       variant="danger"
                     >
-                      Reset Attempt
+                      Mulai Ulang
                     </ConfirmSubmitButton>
                   </form>
                 ) : null}
@@ -436,7 +434,7 @@ function RecoveryDetailDrawer({
           </section>
 
           <section className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-            <h3 className="font-semibold text-[#0F172A]">Event Timeline</h3>
+            <h3 className="font-semibold text-[#0F172A]">Riwayat Kejadian</h3>
             <div className="mt-3 grid gap-2">
               {item.eventTimeline.length ? (
                 item.eventTimeline.map((event) => (
@@ -453,7 +451,7 @@ function RecoveryDetailDrawer({
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-[#64748B]">Belum ada event.</p>
+                <p className="text-sm text-[#64748B]">Belum ada kejadian tercatat.</p>
               )}
             </div>
           </section>
@@ -492,18 +490,37 @@ function SeverityBadge({ severity }: { severity: RecoverySeverity }) {
 
   return (
     <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ring-1 ${className}`}>
-      {severity === "critical" ? "Critical" : severity === "warning" ? "Warning" : "Info"}
+      {severity === "critical" ? "Mendesak" : severity === "warning" ? "Perlu Dicek" : "Informasi"}
     </span>
   );
 }
 
 function actionLabel(action: RecoveryActionType) {
-  if (action === "release_session") return "Release Session";
-  if (action === "unlock_attempt") return "Unlock Attempt";
-  if (action === "reset_attempt") return "Reset Attempt";
-  if (action === "force_submit") return "Force Submit";
-  if (action === "retry_submit") return "Retry Submit";
-  return "Monitor";
+  if (action === "release_session") return "Buka Akses";
+  if (action === "unlock_attempt") return "Buka Kunci";
+  if (action === "reset_attempt") return "Mulai Ulang";
+  if (action === "force_submit") return "Selesaikan Ujian";
+  if (action === "retry_submit") return "Minta Coba Lagi";
+  return "Pantau";
+}
+
+function formatStatus(value?: string | null) {
+  if (!value) return "-";
+
+  const labels: Record<string, string> = {
+    assigned: "Belum Mulai",
+    in_progress: "Sedang Mengerjakan",
+    submitted: "Sudah Dikumpulkan",
+    graded: "Sudah Dinilai",
+    expired: "Waktu Habis",
+    locked: "Terkunci",
+    reset: "Diulang",
+  };
+
+  return labels[value] ?? value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function formatDateTime(value?: string | null) {
@@ -518,6 +535,21 @@ function formatDateTime(value?: string | null) {
 
 function formatEventType(value?: string | null) {
   if (!value) return "-";
+
+  const labels: Record<string, string> = {
+    failed_submit: "Gagal Mengumpulkan",
+    offline: "Koneksi Terputus",
+    online: "Tersambung Kembali",
+    disconnected: "Terputus",
+    tab_blur: "Keluar dari Halaman",
+    visibility_hidden: "Halaman Disembunyikan",
+    copy_attempt: "Percobaan Salin",
+    paste_attempt: "Percobaan Tempel",
+    fullscreen_exit: "Keluar Layar Penuh",
+    before_unload: "Meninggalkan Halaman",
+  };
+
+  if (labels[value]) return labels[value];
 
   return value
     .split("_")

@@ -33,7 +33,7 @@ export default async function ImportWordPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Import Word Bank Soal"
-        description="Preview template Word resmi lalu simpan soal valid sebagai draft."
+        description="Pratinjau template Word resmi lalu simpan soal valid sebagai draft."
       />
       <WordImportForm
         subjects={subjects}

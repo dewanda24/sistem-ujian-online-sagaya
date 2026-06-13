@@ -11,7 +11,7 @@ export function StatusBadge({ active }: StatusBadgeProps) {
           : "inline-flex rounded-md bg-[#F8FAFC] px-2 py-1 text-xs font-medium text-[#64748B] ring-1 ring-[#E2E8F0]"
       }
     >
-      {active ? "Active" : "Inactive"}
+      {active ? "Aktif" : "Tidak Aktif"}
     </span>
   );
 }

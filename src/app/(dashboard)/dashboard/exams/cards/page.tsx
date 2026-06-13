@@ -24,12 +24,18 @@ type PageProps = {
 };
 
 const participantStatuses = [
-  { value: "assigned", label: "Assigned" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "submitted", label: "Submitted" },
-  { value: "absent", label: "Absent" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "assigned", label: "Belum Mulai" },
+  { value: "in_progress", label: "Sedang Ujian" },
+  { value: "submitted", label: "Sudah Dikumpulkan" },
+  { value: "absent", label: "Tidak Hadir" },
+  { value: "cancelled", label: "Dibatalkan" },
 ];
+
+function participantStatusLabel(status: string) {
+  return (
+    participantStatuses.find((item) => item.value === status)?.label ?? status
+  );
+}
 
 function formatDateTime(value: string) {
   if (!value) {
@@ -86,7 +92,7 @@ function ExamCardPreview({
             </h2>
           </div>
           <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium">
-            {card.status}
+            {participantStatusLabel(card.status)}
           </span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -167,7 +173,7 @@ export default async function ExamCardsPage({ searchParams }: PageProps) {
       <div className="print:hidden">
         <DashboardPageHeader
           title="Kartu Ujian"
-          description="Dashboard khusus untuk preview, filter, dan cetak kartu ujian peserta."
+          description="Halaman untuk melihat, memfilter, dan mencetak kartu ujian peserta."
         />
       </div>
 
@@ -256,7 +262,7 @@ export default async function ExamCardsPage({ searchParams }: PageProps) {
       {cards.length === 0 ? (
         <EmptyState
           title="Belum ada kartu ujian"
-          description="Sync peserta pada jadwal ujian, lalu gunakan filter untuk menampilkan kartu."
+          description="Sinkronkan peserta pada jadwal ujian, lalu gunakan filter untuk menampilkan kartu."
         />
       ) : (
         <>
@@ -284,7 +290,7 @@ export default async function ExamCardsPage({ searchParams }: PageProps) {
             </div>
             <div>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold">Preview Kartu</h2>
+                <h2 className="text-sm font-semibold">Pratinjau Kartu</h2>
                 <span className="text-xs text-muted-foreground">
                   Cetak akan memakai semua kartu sesuai filter.
                 </span>

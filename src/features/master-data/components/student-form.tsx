@@ -66,8 +66,8 @@ export function StudentForm({
         <input name="username" defaultValue={student?.username ?? ""} placeholder="Username" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
         <input name="password" type="password" placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Password awal"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
         <select name="status" defaultValue={student?.status ?? "active"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Tidak Aktif</option>
         </select>
         <div className="flex justify-end gap-2 md:col-span-2">
           <Link href="/dashboard/master-data/students" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]">Batal</Link>
@@ -81,7 +81,7 @@ export function StudentForm({
         <section className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-3">
             <h2 className="font-semibold text-[#0F172A]">Kelas Siswa</h2>
-            <p className="text-sm text-[#64748B]">Assign kelas tetap memakai logic class_members existing.</p>
+            <p className="text-sm text-[#64748B]">Atur kelas aktif siswa dari daftar kelas yang tersedia.</p>
           </div>
           <form action={saveClassMemberAction} className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
             <input type="hidden" name="student_id" value={student?.id ?? ""} />
@@ -91,7 +91,7 @@ export function StudentForm({
               ))}
             </select>
             <input name="joined_at" type="date" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-            <SubmitButton loadingText="Menyimpan...">Assign</SubmitButton>
+            <SubmitButton loadingText="Menyimpan...">Tetapkan</SubmitButton>
           </form>
           <div className="mt-3 divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0]">
             {classHistory.length ? classHistory.map((item) => (

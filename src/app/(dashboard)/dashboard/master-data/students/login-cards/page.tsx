@@ -101,7 +101,7 @@ export default async function StudentLoginCardsPage({ searchParams }: PageProps)
 
         <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
           <div className="mb-3 text-sm font-semibold text-[#0F172A]">
-            Preview Kartu
+            Pratinjau Kartu
           </div>
           {previewStudent ? (
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">

@@ -4,6 +4,7 @@ import {
   getScheduleMonitoring,
   type MonitoringScope,
 } from "@/features/monitoring/queries";
+import { createClient } from "@/lib/supabase/server";
 import type { CurrentUser } from "@/types/auth";
 
 export type RecoverySeverity = "critical" | "warning" | "info";
@@ -239,8 +240,8 @@ function issuesForParticipant(
         scheduleTitle,
         issueType: "failed_submit",
         severity: "critical",
-        problem: "Failed Submit",
-        recommendation: "Force Submit jika jawaban sudah tersimpan; Reset Attempt jika siswa perlu mulai ulang.",
+        problem: "Gagal Mengumpulkan",
+        recommendation: "Selesaikan ujian jika jawaban sudah tersimpan, atau mulai ulang bila siswa perlu mengerjakan ulang.",
         action: "force_submit",
       }),
     );
@@ -260,8 +261,8 @@ function issuesForParticipant(
         scheduleTitle,
         issueType: "session_conflict",
         severity: "warning",
-        problem: "Session Conflict",
-        recommendation: "Release Session jika siswa perlu pindah perangkat atau tab lama tidak dapat ditutup.",
+        problem: "Akses Ganda",
+        recommendation: "Buka akses perangkat jika siswa perlu pindah perangkat atau halaman lama tidak dapat ditutup.",
         action: "release_session",
       }),
     );
@@ -278,8 +279,8 @@ function issuesForParticipant(
         severity: minutesSince(attempt.locked_at) !== null && minutesSince(attempt.locked_at)! > 30
           ? "critical"
           : "warning",
-        problem: "Locked Attempt",
-        recommendation: "Unlock Attempt jika siswa boleh melanjutkan; Force Submit jika harus dikunci selesai.",
+        problem: "Pengerjaan Terkunci",
+        recommendation: "Buka kunci jika siswa boleh melanjutkan, atau selesaikan ujian jika pengerjaan harus ditutup.",
         action: "unlock_attempt",
       }),
     );
@@ -294,8 +295,8 @@ function issuesForParticipant(
         scheduleTitle,
         issueType: "expired_attempt",
         severity: "warning",
-        problem: "Expired Attempt",
-        recommendation: "Force Submit jika jawaban perlu dinilai; Reset Attempt jika ujian perlu diulang.",
+        problem: "Waktu Habis",
+        recommendation: "Selesaikan ujian jika jawaban perlu dinilai, atau mulai ulang bila ujian perlu diulang.",
         action: "force_submit",
       }),
     );
@@ -314,8 +315,8 @@ function issuesForParticipant(
         scheduleTitle,
         issueType: "offline_long",
         severity: lastActivityMinutes > 30 ? "critical" : "warning",
-        problem: "Offline Berkepanjangan",
-        recommendation: "Tunggu reconnect singkat; Force Submit atau Reset Attempt jika siswa tidak kembali.",
+        problem: "Koneksi Terputus Lama",
+        recommendation: "Tunggu siswa tersambung kembali sebentar. Jika tidak kembali, selesaikan ujian atau mulai ulang.",
         action: "force_submit",
       }),
     );
@@ -333,8 +334,8 @@ function issuesForParticipant(
         scheduleTitle,
         issueType: "problem_attempt",
         severity: "info",
-        problem: "Attempt Bermasalah",
-        recommendation: "Pantau reconnect dan pastikan autosave berjalan sebelum submit.",
+        problem: "Pengerjaan Perlu Dicek",
+        recommendation: "Pantau siswa yang baru tersambung kembali dan pastikan jawaban terakhir sudah tersimpan.",
         action: "monitor",
       }),
     );
@@ -379,7 +380,14 @@ export async function getRecoveryCenterData(
   user: CurrentUser,
 ): Promise<RecoveryCenterData> {
   const scope: MonitoringScope = user.roles?.name === "teacher" ? "teacher" : "all";
-  const schedules = await getMonitoringSchedules({ scope, user });
+  const allSchedules = await getMonitoringSchedules({ scope, user });
+  const schedules =
+    user.roles?.name === "proctor"
+      ? await filterAssignedProctorSchedules(
+          user.id,
+          allSchedules,
+        )
+      : allSchedules;
   const rows = await Promise.all(
     schedules.map(async (schedule) => {
       const participants = await getScheduleMonitoring(
@@ -414,4 +422,34 @@ export async function getRecoveryCenterData(
     summary: summarize(queue),
     queue,
   };
+}
+
+async function filterAssignedProctorSchedules<T extends { id?: string | null }>(
+  userId: string,
+  schedules: T[],
+) {
+  const scheduleIds = schedules
+    .map((schedule) => schedule.id)
+    .filter((scheduleId): scheduleId is string => Boolean(scheduleId));
+
+  if (scheduleIds.length === 0) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("exam_proctors")
+    .select("exam_schedule_id")
+    .eq("teacher_id", userId)
+    .eq("is_active", true)
+    .in("exam_schedule_id", scheduleIds);
+  const assignedScheduleIds = new Set(
+    (data ?? [])
+      .map((item) => item.exam_schedule_id as string | null)
+      .filter((scheduleId): scheduleId is string => Boolean(scheduleId)),
+  );
+
+  return schedules.filter((schedule) =>
+    schedule.id ? assignedScheduleIds.has(schedule.id) : false,
+  );
 }

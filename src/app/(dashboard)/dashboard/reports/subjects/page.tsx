@@ -48,7 +48,7 @@ export default async function SubjectReportsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Report Per Mapel"
+        title="Laporan Per Mapel"
         description="Agregasi nilai peserta berdasarkan mata pelajaran."
       />
       <div className="flex justify-end">
@@ -56,7 +56,7 @@ export default async function SubjectReportsPage({ searchParams }: PageProps) {
           href="/api/reports/export?type=subjects"
           className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         >
-          Export CSV
+          Unduh CSV
         </Link>
       </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-7">
@@ -94,9 +94,9 @@ export default async function SubjectReportsPage({ searchParams }: PageProps) {
         <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">Filter</button>
       </form>
       <DataTable
-        columns={["Kode", "Mapel", "Peserta", "Submitted", "Finalized", "Pending", "Absent", "Rata-rata %", "Detail"]}
+        columns={["Kode", "Mapel", "Peserta", "Sudah Dikumpulkan", "Nilai Final", "Menunggu Koreksi", "Tidak Hadir", "Rata-rata %", "Detail"]}
         isEmpty={rows.length === 0}
-        empty={<EmptyState title="Belum ada data" description="Laporan muncul setelah peserta submit ujian." />}
+        empty={<EmptyState title="Belum ada data" description="Laporan muncul setelah peserta mengumpulkan ujian." />}
       >
         {rows.map((row) => (
           <tr key={`${row.code}-${row.name}`}>

@@ -61,7 +61,7 @@ const reportRoles: RoleName[] = ["super_admin", "admin", "principal", "teacher"]
 const commonPermissions = ["dashboard.view"];
 
 const superAdminSystemMenu: AccessMenuItem = {
-  label: "Role & Permission",
+  label: "Akses Sistem",
   href: "/dashboard/super-admin/role-permission",
   icon: "shield-check",
   roles: ["super_admin"],
@@ -84,7 +84,7 @@ const superAdminSystemMenu: AccessMenuItem = {
 };
 
 const superAdminAuditMenu: AccessMenuItem = {
-  label: "Audit Log",
+  label: "Catatan Aktivitas",
   href: "/dashboard/super-admin/audit-logs",
   icon: "scroll-text",
   roles: ["super_admin"],
@@ -138,7 +138,7 @@ const superAdminSchoolMenu: AccessMenuItem = {
 };
 
 const superAdminMonitoringMenu: AccessMenuItem = {
-  label: "Monitoring Sekolah",
+  label: "Pemantauan Sekolah",
   href: "/dashboard/super-admin/monitoring",
   icon: "activity",
   roles: ["super_admin"],
@@ -202,7 +202,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "users.view",
       },
       {
-        label: "User Global",
+        label: "Pengguna Global",
         href: "/dashboard/super-admin/users",
         icon: "users",
         roles: ["super_admin"],
@@ -211,7 +211,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       superAdminSystemMenu,
       superAdminMonitoringMenu,
       {
-        label: "Recovery Center",
+        label: "Pusat Pemulihan",
         href: "/dashboard/recovery-center",
         icon: "activity",
         roles: ["super_admin"],
@@ -226,14 +226,14 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "reports.view",
       },
       {
-        label: "Import & Export Global",
+        label: "Import & Unduh Data",
         href: "/dashboard/super-admin/import-export",
         icon: "download",
         roles: ["super_admin"],
         permission: "import_export.view",
       },
       {
-        label: "Backup & Recovery",
+        label: "Cadangan & Pemulihan",
         href: "/dashboard/super-admin/backup-recovery",
         icon: "hard-drive",
         roles: ["super_admin"],
@@ -293,7 +293,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
       {
-        label: "Setup Akademik",
+        label: "Akademik",
         href: "/dashboard/master-data",
         icon: "database",
         roles: ["admin"],
@@ -353,7 +353,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Penugasan",
+        label: "Data Sekolah",
         href: "/dashboard/master-data/teacher-assignments",
         icon: "list-checks",
         roles: ["admin"],
@@ -369,7 +369,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Pelaksanaan Ujian",
+        label: "Ujian",
         href: "/dashboard/exams/schedules",
         icon: "file-text",
         roles: ["admin"],
@@ -390,14 +390,14 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
             permission: "exam_schedules.manage",
           },
           {
-            label: "Monitoring Ujian",
+            label: "Pemantauan Ujian",
             href: "/dashboard/admin/monitoring",
             icon: "activity",
             roles: ["admin"],
             permission: "exam_monitoring.view",
           },
           {
-            label: "Recovery Center",
+            label: "Pusat Pemulihan",
             href: "/dashboard/recovery-center",
             icon: "activity",
             roles: ["admin"],
@@ -429,7 +429,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         ],
       },
       {
-        label: "Utilitas",
+        label: "Data Sekolah",
         href: "/dashboard/import-export",
         icon: "download",
         roles: ["admin"],
@@ -522,56 +522,20 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     ],
     menu: [
       dashboardItem("teacher", "/dashboard/teacher"),
-      {
-        label: "Kelas Saya",
-        href: "/dashboard/teacher/assignments",
-        icon: "graduation-cap",
-        roles: ["teacher"],
-      },
       teacherQuestionBankMenu,
       {
-        label: "Ujian",
-        href: "/dashboard/exams",
-        icon: "file-text",
+        label: "Paket Ujian",
+        href: "/dashboard/exams/packages",
+        icon: "book-open",
         roles: ["teacher"],
-        permission: "exams.view",
-        children: [
-          {
-            label: "Paket Ujian",
-            href: "/dashboard/exams/packages",
-            icon: "book-open",
-            roles: ["teacher"],
-            permission: "exam_packages.view",
-          },
-          {
-            label: "Jadwal Ujian",
-            href: "/dashboard/exams/schedules",
-            icon: "calendar-days",
-            roles: ["teacher"],
-            permission: "exam_schedules.view",
-          },
-          {
-            label: "Penugasan Pengawas",
-            href: "/dashboard/exams/proctors",
-            icon: "shield-check",
-            roles: ["teacher"],
-            permission: "exam_schedules.manage",
-          },
-          {
-            label: "Pengawasan Ujian",
-            href: "/dashboard/teacher/monitoring",
-            icon: "activity",
-            roles: ["teacher"],
-            permission: "exam_monitoring.view",
-          },
-          {
-            label: "Recovery Center",
-            href: "/dashboard/recovery-center",
-            icon: "activity",
-            roles: ["teacher"],
-            permission: "exam_monitoring.view",
-          },
-        ],
+        permission: "exam_packages.view",
+      },
+      {
+        label: "Jadwal Ujian",
+        href: "/dashboard/exams/schedules",
+        icon: "calendar-days",
+        roles: ["teacher"],
+        permission: "exam_schedules.view",
       },
       {
         label: "Nilai",
@@ -602,6 +566,20 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
           },
         ],
       },
+      {
+        label: "Pemantauan Ujian",
+        href: "/dashboard/teacher/monitoring",
+        icon: "activity",
+        roles: ["teacher"],
+        permission: "exam_monitoring.view",
+      },
+      {
+        label: "Pusat Pemulihan",
+        href: "/dashboard/recovery-center",
+        icon: "activity",
+        roles: ["teacher"],
+        permission: "exam_monitoring.view",
+      },
       profileItem("teacher"),
     ],
   },
@@ -626,14 +604,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         permission: "active_exams.view",
       },
       {
-        label: "Jadwal",
-        href: "/dashboard/student/schedules",
-        icon: "file-clock",
-        roles: ["student"],
-        permission: "active_exams.view",
-      },
-      {
-        label: "Riwayat Hasil",
+        label: "Riwayat Ujian",
         href: "/dashboard/student/history",
         icon: "history",
         roles: ["student"],
@@ -652,31 +623,17 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       {
         ...dashboardItem("proctor", "/dashboard/proctor"),
-        label: "Beranda Pengawas Khusus",
+        label: "Dashboard Pengawas",
       },
       {
-        label: "Jadwal Pengawasan Khusus",
-        href: "/dashboard/proctor/schedules",
-        icon: "calendar-days",
-        roles: ["proctor"],
-        permission: "exam_monitoring.view",
-      },
-      {
-        label: "Token Ujian",
-        href: "/dashboard/proctor/tokens",
-        icon: "lock-keyhole",
-        roles: ["proctor"],
-        permission: "exam_monitoring.view",
-      },
-      {
-        label: "Pengawasan Ujian",
+        label: "Pemantauan Ujian",
         href: "/dashboard/proctor/monitoring",
         icon: "list-checks",
         roles: ["proctor"],
         permission: "exam_monitoring.view",
       },
       {
-        label: "Recovery Center",
+        label: "Pusat Pemulihan",
         href: "/dashboard/recovery-center",
         icon: "activity",
         roles: ["proctor"],
@@ -853,6 +810,16 @@ export function canShowMenuItem(user: CurrentUser, item: AccessMenuItem) {
   const role = user.roles?.name;
 
   if (!role || !item.roles.includes(role)) {
+    return false;
+  }
+
+  if (
+    role === "teacher" &&
+    ["/dashboard/teacher/monitoring", "/dashboard/recovery-center"].includes(
+      item.href,
+    ) &&
+    !user.has_active_proctor_assignment
+  ) {
     return false;
   }
 

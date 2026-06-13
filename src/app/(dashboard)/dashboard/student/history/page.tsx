@@ -31,8 +31,8 @@ export default async function ExamHistoryPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.notice} message={params.message} />
       <DashboardPageHeader
-        title="Exam History"
-        description="Riwayat ujian yang sudah dikumpulkan beserta skor otomatis."
+        title="Riwayat Ujian"
+        description="Daftar ujian yang sudah kamu kumpulkan beserta hasil yang tersedia."
       />
       <DataTable
         columns={["Ujian", "Mapel", "Dikumpulkan", "Skor", "Status", "Aksi"]}
@@ -73,7 +73,13 @@ export default async function ExamHistoryPage({ searchParams }: PageProps) {
                   ? scoreText(attempt.score, attempt.max_score)
                   : "Menunggu hasil"}
               </td>
-              <td className="px-4 py-3">{attempt.grading_status}</td>
+              <td className="px-4 py-3">
+                {attempt.grading_status === "needs_manual_grading"
+                  ? "Menunggu Koreksi"
+                  : attempt.grading_status === "finalized"
+                    ? "Nilai Final"
+                    : attempt.grading_status ?? "-"}
+              </td>
               <td className="px-4 py-3">
                 <a
                   href={`/dashboard/exam-results/${attempt.id}`}

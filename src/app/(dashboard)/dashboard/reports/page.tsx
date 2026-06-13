@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth/require-permission";
 const modules = [
   {
     title: "Hasil Ujian",
-    description: "Pantau submit, nilai, status grading, dan detail jawaban siswa.",
+    description: "Pantau pengumpulan, nilai, status koreksi, dan detail jawaban siswa.",
     href: "/dashboard/reports/students",
     icon: FileText,
   },

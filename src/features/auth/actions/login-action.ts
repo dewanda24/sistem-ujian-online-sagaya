@@ -72,7 +72,7 @@ export async function loginAction(
 
     return {
       error: "no-role",
-      message: "Akun pengguna belum memiliki role.",
+      message: "Akun pengguna belum memiliki peran.",
     };
   }
 
@@ -87,7 +87,7 @@ export async function loginAction(
 
     return {
       error: "no-role",
-      message: "Role pengguna tidak ditemukan.",
+      message: "Peran pengguna tidak ditemukan.",
     };
   }
 

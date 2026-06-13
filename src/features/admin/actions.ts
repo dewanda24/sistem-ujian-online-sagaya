@@ -607,7 +607,7 @@ export async function updateRoleLabelAction(formData: FormData) {
   if (!roleBefore) {
     redirectTo("/dashboard/admin/roles", {
       ok: false,
-      message: "Role tidak ditemukan.",
+      message: "Peran tidak ditemukan.",
     });
   }
 

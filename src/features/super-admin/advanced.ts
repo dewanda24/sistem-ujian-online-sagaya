@@ -182,6 +182,26 @@ export async function getBackupJobs() {
   };
 }
 
+export async function getBackupStatusSummary() {
+  const backupJobs = await getBackupJobs();
+  const rows = backupJobs.rows;
+  const latestBackup = rows[0] ?? null;
+  const latestRestore =
+    rows.find((row) => row.status === "restored" || row.restored_at) ?? null;
+
+  return {
+    unavailable: backupJobs.unavailable,
+    total: rows.length,
+    latestBackup,
+    latestRestore,
+    failedCount: rows.filter((row) => row.status === "failed").length,
+    completedCount: rows.filter((row) =>
+      row.status === "completed" || row.status === "restored",
+    ).length,
+    coverage: "limited" as const,
+  };
+}
+
 export async function getGlobalImportJobs() {
   await requireRole("super_admin");
   const supabase = await createClient();
