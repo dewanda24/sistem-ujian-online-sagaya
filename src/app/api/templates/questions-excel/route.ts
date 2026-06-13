@@ -1,8 +1,11 @@
 import * as XLSX from "xlsx";
 
 import { excelImportColumns } from "@/features/question-bank/excel-import";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export async function GET() {
+  await requirePermission("question_bank.manage");
+
   const example = {
     subject_code: "MTK",
     category: "Aljabar",

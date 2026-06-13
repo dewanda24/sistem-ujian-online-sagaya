@@ -617,6 +617,16 @@ function AdminDashboardOverview({
           </div>
         </div>
 
+        <DataIssueSummary issues={operationalData.dataIssues} />
+
+        <ExamReadinessWidget
+          readiness={operationalData.examReadiness}
+        />
+
+        <RecoveryCenterWidget
+          summary={operationalData.recoverySummary}
+        />
+
         <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-4">
             <h2 className="text-base font-semibold">Progress Setup Sekolah</h2>
@@ -689,6 +699,170 @@ function AdminDashboardOverview({
       </section>
     </div>
   );
+}
+
+function RecoveryCenterWidget({
+  summary,
+}: {
+  summary: AdminOperationalDashboardData["recoverySummary"];
+}) {
+  const items = [
+    {
+      label: "Critical",
+      value: summary.critical,
+      className: "bg-red-50 text-red-700 ring-red-100",
+    },
+    {
+      label: "Warning",
+      value: summary.warning,
+      className: "bg-amber-50 text-amber-700 ring-amber-100",
+    },
+    {
+      label: "Info",
+      value: summary.info,
+      className: "bg-blue-50 text-blue-700 ring-blue-100",
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold">Recovery Center</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Queue pemulihan failed submit, conflict, locked, offline, dan expired.
+        </p>
+      </div>
+      <Link
+        href="/dashboard/recovery-center"
+        className="grid gap-2 hover:opacity-95"
+      >
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
+          >
+            <span>{item.label}</span>
+            <span
+              className={`rounded-full px-2 py-1 text-[11px] font-semibold ring-1 ${item.className}`}
+            >
+              {item.value}
+            </span>
+          </div>
+        ))}
+      </Link>
+    </div>
+  );
+}
+
+function ExamReadinessWidget({
+  readiness,
+}: {
+  readiness: AdminOperationalDashboardData["examReadiness"];
+}) {
+  const items = [
+    {
+      label: "Jadwal siap",
+      value: readiness.ready,
+      href: "/dashboard/exams/schedules?readiness=ready",
+      className: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    },
+    {
+      label: "Jadwal warning",
+      value: readiness.warning,
+      href: "/dashboard/exams/schedules?readiness=warning",
+      className: "bg-amber-50 text-amber-700 ring-amber-100",
+    },
+    {
+      label: "Jadwal diblokir",
+      value: readiness.blocked,
+      href: "/dashboard/exams/schedules?readiness=blocked",
+      className: "bg-red-50 text-red-700 ring-red-100",
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold">Kesiapan Ujian</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Status readiness jadwal sebelum publish dan pelaksanaan.
+        </p>
+      </div>
+      <div className="grid gap-2">
+        {items.map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
+          >
+            <span>{item.label}</span>
+            <span
+              className={`rounded-full px-2 py-1 text-[11px] font-semibold ring-1 ${item.className}`}
+            >
+              {item.value}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DataIssueSummary({
+  issues,
+}: {
+  issues: AdminOperationalDashboardData["dataIssues"];
+}) {
+  const visibleIssues = issues.slice(0, 6);
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold">Masalah Data</h2>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Validasi data master sebelum penjadwalan dan ujian.
+        </p>
+      </div>
+      <div className="grid gap-2">
+        {visibleIssues.length ? (
+          visibleIssues.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
+            >
+              <span className="min-w-0 truncate">{item.title}</span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${issueBadgeClass(
+                  item.severity,
+                )}`}
+              >
+                {issueBadgeLabel(item.severity)}
+              </span>
+            </Link>
+          ))
+        ) : (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+            Data master siap digunakan.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function issueBadgeLabel(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
+  if (severity === "critical") return "Critical";
+  if (severity === "warning") return "Warning";
+
+  return "Info";
+}
+
+function issueBadgeClass(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
+  if (severity === "critical") return "bg-red-50 text-red-700 ring-1 ring-red-100";
+  if (severity === "warning") return "bg-amber-50 text-amber-700 ring-1 ring-amber-100";
+
+  return "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
 }
 
 function DashboardInfoChip({

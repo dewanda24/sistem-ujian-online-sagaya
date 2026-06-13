@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   Archive,
+  CheckCircle2,
   Clipboard,
   Eye,
   MoreHorizontal,
   Pencil,
   ScreenShare,
+  Send,
+  ShieldAlert,
   ToggleLeft,
   UserCheck,
 } from "lucide-react";
@@ -23,6 +26,7 @@ import {
   toggleExamScheduleActiveAction,
   updateExamScheduleStatusAction,
 } from "@/features/exams/actions";
+import type { ExamReadinessResult } from "@/features/exams/exam-readiness.service";
 
 type ScheduleClassRelation = {
   class_id?: string | null;
@@ -48,6 +52,7 @@ type ExamScheduleRow = {
 
 type ExamScheduleTableProps = {
   schedules: ExamScheduleRow[];
+  readinessBySchedule: Record<string, ExamReadinessResult>;
   monitoringBasePath: string;
 };
 
@@ -80,6 +85,7 @@ function displayStatus(schedule: ExamScheduleRow) {
 
 export function ExamScheduleTable({
   schedules,
+  readinessBySchedule,
   monitoringBasePath,
 }: ExamScheduleTableProps) {
   const [previewSchedule, setPreviewSchedule] = useState<ExamScheduleRow | null>(null);
@@ -112,6 +118,7 @@ export function ExamScheduleTable({
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
             {schedules.map((schedule) => {
+              const readiness = readinessBySchedule[schedule.id];
               const classes = schedule.exam_schedule_classes ?? [];
               const classNames = classes
                 .map((item) => firstRelation(item.classes)?.name)
@@ -145,6 +152,11 @@ export function ExamScheduleTable({
                   </td>
                   <td className="px-3 py-2">
                     <StatusPill value={displayStatus(schedule)} />
+                    {readiness ? (
+                      <div className="mt-1">
+                        <ReadinessBadge status={readiness.status} />
+                      </div>
+                    ) : null}
                     {!schedule.is_active ? (
                       <div className="mt-1 text-xs text-[#EF4444]">Nonaktif</div>
                     ) : null}
@@ -178,7 +190,7 @@ export function ExamScheduleTable({
                           {UI_LABELS.navigation.examMonitoring}
                         </span>
                       </Link>
-                      <MoreMenu schedule={schedule} />
+                      <MoreMenu schedule={schedule} readiness={readiness} />
                     </div>
                   </td>
                 </tr>
@@ -215,7 +227,11 @@ export function ExamScheduleTable({
               >
                 {UI_LABELS.actions.update}
               </Link>
-              <MoreMenu schedule={schedule} compact />
+              <MoreMenu
+                schedule={schedule}
+                readiness={readinessBySchedule[schedule.id]}
+                compact
+              />
             </div>
           </article>
         ))}
@@ -224,6 +240,7 @@ export function ExamScheduleTable({
       {previewSchedule ? (
         <PreviewModal
           schedule={previewSchedule}
+          readiness={readinessBySchedule[previewSchedule.id]}
           onClose={() => setPreviewSchedule(null)}
         />
       ) : null}
@@ -233,9 +250,11 @@ export function ExamScheduleTable({
 
 function MoreMenu({
   schedule,
+  readiness,
   compact = false,
 }: {
   schedule: ExamScheduleRow;
+  readiness?: ExamReadinessResult;
   compact?: boolean;
 }) {
   async function copyToken() {
@@ -279,6 +298,32 @@ function MoreMenu({
           <UserCheck className="size-3.5" />
           Penugasan Pengawas
         </Link>
+        {schedule.status === "draft" || schedule.status === "cancelled" ? (
+          <form action={updateExamScheduleStatusAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <input type="hidden" name="status" value="scheduled" />
+            <input
+              type="hidden"
+              name="confirm_warnings"
+              value={
+                readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                  ? "true"
+                  : "false"
+              }
+            />
+            <ConfirmSubmitButton
+              confirmMessage={
+                readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                  ? "Tetap publish? Jadwal masih memiliki warning readiness."
+                  : "Publish jadwal ujian ini?"
+              }
+              className="w-full justify-start rounded-lg border-0 px-2"
+            >
+              <Send className="size-3.5" />
+              Publish Jadwal
+            </ConfirmSubmitButton>
+          </form>
+        ) : null}
         <form action={toggleExamScheduleActiveAction}>
           <input type="hidden" name="id" value={schedule.id} />
           <input
@@ -326,9 +371,11 @@ function MoreMenu({
 
 function PreviewModal({
   schedule,
+  readiness,
   onClose,
 }: {
   schedule: ExamScheduleRow;
+  readiness?: ExamReadinessResult;
   onClose: () => void;
 }) {
   const classes = schedule.exam_schedule_classes ?? [];
@@ -369,9 +416,98 @@ function PreviewModal({
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 text-[#64748B]">
             {classNames.length > 0 ? classNames.join(", ") : "Tanpa kelas target"}
           </div>
+          {readiness ? <ReadinessCard readiness={readiness} /> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+function ReadinessCard({ readiness }: { readiness: ExamReadinessResult }) {
+  const visibleChecks = readiness.checks
+    .filter((check) => !check.passed || check.severity !== "info")
+    .slice(0, 8);
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-[#0F172A]">
+            Status Kesiapan Ujian
+          </h3>
+          <p className="mt-1 text-xs text-[#64748B]">
+            Skor {readiness.score}% dengan status {readiness.status.toUpperCase()}.
+          </p>
+        </div>
+        <ReadinessBadge status={readiness.status} />
+      </div>
+      <div className="mt-3 grid gap-2">
+        {visibleChecks.map((check) => {
+          const content = (
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-[#E2E8F0] px-3 py-2">
+              <div className="flex min-w-0 gap-2">
+                {check.passed ? (
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[#0F172A]">
+                    {check.title}
+                  </p>
+                  <p className="line-clamp-2 text-xs leading-5 text-[#64748B]">
+                    {check.description}
+                  </p>
+                </div>
+              </div>
+              <SeverityBadge severity={check.severity} />
+            </div>
+          );
+
+          return check.href ? (
+            <Link key={check.key} href={check.href}>
+              {content}
+            </Link>
+          ) : (
+            <div key={check.key}>{content}</div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ReadinessBadge({ status }: { status: ExamReadinessResult["status"] }) {
+  const className =
+    status === "ready"
+      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+      : status === "warning"
+        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+        : "bg-red-50 text-red-700 ring-1 ring-red-100";
+
+  return (
+    <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${className}`}>
+      {status === "ready" ? "Ready" : status === "warning" ? "Warning" : "Blocked"}
+    </span>
+  );
+}
+
+function SeverityBadge({
+  severity,
+}: {
+  severity: ExamReadinessResult["checks"][number]["severity"];
+}) {
+  const className =
+    severity === "critical"
+      ? "bg-red-50 text-red-700 ring-1 ring-red-100"
+      : severity === "warning"
+        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+        : "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
+
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${className}`}>
+      {severity === "critical" ? "Critical" : severity === "warning" ? "Warning" : "Info"}
+    </span>
   );
 }
 

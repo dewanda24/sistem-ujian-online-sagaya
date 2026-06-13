@@ -34,7 +34,7 @@ const headers = [
 export async function GET(request: Request) {
   const user = await requireAuth();
 
-  if (!hasPermission(user, "question_bank.view")) {
+  if (!hasPermission(user, "question_bank.export")) {
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 

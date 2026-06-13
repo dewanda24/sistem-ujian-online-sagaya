@@ -324,6 +324,7 @@ export async function toggleAcademicYearAction(formData: FormData) {
 
 export async function saveSemesterAction(formData: FormData) {
   const currentUser = await requirePermission("semesters.manage");
+  const scope = await requireSchoolScope();
   const parsed = semesterSchema.safeParse({
     id: formString(formData, "id"),
     academic_year_id: formString(formData, "academic_year_id"),
@@ -341,12 +342,16 @@ export async function saveSemesterAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, is_active, ...rest } = parsed.data;
+  const { data: academicYear } = await supabase
+    .from("academic_years")
+    .select("school_id")
+    .eq("id", rest.academic_year_id)
+    .maybeSingle();
+
+  assertSameSchool(scope, academicYear?.school_id);
 
   if (is_active) {
-    await supabase
-      .from("semesters")
-      .update({ is_active: false })
-      .eq("academic_year_id", rest.academic_year_id);
+    await deactivateSchoolSemesters(academicYear?.school_id ?? null);
   }
 
   const payload = {
@@ -374,6 +379,7 @@ export async function saveSemesterAction(formData: FormData) {
   }
 
   revalidatePath("/dashboard/master-data/semesters");
+  revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
     message: error
@@ -386,16 +392,24 @@ export async function saveSemesterAction(formData: FormData) {
 
 export async function toggleSemesterAction(formData: FormData) {
   const currentUser = await requirePermission("semesters.manage");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const id = formString(formData, "id");
-  const academicYearId = formString(formData, "academic_year_id");
   const isActive = formBoolean(formData, "is_active");
+  const { data: semester } = await supabase
+    .from("semesters")
+    .select("academic_year_id, academic_years!inner(school_id)")
+    .eq("id", id)
+    .maybeSingle();
+  const semesterAcademicYear = Array.isArray(semester?.academic_years)
+    ? semester.academic_years[0]
+    : semester?.academic_years;
+  const schoolId = semesterAcademicYear?.school_id ?? null;
+
+  assertSameSchool(scope, schoolId);
 
   if (isActive) {
-    await supabase
-      .from("semesters")
-      .update({ is_active: false })
-      .eq("academic_year_id", academicYearId);
+    await deactivateSchoolSemesters(schoolId);
   }
 
   const { error } = await supabase
@@ -409,15 +423,40 @@ export async function toggleSemesterAction(formData: FormData) {
       action: "semesters.active_update",
       entityType: "semesters",
       entityId: id,
-      payload: { academic_year_id: academicYearId, is_active: isActive },
+      payload: { academic_year_id: semester?.academic_year_id, is_active: isActive },
     });
   }
 
   revalidatePath("/dashboard/master-data/semesters");
+  revalidatePath("/dashboard/master-data/academic-years");
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
+}
+
+async function deactivateSchoolSemesters(schoolId: string | null) {
+  if (!schoolId) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const { data: academicYears } = await supabase
+    .from("academic_years")
+    .select("id")
+    .eq("school_id", schoolId);
+  const academicYearIds = (academicYears ?? [])
+    .map((academicYear) => academicYear.id)
+    .filter(Boolean);
+
+  if (academicYearIds.length === 0) {
+    return;
+  }
+
+  await supabase
+    .from("semesters")
+    .update({ is_active: false })
+    .in("academic_year_id", academicYearIds);
 }
 
 export async function saveClassAction(formData: FormData) {

@@ -1,6 +1,10 @@
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
+import { requirePermission } from "@/lib/auth/require-permission";
+
 export async function GET() {
+  await requirePermission("question_bank.manage");
+
   const doc = new Document({
     sections: [
       {

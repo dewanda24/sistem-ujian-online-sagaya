@@ -121,6 +121,7 @@ export function ExamScheduleForm({
   );
   const [errors, setErrors] = useState<string[]>([]);
   const statusInputRef = useRef<HTMLInputElement>(null);
+  const confirmWarningsInputRef = useRef<HTMLInputElement>(null);
   const filteredClasses = useMemo(() => {
     const normalizedQuery = classQuery.trim().toLowerCase();
 
@@ -194,6 +195,12 @@ export function ExamScheduleForm({
       <input type="hidden" name="start_at" value={startAt} />
       <input type="hidden" name="end_at" value={endAt} />
       <input ref={statusInputRef} type="hidden" name="status" value={status} />
+      <input
+        ref={confirmWarningsInputRef}
+        type="hidden"
+        name="confirm_warnings"
+        value="false"
+      />
       {selectedClasses.map((classId) => (
         <input key={classId} type="hidden" name="class_ids" value={classId} />
       ))}
@@ -443,6 +450,9 @@ export function ExamScheduleForm({
             onClick={() => {
               setStatus("draft");
               if (statusInputRef.current) statusInputRef.current.value = "draft";
+              if (confirmWarningsInputRef.current) {
+                confirmWarningsInputRef.current.value = "false";
+              }
             }}
             className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC]"
           >
@@ -451,9 +461,21 @@ export function ExamScheduleForm({
           </button>
           <button
             type="submit"
-            onClick={() => {
+            onClick={(event) => {
+              const confirmed = window.confirm(
+                "Tetap publish? Jika hanya warning readiness, jadwal tetap dipublish. Jika ada critical, sistem akan menolak publish.",
+              );
+
+              if (!confirmed) {
+                event.preventDefault();
+                return;
+              }
+
               setStatus("scheduled");
               if (statusInputRef.current) statusInputRef.current.value = "scheduled";
+              if (confirmWarningsInputRef.current) {
+                confirmWarningsInputRef.current.value = "true";
+              }
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8]"
           >

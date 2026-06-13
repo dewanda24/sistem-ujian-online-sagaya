@@ -4,6 +4,7 @@ import { Plus, UserCheck } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { ExamScheduleTable } from "@/features/exams/components/exam-schedule-table";
+import { getExamReadinessSummary } from "@/features/exams/exam-readiness.service";
 import {
   getExamPackageOptions,
   getExamSchedules,
@@ -17,6 +18,7 @@ type PageProps = {
     package_id?: string;
     date_from?: string;
     date_to?: string;
+    readiness?: string;
     notice?: string;
     message?: string;
   }>;
@@ -38,10 +40,27 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
     date_from: params.date_from,
     date_to: params.date_to,
   };
-  const [packages, schedules] = await Promise.all([
+  const [packages, schedules, readiness] = await Promise.all([
     getExamPackageOptions(),
     getExamSchedules(filters),
+    getExamReadinessSummary(),
   ]);
+  const readinessBySchedule = Object.fromEntries(
+    readiness.schedules.map((item) => [item.scheduleId, item.readiness]),
+  );
+  const visibleSchedules = schedules.filter((schedule) => {
+    const scheduleReadiness = readinessBySchedule[schedule.id as string];
+
+    if (!params.readiness || !scheduleReadiness) {
+      return true;
+    }
+
+    if (params.readiness === "problem") {
+      return scheduleReadiness.status !== "ready";
+    }
+
+    return scheduleReadiness.status === params.readiness;
+  });
 
   return (
     <div className="space-y-5">
@@ -128,10 +147,54 @@ export default async function ExamSchedulesPage({ searchParams }: PageProps) {
         </div>
       </form>
 
+      <section className="grid gap-3 md:grid-cols-3">
+        <ReadinessMetric
+          title="Jadwal Siap"
+          value={`${readiness.readyScheduleCount}/${readiness.scheduleCount}`}
+          description="Jadwal dengan paket, kelas, peserta, pengawas, dan waktu valid."
+        />
+        <ReadinessMetric
+          title="Paket Siap"
+          value={`${readiness.readyPackageCount}/${readiness.packageCount}`}
+          description="Paket yang siap dipakai untuk penjadwalan."
+        />
+        <ReadinessMetric
+          title="Masalah Ujian"
+          value={String(readiness.issues.length)}
+          description={readiness.issues[0]?.title ?? "Tidak ada masalah readiness."}
+          href={readiness.issues[0]?.href}
+        />
+      </section>
+
       <ExamScheduleTable
-        schedules={schedules}
+        schedules={visibleSchedules}
+        readinessBySchedule={readinessBySchedule}
         monitoringBasePath={monitoringBasePath(user.roles?.name)}
       />
     </div>
   );
+}
+
+function ReadinessMetric({
+  title,
+  value,
+  description,
+  href,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  href?: string;
+}) {
+  const content = (
+    <div className="h-full rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <p className="text-sm font-medium text-[#64748B]">{title}</p>
+      <p className="mt-2 text-2xl font-semibold text-[#0F172A]">{value}</p>
+      <p className="mt-1 line-clamp-2 text-sm leading-6 text-[#64748B]">
+        {description}
+      </p>
+    </div>
+  );
+
+  return href ? <Link href={href}>{content}</Link> : content;
 }

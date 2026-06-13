@@ -125,7 +125,7 @@ export async function getScheduleMonitoring(
   let query = supabase
     .from("exam_participants")
     .select(
-      "*, users(id, username, email, user_profiles(full_name, nis)), classes(name), exam_attempts(id, status, started_at, submitted_at, last_saved_at, last_activity_at, locked_at, locked_by, lock_reason, exam_answers(id), exam_events(id, event_type, created_at))",
+      "*, users(id, username, email, user_profiles(full_name, nis)), classes(name), exam_attempts(id, status, started_at, submitted_at, last_saved_at, last_activity_at, locked_at, locked_by, lock_reason, active_session_id, active_session_seen_at, exam_answers(id), exam_events(id, event_type, created_at, metadata))",
     )
     .eq("exam_schedule_id", scheduleId)
     .order("created_at", { ascending: true });

@@ -38,7 +38,7 @@ export async function GET(request: Request) {
         const participants = await getScheduleMonitoring(schedule.id as string, {
           class_id: filters.class_id,
           status: filters.status,
-        });
+        }, { scope, user });
         const examPackage = firstRelation(schedule.exam_packages);
         const subject = firstRelation(examPackage?.subjects);
 

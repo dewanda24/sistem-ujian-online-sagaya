@@ -40,7 +40,7 @@ export default async function SemestersPage({ searchParams }: PageProps) {
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
         title="Semester"
-        description="Kelola semester dalam tahun ajaran. Saat satu semester aktif, semester lain pada tahun ajaran yang sama dinonaktifkan."
+        description="Kelola semester dalam tahun ajaran. Saat satu semester aktif, semester aktif lain pada sekolah yang sama dinonaktifkan."
       />
 
       <FormSection

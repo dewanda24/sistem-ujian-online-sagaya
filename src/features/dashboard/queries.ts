@@ -5,6 +5,12 @@ import {
   getTeacherResultRecap,
 } from "@/features/results/queries";
 import { getReportSummary } from "@/features/reports/queries";
+import {
+  getMasterDataReadinessIssues,
+  type MasterDataReadinessIssue,
+} from "@/features/master-data/readiness";
+import { getExamReadinessSummary } from "@/features/exams/exam-readiness.service";
+import { getRecoveryCenterData } from "@/features/recovery-center/queries";
 import { requireSchoolScope } from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentUser, RoleName } from "@/types/auth";
@@ -41,6 +47,17 @@ export type AdminOperationalDashboardData = {
   activeAcademicYearName: string | null;
   activeSemesterName: string | null;
   tasks: AdminTask[];
+  dataIssues: MasterDataReadinessIssue[];
+  examReadiness: {
+    ready: number;
+    warning: number;
+    blocked: number;
+  };
+  recoverySummary: {
+    critical: number;
+    warning: number;
+    info: number;
+  };
   setupProgress: AdminSetupProgressItem[];
   recentActivities: AdminRecentActivity[];
 };
@@ -344,6 +361,17 @@ export async function getAdminOperationalDashboardData(
       activeAcademicYearName: null,
       activeSemesterName: null,
       tasks: [],
+      dataIssues: [],
+      examReadiness: {
+        ready: 0,
+        warning: 0,
+        blocked: 0,
+      },
+      recoverySummary: {
+        critical: 0,
+        warning: 0,
+        info: 0,
+      },
       setupProgress: [],
       recentActivities: [],
     };
@@ -357,6 +385,9 @@ export async function getAdminOperationalDashboardData(
     { data: classes },
     { data: users },
     { data: schedules },
+    dataIssues,
+    examReadiness,
+    recoveryCenter,
   ] = await Promise.all([
     supabase
       .from("academic_years")
@@ -390,6 +421,9 @@ export async function getAdminOperationalDashboardData(
       .eq("school_id", schoolId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
+    getMasterDataReadinessIssues(schoolId),
+    getExamReadinessSummary(),
+    getRecoveryCenterData(user),
   ]);
 
   const teacherIds = (users ?? [])
@@ -540,6 +574,17 @@ export async function getAdminOperationalDashboardData(
     activeAcademicYearName: activeAcademicYear?.name ?? null,
     activeSemesterName: activeSemester?.name ?? null,
     tasks,
+    dataIssues,
+    examReadiness: {
+      ready: examReadiness.readyScheduleCount,
+      warning: examReadiness.warningScheduleCount,
+      blocked: examReadiness.blockedScheduleCount,
+    },
+    recoverySummary: {
+      critical: recoveryCenter.summary.critical,
+      warning: recoveryCenter.summary.warning,
+      info: recoveryCenter.summary.info,
+    },
     setupProgress,
     recentActivities,
   };

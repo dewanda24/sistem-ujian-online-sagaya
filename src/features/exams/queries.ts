@@ -322,7 +322,7 @@ export async function getExamSchedules(filters: ExamScheduleFilters) {
   let query = supabase
     .from("exam_schedules")
     .select(
-      "*, exam_packages(id, title, status, is_active, subjects(code, name)), academic_years(name), semesters(name), exam_schedule_classes(id, class_id, classes(name)), exam_participants(id, status)",
+      "*, exam_packages(id, title, status, is_active, total_questions, subjects(code, name)), academic_years(name), semesters(name), exam_schedule_classes(id, class_id, classes(name)), exam_participants(id, status), exam_proctors(id, is_active)",
     )
     .is("deleted_at", null)
     .in("exam_package_id", packageIds)

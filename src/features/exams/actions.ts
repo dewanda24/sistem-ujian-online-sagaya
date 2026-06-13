@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import { getScheduleExamReadiness } from "@/features/exams/exam-readiness.service";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
@@ -50,6 +51,49 @@ function redirectTo(path: string, result: ActionResult): never {
   });
 
   redirect(`${path}?${params.toString()}`);
+}
+
+function summarizeReadinessFailures(
+  readiness: Awaited<ReturnType<typeof getScheduleExamReadiness>>,
+  severity: "critical" | "warning",
+) {
+  return readiness.checks
+    .filter((check) => !check.passed && check.severity === severity)
+    .map((check) => check.title)
+    .slice(0, 5)
+    .join(", ");
+}
+
+async function enforceSchedulePublishReadiness(
+  scheduleId: string,
+  confirmWarnings: boolean,
+): Promise<ActionResult> {
+  const readiness = await getScheduleExamReadiness(scheduleId);
+
+  if (readiness.summary.critical > 0) {
+    return {
+      ok: false,
+      message: `Tidak dapat mempublish jadwal. Masalah: ${summarizeReadinessFailures(
+        readiness,
+        "critical",
+      )}.`,
+    };
+  }
+
+  if (readiness.summary.warning > 0 && !confirmWarnings) {
+    return {
+      ok: false,
+      message: `Konfirmasi warning diperlukan sebelum publish. Masalah: ${summarizeReadinessFailures(
+        readiness,
+        "warning",
+      )}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Readiness jadwal valid.",
+  };
 }
 
 function toDatetime(value: string) {
@@ -681,6 +725,15 @@ export async function saveExamScheduleAction(formData: FormData) {
     if (!syncResult.ok) {
       redirectTo("/dashboard/exams/schedules", syncResult);
     }
+
+    const publishReadiness = await enforceSchedulePublishReadiness(
+      savedSchedule.id,
+      formString(formData, "confirm_warnings") === "true",
+    );
+
+    if (!publishReadiness.ok) {
+      redirectTo("/dashboard/exams/schedules", publishReadiness);
+    }
   }
 
   if (!classError) {
@@ -737,11 +790,7 @@ export async function updateExamScheduleStatusAction(formData: FormData) {
   await assertScheduleSchoolScope(parsed.data.id);
 
   if (parsed.data.status === "scheduled" || parsed.data.status === "active") {
-    const validation = await validateScheduleReady(parsed.data.id);
-
-    if (!validation.ok) {
-      redirectTo("/dashboard/exams/schedules", validation);
-    }
+    const confirmWarnings = formString(formData, "confirm_warnings") === "true";
 
     const syncResult = await syncScheduleParticipants(parsed.data.id);
 
@@ -749,14 +798,13 @@ export async function updateExamScheduleStatusAction(formData: FormData) {
       redirectTo("/dashboard/exams/schedules", syncResult);
     }
 
-    const participantCount = await countScheduleParticipants(parsed.data.id);
+    const publishReadiness = await enforceSchedulePublishReadiness(
+      parsed.data.id,
+      confirmWarnings,
+    );
 
-    if (participantCount === 0) {
-      redirectTo("/dashboard/exams/schedules", {
-        ok: false,
-        message:
-          "Jadwal belum punya peserta. Pastikan kelas target memiliki siswa aktif lalu sync peserta.",
-      });
+    if (!publishReadiness.ok) {
+      redirectTo("/dashboard/exams/schedules", publishReadiness);
     }
   }
 
@@ -1189,16 +1237,6 @@ async function findScheduleClassConflict({
     title: String(schedule.title ?? "Jadwal lain"),
     className: String(classItem?.name ?? scheduleClass.class_id ?? "target"),
   };
-}
-
-async function countScheduleParticipants(scheduleId: string) {
-  const supabase = await createClient();
-  const { count } = await supabase
-    .from("exam_participants")
-    .select("id", { count: "exact", head: true })
-    .eq("exam_schedule_id", scheduleId);
-
-  return count ?? 0;
 }
 
 async function syncScheduleParticipants(scheduleId: string): Promise<
