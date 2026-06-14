@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
+import {
+  DEMO_MUTATION_BLOCKED_MESSAGE,
+  isDemoUser,
+} from "@/lib/auth/demo-mode";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { hasActiveProctorAssignment } from "@/lib/auth/proctor-scope";
 import { requireAuth } from "@/lib/auth/require-auth";
@@ -119,6 +123,9 @@ export async function forceSubmitAttemptAction(formData: FormData) {
   }
 
   const user = await requireMonitoringControlForAttempt(formData, attemptId);
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -209,6 +216,9 @@ export async function resetAttemptAction(formData: FormData) {
   }
 
   const user = await requireMonitoringControlForAttempt(formData, attemptId);
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -277,6 +287,9 @@ export async function lockAttemptAction(formData: FormData) {
   }
 
   const user = await requireMonitoringControlForAttempt(formData, attemptId);
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -338,6 +351,9 @@ export async function unlockAttemptAction(formData: FormData) {
   }
 
   const user = await requireMonitoringControlForAttempt(formData, attemptId);
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
 
   const supabase = await createClient();
   const { data: attempt } = await supabase
@@ -413,6 +429,9 @@ export async function markParticipantAbsentAction(formData: FormData) {
     formData,
     participant.exam_schedule_id as string,
   );
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
 
   const attempts = participant.exam_attempts ?? [];
   const hasStartedAttempt = attempts.some(

@@ -4,6 +4,24 @@ import { createClient } from "@/lib/supabase/server";
 import { getDashboardPath } from "@/lib/auth/role-redirect";
 import { loginSchema } from "@/validations/auth";
 
+const demoRoles = [
+  "admin",
+  "teacher",
+  "student",
+  "proctor",
+  "principal",
+] as const;
+
+type DemoRole = (typeof demoRoles)[number];
+
+const demoAccountEnvByRole: Record<DemoRole, string> = {
+  admin: "DEMO_ADMIN_EMAIL",
+  teacher: "DEMO_TEACHER_EMAIL",
+  student: "DEMO_STUDENT_EMAIL",
+  proctor: "DEMO_PROCTOR_EMAIL",
+  principal: "DEMO_PRINCIPAL_EMAIL",
+};
+
 export type LoginActionState = {
   error?: "invalid" | "inactive" | "no-user" | "no-role" | "validation";
   message?: string;
@@ -28,6 +46,46 @@ export async function loginAction(
 
   const { email, password } = parsed.data;
 
+  return signInAndResolveDashboard(email, password);
+}
+
+export async function demoLoginAction(
+  _previousState: LoginActionState,
+  formData: FormData,
+): Promise<LoginActionState> {
+  if (process.env.DEMO_ENABLED !== "true") {
+    return {
+      error: "inactive",
+      message: "Mode demo belum diaktifkan di konfigurasi server.",
+    };
+  }
+
+  const demoRole = formData.get("demoRole");
+
+  if (!isDemoRole(demoRole)) {
+    return {
+      error: "validation",
+      message: "Pilihan demo tidak valid.",
+    };
+  }
+
+  const email = process.env[demoAccountEnvByRole[demoRole]];
+  const password = process.env.DEMO_PASSWORD;
+
+  if (!email || !password) {
+    return {
+      error: "validation",
+      message: "Akun demo untuk peran ini belum dikonfigurasi.",
+    };
+  }
+
+  return signInAndResolveDashboard(email, password);
+}
+
+async function signInAndResolveDashboard(
+  email: string,
+  password: string,
+): Promise<LoginActionState> {
   const supabase = await createClient();
 
   const { data: authData, error: authError } =
@@ -94,4 +152,8 @@ export async function loginAction(
   return {
     redirectTo: getDashboardPath(roleData.name),
   };
+}
+
+function isDemoRole(value: FormDataEntryValue | null): value is DemoRole {
+  return typeof value === "string" && demoRoles.includes(value as DemoRole);
 }

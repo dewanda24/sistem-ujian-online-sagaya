@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { getScheduleExamReadiness } from "@/features/exams/exam-readiness.service";
+import {
+  DEMO_MUTATION_BLOCKED_MESSAGE,
+  isDemoUser,
+} from "@/lib/auth/demo-mode";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
@@ -568,6 +572,13 @@ export async function toggleExamPackageActiveAction(formData: FormData) {
 
 export async function archiveExamPackageAction(formData: FormData) {
   const currentUser = await requirePermission("exam_packages.archive");
+  if (isDemoUser(currentUser)) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: DEMO_MUTATION_BLOCKED_MESSAGE,
+    });
+  }
+
   const supabase = await createClient();
   const id = formString(formData, "id");
   await assertPackageSchoolScope(id);
@@ -865,6 +876,13 @@ export async function syncExamScheduleParticipantsAction(formData: FormData) {
 
 export async function resetExamScheduleSessionsAction(formData: FormData) {
   const currentUser = await requirePermission("exam_schedules.manage");
+  if (isDemoUser(currentUser)) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: DEMO_MUTATION_BLOCKED_MESSAGE,
+    });
+  }
+
   const id = formString(formData, "id");
 
   if (!id) {
@@ -1003,6 +1021,13 @@ export async function toggleExamScheduleActiveAction(formData: FormData) {
 
 export async function archiveExamScheduleAction(formData: FormData) {
   const currentUser = await requirePermission("exam_schedules.archive");
+  if (isDemoUser(currentUser)) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: DEMO_MUTATION_BLOCKED_MESSAGE,
+    });
+  }
+
   const supabase = await createClient();
   const id = formString(formData, "id");
   await assertScheduleSchoolScope(id);

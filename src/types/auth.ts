@@ -21,6 +21,7 @@ export interface CurrentUser {
   role_id: string | null;
   school_id: string | null;
   school_name: string | null;
+  is_demo_user?: boolean;
 
   roles: {
     id?: string;

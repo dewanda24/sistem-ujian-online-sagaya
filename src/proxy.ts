@@ -4,13 +4,13 @@ import { createServerClient } from "@supabase/ssr";
 import { updateSession } from "@/lib/supabase/middleware";
 import { getDashboardPath } from "@/lib/auth/role-redirect";
 import { canAccessRoute } from "@/lib/auth/role-access";
+import {
+  DEMO_MUTATION_BLOCKED_MESSAGE,
+  isDemoEmail,
+} from "@/lib/auth/demo-mode";
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
-  if (isServerActionRequest(request)) {
-    return NextResponse.next();
-  }
 
   const response = await updateSession(request);
 
@@ -58,6 +58,7 @@ export async function proxy(request: NextRequest) {
     .from("users")
     .select(
       `
+      email,
       roles (
         name
       )
@@ -71,9 +72,21 @@ export async function proxy(request: NextRequest) {
     : appUser?.roles;
 
   const role = roleData?.name;
+  const isDemoUser = isDemoEmail(appUser?.email);
 
   if (!role) {
     return response;
+  }
+
+  if (
+    isDemoUser &&
+    isMutationRequest(request) &&
+    !isDemoMutationAllowed(pathname)
+  ) {
+    return NextResponse.json(
+      { ok: false, message: DEMO_MUTATION_BLOCKED_MESSAGE },
+      { status: 403 },
+    );
   }
 
   if (isAuthPage) {
@@ -95,8 +108,18 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-function isServerActionRequest(request: NextRequest) {
-  return request.method === "POST" && request.headers.has("next-action");
+function isMutationRequest(request: NextRequest) {
+  return !["GET", "HEAD", "OPTIONS"].includes(request.method);
+}
+
+function isDemoMutationAllowed(pathname: string) {
+  return (
+    pathname.startsWith("/dashboard/student/active-exams") ||
+    pathname.startsWith("/dashboard/exam-room") ||
+    pathname.startsWith("/api/exam-answers") ||
+    pathname.startsWith("/api/exam-heartbeat") ||
+    pathname.startsWith("/api/exam-events")
+  );
 }
 
 function redirectWithSessionCookies(

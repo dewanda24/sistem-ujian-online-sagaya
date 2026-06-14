@@ -3,6 +3,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
+import { isDemoEmail } from "@/lib/auth/demo-mode";
 import { hasAnyActiveProctorAssignment } from "@/lib/auth/proctor-scope";
 import type { CurrentUser, RoleName, UserPermission } from "@/types/auth";
 
@@ -78,6 +79,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     role_id: appUser.role_id,
     school_id: appUser.school_id ?? null,
     school_name: school?.name ?? null,
+    is_demo_user: isDemoEmail(appUser.email),
     roles: role
       ? {
           id: role.id,

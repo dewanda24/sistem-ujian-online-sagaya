@@ -30,8 +30,13 @@ type IconItem = {
   icon: LucideIcon;
 };
 
+type DemoRoleItem = IconItem & {
+  href: string;
+};
+
 const navItems = [
   { label: "Beranda", href: "#beranda" },
+  { label: "Demo", href: "#demo" },
   { label: "Fitur", href: "#fitur" },
   { label: "Modul", href: "#modul" },
   { label: "Screenshot", href: "#screenshot" },
@@ -87,6 +92,39 @@ const modules: IconItem[] = [
   { title: "Guru", description: "Membuat soal, menyusun paket, memantau kelas, dan koreksi manual.", icon: GraduationCap },
   { title: "Siswa", description: "Mengakses jadwal, ujian aktif, riwayat, dan hasil ujian.", icon: BookOpenCheck },
   { title: "Pengawas", description: "Mengelola token, pemantauan ujian, dan bantuan saat pelaksanaan.", icon: LockKeyhole },
+];
+
+const demoRoles: DemoRoleItem[] = [
+  {
+    title: "Admin Sekolah",
+    description: "Lihat pengelolaan data sekolah, pengguna, jadwal ujian, dan rekap operasional.",
+    icon: School,
+    href: "/login?demo=admin",
+  },
+  {
+    title: "Guru",
+    description: "Coba alur bank soal, paket ujian, penjadwalan, monitoring kelas, dan koreksi.",
+    icon: GraduationCap,
+    href: "/login?demo=teacher",
+  },
+  {
+    title: "Siswa",
+    description: "Masuk ke ujian aktif, kerjakan soal demo, simpan jawaban, dan kumpulkan ujian.",
+    icon: BookOpenCheck,
+    href: "/login?demo=student",
+  },
+  {
+    title: "Pengawas",
+    description: "Pantau peserta, status ujian, token, dan bantuan pelaksanaan sesi demo.",
+    icon: LockKeyhole,
+    href: "/login?demo=proctor",
+  },
+  {
+    title: "Kepala Sekolah",
+    description: "Tinjau ringkasan laporan dan progres ujian dari sudut pandang pimpinan sekolah.",
+    icon: BarChart3,
+    href: "/login?demo=principal",
+  },
 ];
 
 const faqItems = [
@@ -195,6 +233,35 @@ export function LandingPage() {
 
           <div className="relative pt-6 lg:pt-10" id="screenshot">
             <DashboardMockup />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-20" id="demo">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2563EB]">Mode Demo</p>
+              <h2 className="mt-3 text-3xl font-black leading-tight text-[#0F172A] sm:text-4xl">
+                Coba Sagaya dari lima sudut pandang sekolah.
+              </h2>
+              <p className="mt-4 leading-8 text-slate-600">
+                Demo memakai akun siap pakai, data contoh, dan pembatasan perubahan operasional agar eksplorasi tetap aman.
+              </p>
+              <Link
+                className="mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-[#2563EB] px-7 py-4 text-sm font-black text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-0.5 hover:bg-blue-700"
+                href="/login?demo=true"
+              >
+                Buka Mode Demo
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {demoRoles.map((role) => (
+                <DemoRoleCard item={role} key={role.title} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -347,6 +414,26 @@ function FeatureCard({ item }: { item: IconItem }) {
       <h3 className="text-xl font-black text-[#0F172A]">{item.title}</h3>
       <p className="mt-3 leading-7 text-slate-600">{item.description}</p>
     </article>
+  );
+}
+
+function DemoRoleCard({ item }: { item: DemoRoleItem }) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      className="group rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-100 hover:bg-white hover:shadow-xl hover:shadow-blue-600/10"
+      href={item.href}
+    >
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+          <Icon className="h-6 w-6" />
+        </span>
+        <ArrowRight className="h-5 w-5 text-slate-300 transition group-hover:translate-x-1 group-hover:text-[#2563EB]" />
+      </div>
+      <h3 className="text-lg font-black text-[#0F172A]">{item.title}</h3>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+    </Link>
   );
 }
 

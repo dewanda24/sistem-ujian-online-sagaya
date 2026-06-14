@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "demo:seed": "node scripts/seed-demo.mjs",
+    "demo:reset": "node scripts/reset-demo.mjs",
+    "supabase:link": "supabase link --project-ref rmngbxuyzjwbsvqflwxg --workdir database",
+    "supabase:migrations": "supabase migration list --workdir database",
+    "supabase:db:push": "supabase db push --workdir database"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

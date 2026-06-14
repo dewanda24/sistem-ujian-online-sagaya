@@ -7,6 +7,10 @@ import {
   operationalResetScopes,
   type OperationalResetScope,
 } from "@/features/operational-reset/reset-plan";
+import {
+  DEMO_MUTATION_BLOCKED_MESSAGE,
+  isDemoUser,
+} from "@/lib/auth/demo-mode";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 
 export async function POST(request: Request) {
@@ -15,6 +19,13 @@ export async function POST(request: Request) {
   if (user?.roles?.name !== "super_admin" || user.status !== "active") {
     return NextResponse.json(
       { ok: false, message: "Hanya Super Admin yang dapat reset data." },
+      { status: 403 },
+    );
+  }
+
+  if (isDemoUser(user)) {
+    return NextResponse.json(
+      { ok: false, message: DEMO_MUTATION_BLOCKED_MESSAGE },
       { status: 403 },
     );
   }
