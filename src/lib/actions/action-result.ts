@@ -61,7 +61,12 @@ export function getFriendlyErrorMessage(input: FriendlyErrorInput) {
     return "Email atau password tidak sesuai.";
   }
 
-  if (message.includes("permission") || message.includes("not authorized")) {
+  if (
+    message.includes("permission") ||
+    message.includes("not authorized") ||
+    message.includes("row-level security") ||
+    message.includes("violates row-level security policy")
+  ) {
     return "Anda tidak memiliki akses untuk melakukan aksi ini.";
   }
 

@@ -374,16 +374,32 @@ export async function saveSemesterAction(formData: FormData) {
 
   const supabase = await createClient();
   const { id, is_active, ...rest } = parsed.data;
-  const { data: academicYear } = await supabase
+  const { data: academicYear, error: academicYearError } = await supabase
     .from("academic_years")
     .select("school_id")
     .eq("id", rest.academic_year_id)
     .maybeSingle();
 
+  if (academicYearError || !academicYear?.school_id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: academicYearError
+        ? getFriendlyErrorMessage(academicYearError)
+        : "Tahun ajaran belum tersedia atau tidak dapat diakses.",
+    });
+  }
+
   assertSameSchool(scope, academicYear?.school_id);
 
   if (is_active) {
-    await deactivateSchoolSemesters(academicYear?.school_id ?? null);
+    const deactivateError = await deactivateSchoolSemesters(academicYear.school_id);
+
+    if (deactivateError) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: getFriendlyErrorMessage(deactivateError),
+      });
+    }
   }
 
   const payload = {
@@ -441,7 +457,14 @@ export async function toggleSemesterAction(formData: FormData) {
   assertSameSchool(scope, schoolId);
 
   if (isActive) {
-    await deactivateSchoolSemesters(schoolId);
+    const deactivateError = await deactivateSchoolSemesters(schoolId);
+
+    if (deactivateError) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: getFriendlyErrorMessage(deactivateError),
+      });
+    }
   }
 
   const { error } = await supabase
@@ -468,26 +491,33 @@ export async function toggleSemesterAction(formData: FormData) {
 
 async function deactivateSchoolSemesters(schoolId: string | null) {
   if (!schoolId) {
-    return;
+    return null;
   }
 
   const supabase = await createClient();
-  const { data: academicYears } = await supabase
+  const { data: academicYears, error: academicYearsError } = await supabase
     .from("academic_years")
     .select("id")
     .eq("school_id", schoolId);
+
+  if (academicYearsError) {
+    return academicYearsError;
+  }
+
   const academicYearIds = (academicYears ?? [])
     .map((academicYear) => academicYear.id)
     .filter(Boolean);
 
   if (academicYearIds.length === 0) {
-    return;
+    return null;
   }
 
-  await supabase
+  const { error } = await supabase
     .from("semesters")
     .update({ is_active: false })
     .in("academic_year_id", academicYearIds);
+
+  return error;
 }
 
 export async function saveClassAction(formData: FormData) {
