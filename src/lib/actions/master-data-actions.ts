@@ -40,6 +40,15 @@ type ActionResult = {
 const IMPORT_CENTER_PATH = "/dashboard/import-export";
 const SUPER_ADMIN_SCHOOLS_PATH = "/dashboard/super-admin/schools";
 
+function revalidateAcademicContextPaths() {
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/master-data");
+  revalidatePath("/dashboard/master-data/academic-years");
+  revalidatePath("/dashboard/master-data/semesters");
+  revalidatePath("/dashboard/exams");
+  revalidatePath("/dashboard/exams/schedules");
+}
+
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
 }
@@ -273,7 +282,7 @@ export async function saveAcademicYearAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/academic-years");
+  revalidateAcademicContextPaths();
   redirectTo("/dashboard/master-data/academic-years", {
     ok: !error,
     message: error
@@ -315,7 +324,7 @@ export async function toggleAcademicYearAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/academic-years");
+  revalidateAcademicContextPaths();
   redirectTo("/dashboard/master-data/academic-years", {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
@@ -378,8 +387,7 @@ export async function saveSemesterAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/semesters");
-  revalidatePath("/dashboard/master-data/academic-years");
+  revalidateAcademicContextPaths();
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
     message: error
@@ -427,8 +435,7 @@ export async function toggleSemesterAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/semesters");
-  revalidatePath("/dashboard/master-data/academic-years");
+  revalidateAcademicContextPaths();
   redirectTo("/dashboard/master-data/semesters", {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",

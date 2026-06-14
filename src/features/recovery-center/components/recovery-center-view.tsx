@@ -335,6 +335,7 @@ function IconSubmit({
     <ConfirmSubmitButton
       className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] p-0"
       confirmMessage={confirmMessage}
+      confirmationText={variant === "danger" ? "RESET" : undefined}
       variant={variant === "danger" ? "danger" : "outline"}
     >
       {children}
@@ -381,7 +382,7 @@ function RecoveryDetailDrawer({
         <div className="mt-5 grid gap-3 text-sm">
           <div className="grid gap-3 sm:grid-cols-2">
             <DetailItem label="Kode Pengerjaan" value={item.attemptId ?? "-"} />
-            <DetailItem label="Status" value={formatStatus(item.status)} badge />
+            <DetailItem label="Status" value={item.status} badge />
             <DetailItem label="Terakhir Tersimpan" value={formatDateTime(item.lastSyncAt)} />
             <DetailItem label="Aktivitas Terakhir" value={formatDateTime(item.lastActivityAt)} />
             <DetailItem label="Waktu Gagal" value={formatDateTime(item.failedAt)} />
@@ -423,6 +424,7 @@ function RecoveryDetailDrawer({
                     <ConfirmSubmitButton
                       className="h-8 rounded-lg px-3 text-xs"
                       confirmMessage="Mulai ulang pengerjaan ini?"
+                      confirmationText="RESET"
                       variant="danger"
                     >
                       Mulai Ulang
@@ -473,7 +475,7 @@ function DetailItem({
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
       <div className="text-xs text-[#64748B]">{label}</div>
-      <div className="mt-1 min-w-0 break-words font-medium text-[#0F172A]">
+      <div className="mt-1 min-w-0 wrap-break-words font-medium text-[#0F172A]">
         {badge ? <StatusPill value={value} /> : value || "-"}
       </div>
     </div>
@@ -502,25 +504,6 @@ function actionLabel(action: RecoveryActionType) {
   if (action === "force_submit") return "Selesaikan Ujian";
   if (action === "retry_submit") return "Minta Coba Lagi";
   return "Pantau";
-}
-
-function formatStatus(value?: string | null) {
-  if (!value) return "-";
-
-  const labels: Record<string, string> = {
-    assigned: "Belum Mulai",
-    in_progress: "Sedang Mengerjakan",
-    submitted: "Sudah Dikumpulkan",
-    graded: "Sudah Dinilai",
-    expired: "Waktu Habis",
-    locked: "Terkunci",
-    reset: "Diulang",
-  };
-
-  return labels[value] ?? value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function formatDateTime(value?: string | null) {

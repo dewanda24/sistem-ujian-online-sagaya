@@ -64,17 +64,36 @@ function isRouteActive(
   currentHref: string,
   href: string,
   children?: DashboardMenuItem[],
+  activePaths: string[] = [],
 ): boolean {
   const hrefPath = href.split("?")[0];
+  const activePathMatch = activePaths.some((activePath) => {
+    const path = activePath.split("?")[0];
+
+    return activePath.includes("?")
+      ? currentHref === activePath
+      : pathname === path || pathname.startsWith(path);
+  });
 
   if (href.includes("?")) {
-    return currentHref === href;
+    return currentHref === href || activePathMatch;
   }
 
   return (
     pathname === hrefPath ||
     (hrefPath !== "/dashboard" && pathname.startsWith(hrefPath)) ||
-    Boolean(children?.some((child) => isRouteActive(pathname, currentHref, child.href)))
+    activePathMatch ||
+    Boolean(
+      children?.some((child) =>
+        isRouteActive(
+          pathname,
+          currentHref,
+          child.href,
+          child.children,
+          child.activePaths,
+        ),
+      ),
+    )
   );
 }
 
@@ -109,7 +128,13 @@ export function DashboardSidebar({
       <nav className="h-[calc(100%-4rem)] space-y-1 overflow-y-auto p-3">
         {menuItems.map((item) => {
           const Icon = icons[item.icon];
-          const active = isRouteActive(pathname, currentHref, item.href, item.children);
+          const active = isRouteActive(
+            pathname,
+            currentHref,
+            item.href,
+            item.children,
+            item.activePaths,
+          );
 
           return (
             <div key={item.href}>
@@ -130,7 +155,13 @@ export function DashboardSidebar({
                 <div className="ml-4 mt-1 space-y-1 border-l border-[#E2E8F0] pl-3">
                   {item.children.map((child) => {
                     const ChildIcon = icons[child.icon];
-                    const childActive = isRouteActive(pathname, currentHref, child.href);
+                    const childActive = isRouteActive(
+                      pathname,
+                      currentHref,
+                      child.href,
+                      child.children,
+                      child.activePaths,
+                    );
 
                     return (
                       <Link
