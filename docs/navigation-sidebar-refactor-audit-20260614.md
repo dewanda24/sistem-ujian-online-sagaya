@@ -252,6 +252,7 @@ Tidak ikut struktur sidebar baru. Menu siswa tetap sederhana:
 
 ## Risiko Perubahan
 
+- Parent menu `Pengguna` untuk Admin Sekolah dibuat sebagai wadah tanpa permission khusus. Anak menu tetap dikontrol permission masing-masing (`teachers.view`, `students.view`, `exam_schedules.manage`) agar Guru dan Siswa tidak hilang saat akun tidak memiliki `users.view`.
 - Super Admin tidak diarahkan ke route operasional sekolah yang route guard-nya memang bukan untuk Super Admin. Menu Super Admin tetap memakai route yang sudah diizinkan.
 - Label gabungan seperti Tahun Ajaran & Semester mengarah ke halaman Tahun Ajaran karena halaman tersebut sudah menampilkan ringkasan semester. Route `/dashboard/master-data/semesters` tetap ada dan tetap aktif melalui alias.
 - `Impor & Ekspor` Bank Soal mengarah ke impor Excel sebagai pintu masuk lama. Impor Word tetap route valid dan ikut active state.

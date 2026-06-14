@@ -302,7 +302,6 @@ const adminUserMenu: AccessMenuItem = {
   href: "/dashboard/master-data/teachers",
   icon: "users",
   roles: ["admin"],
-  permission: "users.view",
   children: [
     {
       label: "Guru",
