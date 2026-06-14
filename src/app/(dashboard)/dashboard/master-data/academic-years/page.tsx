@@ -27,14 +27,19 @@ type PageProps = {
 export default async function AcademicYearsPage({ searchParams }: PageProps) {
   await requirePermission("academic_years.view");
   const params = await searchParams;
-  const [academicYears, semesters, schools] = await Promise.all([
+  const [academicYears, allAcademicYears, semesters, schools] = await Promise.all([
     getAcademicYears(params.q),
+    getAcademicYears(),
     getSemesters(),
     getSchoolOptions(),
   ]);
   const rows = academicYears.filter((year) =>
     params.status ? String(Boolean(year.is_active)) === params.status : true,
   );
+  const activeAcademicYear =
+    allAcademicYears.find((academicYear) => academicYear.is_active) ?? null;
+  const activeSemester =
+    semesters.find((semester) => Boolean(semester.is_active)) ?? null;
 
   return (
     <div className="space-y-5">
@@ -43,9 +48,15 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
         <DashboardPageHeader title="Tahun Ajaran & Semester" description="Kelola periode akademik aktif dalam satu tempat." />
       </div>
 
+      <section className="grid gap-3 md:grid-cols-3">
+        <AcademicSummaryItem label="Tahun ajaran aktif" value={activeAcademicYear?.name ?? "Belum ada"} active={Boolean(activeAcademicYear)} />
+        <AcademicSummaryItem label="Semester aktif" value={activeSemester?.name ?? "Belum ada"} active={Boolean(activeSemester)} />
+        <AcademicSummaryItem label="Total periode" value={`${allAcademicYears.length} tahun ajaran / ${semesters.length} semester`} active={allAcademicYears.length > 0} />
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-2">
         <QuickAcademicYearForm schools={schools} />
-        <QuickSemesterForm academicYears={academicYears} />
+        <QuickSemesterForm academicYears={allAcademicYears} />
       </section>
 
       <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.5fr_1fr_auto]">
@@ -117,6 +128,7 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                       </form>
                       {activeSemester ? (
                         <form action={toggleSemesterAction}>
+                          <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
                           <input type="hidden" name="id" value={activeSemester.id} />
                           <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
                           <input type="hidden" name="is_active" value="false" />
@@ -189,9 +201,30 @@ function SchoolField({ schools }: { schools: SelectOption[] }) {
   );
 }
 
+function AcademicSummaryItem({
+  label,
+  value,
+  active,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+      <div className="text-xs font-medium uppercase text-[#64748B]">{label}</div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="min-w-0 truncate text-base font-semibold text-[#0F172A]">{value}</div>
+        <StatusBadge active={active} />
+      </div>
+    </div>
+  );
+}
+
 function QuickAcademicYearForm({ schools }: { schools: SelectOption[] }) {
   return (
     <form action={saveAcademicYearAction} className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2">
+      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
       <div className="md:col-span-2">
         <h2 className="text-sm font-semibold text-[#0F172A]">Tambah Tahun Ajaran</h2>
       </div>
@@ -219,6 +252,7 @@ function QuickSemesterForm({ academicYears }: { academicYears: Array<{ id: strin
 
   return (
     <form action={saveSemesterAction} className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2">
+      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
       <div className="md:col-span-2">
         <h2 className="text-sm font-semibold text-[#0F172A]">Tambah Semester</h2>
       </div>

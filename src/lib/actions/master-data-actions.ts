@@ -88,6 +88,19 @@ function getSchoolRedirectPath(formData: FormData) {
   return SUPER_ADMIN_SCHOOLS_PATH;
 }
 
+function getAcademicRedirectPath(formData: FormData) {
+  const path = formString(formData, "redirect_path");
+
+  if (
+    path === "/dashboard/master-data/academic-years" ||
+    path === "/dashboard/master-data/semesters"
+  ) {
+    return path;
+  }
+
+  return "/dashboard/master-data/semesters";
+}
+
 function serviceRoleClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -332,18 +345,28 @@ export async function toggleAcademicYearAction(formData: FormData) {
 }
 
 export async function saveSemesterAction(formData: FormData) {
+  const redirectPath = getAcademicRedirectPath(formData);
   const currentUser = await requirePermission("semesters.manage");
   const scope = await requireSchoolScope();
+  const academicYearId = formString(formData, "academic_year_id");
+
+  if (!academicYearId) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Pilih tahun ajaran sebelum menyimpan semester.",
+    });
+  }
+
   const parsed = semesterSchema.safeParse({
     id: formString(formData, "id"),
-    academic_year_id: formString(formData, "academic_year_id"),
+    academic_year_id: academicYearId,
     name: formString(formData, "name"),
     code: formString(formData, "code"),
     is_active: formBoolean(formData, "is_active"),
   });
 
   if (!parsed.success) {
-    redirectTo("/dashboard/master-data/semesters", {
+    redirectTo(redirectPath, {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Data semester tidak valid.",
     });
@@ -388,7 +411,7 @@ export async function saveSemesterAction(formData: FormData) {
   }
 
   revalidateAcademicContextPaths();
-  redirectTo("/dashboard/master-data/semesters", {
+  redirectTo(redirectPath, {
     ok: !error,
     message: error
       ? getFriendlyErrorMessage(error)
@@ -399,6 +422,7 @@ export async function saveSemesterAction(formData: FormData) {
 }
 
 export async function toggleSemesterAction(formData: FormData) {
+  const redirectPath = getAcademicRedirectPath(formData);
   const currentUser = await requirePermission("semesters.manage");
   const scope = await requireSchoolScope();
   const supabase = await createClient();
@@ -436,7 +460,7 @@ export async function toggleSemesterAction(formData: FormData) {
   }
 
   revalidateAcademicContextPaths();
-  redirectTo("/dashboard/master-data/semesters", {
+  redirectTo(redirectPath, {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
