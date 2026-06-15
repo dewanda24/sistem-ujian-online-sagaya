@@ -53,6 +53,7 @@ export function ConfirmDialog({
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
+            type="button"
             onClick={onCancel}
             disabled={isLoading}
             className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
@@ -60,6 +61,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </button>
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={isLoading}
             className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${

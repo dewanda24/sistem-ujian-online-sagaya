@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { Pencil, Power } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { toggleUserStatusAction } from "@/lib/actions/master-data-actions";
@@ -76,17 +81,17 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2"><StatusBadge active={teacher.status === "active"} /></td>
                   <td className="px-3 py-2"><span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-[#64748B]">Tidak</span></td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <Link href={`/dashboard/master-data/teachers/${teacher.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                    <TableActions>
+                      <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon={Pencil}>Edit</TableActionLink>
                       <form action={toggleUserStatusAction}>
                         <input type="hidden" name="target" value="teachers" />
                         <input type="hidden" name="id" value={teacher.id} />
                         <input type="hidden" name="status" value={teacher.status === "active" ? "inactive" : "active"} />
-                        <ConfirmSubmitButton confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${name}?`} className="h-7 rounded-lg px-2 text-xs">
+                        <TableActionSubmit icon={Power} confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${name}?`}>
                           {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                        </ConfirmSubmitButton>
+                        </TableActionSubmit>
                       </form>
-                    </div>
+                    </TableActions>
                   </td>
                 </tr>
               );
@@ -105,7 +110,19 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                 <span>{assignmentCounts.get(teacher.id) ?? 0} mata pelajaran</span>
                 <StatusBadge active={teacher.status === "active"} />
               </div>
-              <Link href={`/dashboard/master-data/teachers/${teacher.id}/edit`} className="mt-2 inline-flex rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs">Edit</Link>
+              <div className="mt-2">
+                <TableActions>
+                  <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <form action={toggleUserStatusAction}>
+                    <input type="hidden" name="target" value="teachers" />
+                    <input type="hidden" name="id" value={teacher.id} />
+                    <input type="hidden" name="status" value={teacher.status === "active" ? "inactive" : "active"} />
+                    <TableActionSubmit icon={Power} confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${profile?.full_name ?? teacher.username}?`}>
+                      {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                </TableActions>
+              </div>
             </article>
           );
         }) : <div className="rounded-xl border border-[#E2E8F0] bg-white p-8"><EmptyState title="Belum ada guru" description="Tambahkan guru pertama atau import data guru." actionHref="/dashboard/master-data/teachers/create" actionLabel="Tambah Guru" /></div>}

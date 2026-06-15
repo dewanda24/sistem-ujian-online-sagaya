@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { Pencil, Power } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { toggleSubjectAction } from "@/lib/actions/master-data-actions";
@@ -58,16 +63,16 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
                 <td className="truncate px-3 py-2">{subject.code}</td>
                 <td className="px-3 py-2"><StatusBadge active={Boolean(subject.is_active)} /></td>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <Link href={`/dashboard/master-data/subjects/${subject.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                  <TableActions>
+                    <TableActionLink href={`/dashboard/master-data/subjects/${subject.id}/edit`} icon={Pencil}>Edit</TableActionLink>
                     <form action={toggleSubjectAction}>
                       <input type="hidden" name="id" value={subject.id} />
                       <input type="hidden" name="is_active" value={subject.is_active ? "false" : "true"} />
-                      <ConfirmSubmitButton confirmMessage={`${subject.is_active ? "Nonaktifkan" : "Aktifkan"} ${subject.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                      <TableActionSubmit icon={Power} confirmMessage={`${subject.is_active ? "Nonaktifkan" : "Aktifkan"} ${subject.name}?`}>
                         {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
-                      </ConfirmSubmitButton>
+                      </TableActionSubmit>
                     </form>
-                  </div>
+                  </TableActions>
                 </td>
               </tr>
             ))}
@@ -87,7 +92,16 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(subject.is_active)} />
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-              <Link href={`/dashboard/master-data/subjects/${subject.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+              <TableActions>
+                <TableActionLink href={`/dashboard/master-data/subjects/${subject.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                <form action={toggleSubjectAction}>
+                  <input type="hidden" name="id" value={subject.id} />
+                  <input type="hidden" name="is_active" value={subject.is_active ? "false" : "true"} />
+                  <TableActionSubmit icon={Power} confirmMessage={`${subject.is_active ? "Nonaktifkan" : "Aktifkan"} ${subject.name}?`}>
+                    {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
+                  </TableActionSubmit>
+                </form>
+              </TableActions>
             </div>
           </article>
         )) : (

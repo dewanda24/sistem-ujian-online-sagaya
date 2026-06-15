@@ -1,7 +1,13 @@
+import { Pencil, Power } from "lucide-react";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { SubmitButton } from "@/components/dashboard/submit-button";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -123,13 +129,13 @@ export default async function SemestersPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(semester.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex gap-2">
-                <a
+              <TableActions>
+                <TableActionLink
                   href={`/dashboard/master-data/semesters?edit=${semester.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  icon={Pencil}
                 >
                   Edit
-                </a>
+                </TableActionLink>
                 <form action={toggleSemesterAction}>
                   <input type="hidden" name="id" value={semester.id} />
                   <input
@@ -142,15 +148,14 @@ export default async function SemestersPage({ searchParams }: PageProps) {
                     name="is_active"
                     value={semester.is_active ? "false" : "true"}
                   />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={Power}
                     confirmMessage={`${semester.is_active ? "Nonaktifkan" : "Aktifkan"} semester ${semester.name}?`}
-                    className="rounded-md px-3 py-1.5 text-xs"
-                    loadingText="Memperbarui..."
                   >
                     {semester.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
-              </div>
+              </TableActions>
             </td>
           </tr>
         ))}

@@ -28,6 +28,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 
 function DashboardShellContent({ children, user }: DashboardShellProps) {
   const menuItems = getDashboardMenu(user);
+  const pathname = usePathname();
+  const isExamRoom = pathname.startsWith("/dashboard/exam-room");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -36,7 +38,15 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopbar user={user} onOpenSidebar={() => setMobileOpen(true)} />
         {user.is_demo_user ? <DemoModeBanner /> : null}
-        <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">{children}</main>
+        <main
+          className={
+            isExamRoom
+              ? "min-w-0 flex-1 px-3 py-3 lg:px-8 lg:py-6"
+              : "min-w-0 flex-1 px-4 py-6 lg:px-8"
+          }
+        >
+          {children}
+        </main>
         <DashboardToaster />
       </div>
 

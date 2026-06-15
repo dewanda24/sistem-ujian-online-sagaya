@@ -1,7 +1,13 @@
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { Archive, Pencil, Power } from "lucide-react";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { SubmitButton } from "@/components/dashboard/submit-button";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -188,13 +194,13 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(stimulus.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
-                <a
+              <TableActions>
+                <TableActionLink
                   href={`/dashboard/question-bank/stimuli?edit=${stimulus.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  icon={Pencil}
                 >
                   Edit
-                </a>
+                </TableActionLink>
                 <form action={toggleQuestionStimulusAction}>
                   <input type="hidden" name="id" value={stimulus.id} />
                   <input
@@ -202,25 +208,27 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
                     name="is_active"
                     value={stimulus.is_active ? "false" : "true"}
                   />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={Power}
                     confirmMessage={`${
                       stimulus.is_active ? "Nonaktifkan" : "Aktifkan"
                     } stimulus ${stimulus.title}?`}
                   >
                     {stimulus.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
                 <form action={deleteQuestionStimulusAction}>
                   <input type="hidden" name="id" value={stimulus.id} />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={Archive}
                     confirmMessage="Arsipkan stimulus ini? Soal lama yang masih memakai stimulus ini tetap menyimpan relasinya, tetapi stimulus tidak akan muncul sebagai pilihan aktif."
                     confirmationText="HAPUS"
-                    variant="danger"
+                    tone="danger"
                   >
                     Arsipkan
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
-              </div>
+              </TableActions>
             </td>
           </tr>
         ))}

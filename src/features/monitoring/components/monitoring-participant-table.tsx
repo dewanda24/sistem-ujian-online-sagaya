@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  MoreHorizontal,
   RotateCcw,
   Send,
   ShieldAlert,
@@ -14,6 +13,11 @@ import {
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import {
+  TableActionButton,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { UI_LABELS } from "@/constants/ui-labels";
 import {
   forceSubmitAttemptAction,
@@ -22,7 +26,6 @@ import {
   resetAttemptAction,
   unlockAttemptAction,
 } from "@/features/monitoring/actions";
-import { MonitoringActionButton } from "@/features/monitoring/components/monitoring-action-button";
 import { cn } from "@/lib/utils";
 
 type MonitoringParticipant = {
@@ -301,22 +304,12 @@ function ParticipantRow({
         <ViolationBadge count={info.eventCount} />
       </td>
       <td className="px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onDetail}
-            title="Detail"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-          >
-            <Eye className="size-3.5" />
-            <span className="sr-only">Detail</span>
-          </button>
-          <MoreMenu
-            participant={participant}
-            canControlSessions={canControlSessions}
-            returnTo={returnTo}
-          />
-        </div>
+        <ParticipantActions
+          participant={participant}
+          canControlSessions={canControlSessions}
+          returnTo={returnTo}
+          onDetail={onDetail}
+        />
       </td>
     </tr>
   );
@@ -350,18 +343,11 @@ function ParticipantCard({
       <div className="mt-2 flex items-center justify-between gap-2">
         <Progress answerCount={info.answerCount} compact />
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onDetail}
-            className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-          >
-            Detail
-          </button>
-          <MoreMenu
+          <ParticipantActions
             participant={participant}
             canControlSessions={canControlSessions}
             returnTo={returnTo}
-            compact
+            onDetail={onDetail}
           />
         </div>
       </div>
@@ -369,42 +355,29 @@ function ParticipantCard({
   );
 }
 
-function MoreMenu({
+function ParticipantActions({
   participant,
   canControlSessions,
   returnTo,
-  compact = false,
+  onDetail,
 }: {
   participant: MonitoringParticipant;
   canControlSessions: boolean;
   returnTo: string;
-  compact?: boolean;
+  onDetail: () => void;
 }) {
   const attempt = firstRelation(participant.exam_attempts);
 
   return (
-    <details className="relative">
-      <summary
-        className={cn(
-          "inline-flex cursor-pointer list-none items-center justify-center rounded-lg border border-[#E2E8F0] hover:bg-[#F8FAFC]",
-          compact ? "h-7 px-2 text-xs" : "h-7 w-7",
-        )}
-      >
-        <MoreHorizontal className="size-3.5" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-2 grid min-w-44 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-[#64748B] hover:bg-[#F8FAFC]"
-        >
-          <Eye className="size-3.5" />
-          Lihat Jawaban
-        </button>
-        {canControlSessions ? (
-          <ActionForms participant={participant} attempt={attempt} returnTo={returnTo} />
-        ) : null}
-      </div>
-    </details>
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onDetail}>
+        Detail
+      </TableActionButton>
+      <TableActionButton icon={Eye}>Lihat Jawaban</TableActionButton>
+      {canControlSessions ? (
+        <ActionForms participant={participant} attempt={attempt} returnTo={returnTo} />
+      ) : null}
+    </TableActions>
   );
 }
 
@@ -423,26 +396,24 @@ function ActionForms({
         <form action={forceSubmitAttemptAction}>
           <input type="hidden" name="attempt_id" value={attempt.id} />
           <input type="hidden" name="return_to" value={returnTo} />
-          <MonitoringActionButton
-            className="w-full justify-start rounded-lg border-0 px-2"
+          <TableActionSubmit
+            icon={Send}
             disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
             confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
           >
-            <Send className="size-3.5" />
             Selesaikan Ujian
-          </MonitoringActionButton>
+          </TableActionSubmit>
         </form>
         {attempt.locked_at ? (
           <form action={unlockAttemptAction}>
             <input type="hidden" name="attempt_id" value={attempt.id} />
             <input type="hidden" name="return_to" value={returnTo} />
-            <MonitoringActionButton
-              className="w-full justify-start rounded-lg border-0 px-2"
+            <TableActionSubmit
+              icon={Unlock}
               confirmMessage="Buka kunci pengerjaan siswa ini? Siswa bisa lanjut mengerjakan."
             >
-              <Unlock className="size-3.5" />
               Buka Kunci
-            </MonitoringActionButton>
+            </TableActionSubmit>
           </form>
         ) : (
           <form action={lockAttemptAction}>
@@ -453,28 +424,27 @@ function ActionForms({
               name="lock_reason"
               value="Dikunci dari pengawasan ujian."
             />
-            <MonitoringActionButton
-              className="w-full justify-start rounded-lg border-0 px-2"
+            <TableActionSubmit
+              icon={ShieldAlert}
               disabled={attempt.status !== "in_progress"}
               confirmMessage="Kunci pengerjaan siswa ini? Siswa tidak bisa menyimpan jawaban atau menyelesaikan ujian sampai dibuka."
             >
-              <ShieldAlert className="size-3.5" />
               Catatan Pengawas
-            </MonitoringActionButton>
+            </TableActionSubmit>
           </form>
         )}
         <form action={resetAttemptAction}>
           <input type="hidden" name="attempt_id" value={attempt.id} />
           <input type="hidden" name="return_to" value={returnTo} />
-          <MonitoringActionButton
-            className="w-full justify-start rounded-lg border-0 px-2"
-            variant="danger"
+          <TableActionSubmit
+            icon={RotateCcw}
+            tone="danger"
+            confirmationText="RESET"
             disabled={attempt.status === "cancelled"}
             confirmMessage="Mulai ulang pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai dari awal."
           >
-            <RotateCcw className="size-3.5" />
             {UI_LABELS.actions.resetAttempt}
-          </MonitoringActionButton>
+          </TableActionSubmit>
         </form>
       </>
     );
@@ -488,13 +458,12 @@ function ActionForms({
     <form action={markParticipantAbsentAction}>
       <input type="hidden" name="participant_id" value={participant.id} />
       <input type="hidden" name="return_to" value={returnTo} />
-      <MonitoringActionButton
-        className="w-full justify-start rounded-lg border-0 px-2"
-        variant="danger"
+      <TableActionSubmit
+        tone="danger"
         confirmMessage="Tandai peserta ini tidak hadir?"
       >
         Tidak Hadir
-      </MonitoringActionButton>
+      </TableActionSubmit>
     </form>
   );
 }

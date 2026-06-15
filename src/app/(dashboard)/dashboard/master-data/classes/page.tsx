@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { Pencil, Power } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { toggleClassAction } from "@/lib/actions/master-data-actions";
@@ -70,24 +75,16 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2">{activeMembers.length} siswa</td>
                   <td className="px-3 py-2"><StatusBadge active={Boolean(classItem.is_active)} /></td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <details className="relative">
-                        <summary className="inline-flex h-7 cursor-pointer list-none items-center rounded-lg border border-[#E2E8F0] px-2 text-xs hover:bg-[#F8FAFC]">Detail</summary>
-                        <div className="absolute right-0 z-30 mt-2 grid min-w-52 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs shadow-lg">
-                          <div>Wali: {homeroomProfile?.full_name ?? classItem.users?.username ?? "-"}</div>
-                          <div>Jumlah siswa aktif: {activeMembers.length}</div>
-                          <div>Total riwayat siswa: {members.length}</div>
-                        </div>
-                      </details>
-                      <Link href={`/dashboard/master-data/classes/${classItem.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                    <TableActions>
+                      <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon={Pencil}>Edit</TableActionLink>
                       <form action={toggleClassAction}>
                         <input type="hidden" name="id" value={classItem.id} />
                         <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
-                        <ConfirmSubmitButton confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                        <TableActionSubmit icon={Power} confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
                           {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
-                        </ConfirmSubmitButton>
+                        </TableActionSubmit>
                       </form>
-                    </div>
+                    </TableActions>
                   </td>
                 </tr>
               );
@@ -106,6 +103,18 @@ export default async function ClassesPage({ searchParams }: PageProps) {
               <div className="mt-1 flex items-center gap-2 text-xs text-[#64748B]">
                 <span>{activeMembers.length} siswa</span>
                 <StatusBadge active={Boolean(classItem.is_active)} />
+              </div>
+              <div className="mt-2">
+                <TableActions>
+                  <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <form action={toggleClassAction}>
+                    <input type="hidden" name="id" value={classItem.id} />
+                    <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
+                    <TableActionSubmit icon={Power} confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
+                      {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                </TableActions>
               </div>
             </article>
           );

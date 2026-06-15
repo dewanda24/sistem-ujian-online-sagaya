@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import {
   Archive,
@@ -8,13 +7,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  MoreHorizontal,
   Pencil,
 } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import {
+  TableActionButton,
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { UI_LABELS, getStatusLabel } from "@/constants/ui-labels";
 import {
   archiveExamPackageAction,
@@ -140,34 +143,10 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
                   ) : null}
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewPackage(examPackage)}
-                      title={UI_LABELS.actions.preview}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    >
-                      <Eye className="size-3.5" />
-                      <span className="sr-only">{UI_LABELS.actions.preview}</span>
-                    </button>
-                    <Link
-                      href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-                      title={UI_LABELS.actions.update}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    >
-                      <Pencil className="size-3.5" />
-                      <span className="sr-only">{UI_LABELS.actions.update}</span>
-                    </Link>
-                    <Link
-                      href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
-                      title="Jadwalkan"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    >
-                      <CalendarPlus className="size-3.5" />
-                      <span className="sr-only">Jadwalkan</span>
-                    </Link>
-                    <MoreMenu examPackage={examPackage} />
-                  </div>
+                  <PackageActions
+                    examPackage={examPackage}
+                    onPreview={() => setPreviewPackage(examPackage)}
+                  />
                 </td>
               </tr>
             ))}
@@ -192,20 +171,10 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
               <StatusPill value={examPackage.status} />
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPreviewPackage(examPackage)}
-                className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-              >
-                {UI_LABELS.actions.preview}
-              </button>
-              <Link
-                href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-                className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-              >
-                {UI_LABELS.actions.update}
-              </Link>
-              <MoreMenu examPackage={examPackage} compact />
+              <PackageActions
+                examPackage={examPackage}
+                onPreview={() => setPreviewPackage(examPackage)}
+              />
             </div>
           </article>
         ))}
@@ -252,66 +221,69 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
   );
 }
 
-function MoreMenu({
+function PackageActions({
   examPackage,
-  compact = false,
+  onPreview,
 }: {
   examPackage: ExamPackageRow;
-  compact?: boolean;
+  onPreview: () => void;
 }) {
   return (
-    <details className="relative">
-      <summary
-        className={`inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC] ${
-          compact ? "h-7 px-2 text-xs" : "h-7 w-7"
-        }`}
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onPreview}>
+        {UI_LABELS.actions.preview}
+      </TableActionButton>
+      <TableActionLink
+        href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
+        icon={Pencil}
       >
-        <MoreHorizontal className="size-3.5" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-2 grid min-w-44 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
-        {["draft", "published", "archived"].map((status) => (
-          <form key={status} action={updateExamPackageStatusAction}>
-            <input type="hidden" name="id" value={examPackage.id} />
-            <input type="hidden" name="status" value={status} />
-            <ConfirmSubmitButton
-              confirmMessage={`Ubah status paket menjadi ${getStatusLabel(status)}?`}
-              className="w-full justify-start rounded-lg border-0 px-2"
-            >
-              {getStatusLabel(status)}
-            </ConfirmSubmitButton>
-          </form>
-        ))}
-        <form action={toggleExamPackageActiveAction}>
+        {UI_LABELS.actions.update}
+      </TableActionLink>
+      <TableActionLink
+        href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
+        icon={CalendarPlus}
+      >
+        Jadwalkan
+      </TableActionLink>
+      {["draft", "published", "archived"].map((status) => (
+        <form key={status} action={updateExamPackageStatusAction}>
           <input type="hidden" name="id" value={examPackage.id} />
-          <input
-            type="hidden"
-            name="is_active"
-            value={examPackage.is_active ? "false" : "true"}
-          />
-          <ConfirmSubmitButton
-            confirmMessage={
-              examPackage.is_active
-                ? "Nonaktifkan paket ujian ini?"
-                : "Aktifkan paket ujian ini?"
-            }
-            className="w-full justify-start rounded-lg border-0 px-2"
+          <input type="hidden" name="status" value={status} />
+          <TableActionSubmit
+            confirmMessage={`Ubah status paket menjadi ${getStatusLabel(status)}?`}
           >
-            {examPackage.is_active ? "Nonaktifkan" : "Aktifkan"}
-          </ConfirmSubmitButton>
+            {getStatusLabel(status)}
+          </TableActionSubmit>
         </form>
-        <form action={archiveExamPackageAction}>
-          <input type="hidden" name="id" value={examPackage.id} />
-          <ConfirmSubmitButton
-            confirmMessage="Arsipkan paket ujian ini?"
-            variant="danger"
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
-            <Archive className="size-3.5" />
-            Arsipkan
-          </ConfirmSubmitButton>
-        </form>
-      </div>
-    </details>
+      ))}
+      <form action={toggleExamPackageActiveAction}>
+        <input type="hidden" name="id" value={examPackage.id} />
+        <input
+          type="hidden"
+          name="is_active"
+          value={examPackage.is_active ? "false" : "true"}
+        />
+        <TableActionSubmit
+          confirmMessage={
+            examPackage.is_active
+              ? "Nonaktifkan paket ujian ini?"
+              : "Aktifkan paket ujian ini?"
+          }
+        >
+          {examPackage.is_active ? "Nonaktifkan" : "Aktifkan"}
+        </TableActionSubmit>
+      </form>
+      <form action={archiveExamPackageAction}>
+        <input type="hidden" name="id" value={examPackage.id} />
+        <TableActionSubmit
+          icon={Archive}
+          confirmMessage="Arsipkan paket ujian ini?"
+          tone="danger"
+        >
+          Arsipkan
+        </TableActionSubmit>
+      </form>
+    </TableActions>
   );
 }
 

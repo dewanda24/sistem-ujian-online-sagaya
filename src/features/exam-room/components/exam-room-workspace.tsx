@@ -1,6 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Info,
+  Maximize2,
+  Save,
+  Wifi,
+  WifiOff,
+  X,
+} from "lucide-react";
 
 import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
 import { StatusPill } from "@/components/dashboard/status-pill";
@@ -145,6 +157,7 @@ export function ExamRoomWorkspace({
   const [sessionConflict, setSessionConflict] = useState(false);
   const [submitLocked, setSubmitLocked] = useState(false);
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [warning, setWarning] = useState<{
     count: number;
     title: string;
@@ -195,6 +208,9 @@ export function ExamRoomWorkspace({
   const failedSaveCount = saveStates.filter((status) => status === "error").length;
   const canSubmitManually =
     !isReadOnly && !submitLocked && pendingSaveCount === 0 && failedSaveCount === 0;
+  const saveSummary = getSaveSummary(pendingSaveCount, failedSaveCount);
+  const saveStatusText = getSaveStatusText(pendingSaveCount, failedSaveCount);
+  const connectionText = isOnline ? "Online" : "Offline";
 
   const sendExamEvent = useCallback(
     (eventType: ExamEventType, metadata?: Record<string, unknown>) => {
@@ -411,8 +427,8 @@ export function ExamRoomWorkspace({
       if (!document.fullscreenElement) {
         registerViolation(
           "fullscreen_exit",
-          "Keluar fullscreen terdeteksi",
-          "Aktifkan kembali fullscreen dan lanjutkan ujian dengan tertib.",
+          "Keluar layar penuh terdeteksi",
+          "Aktifkan kembali layar penuh dan lanjutkan ujian dengan tertib.",
         );
       }
     };
@@ -707,7 +723,7 @@ export function ExamRoomWorkspace({
         ),
       }));
       setSaveMessage(
-        `Draft lokal dipulihkan. Menyimpan ulang ${draftEntries.length} jawaban...`,
+        `Cadangan offline dipulihkan. Menyimpan ulang ${draftEntries.length} jawaban...`,
       );
 
       if (navigator.onLine) {
@@ -765,13 +781,119 @@ export function ExamRoomWorkspace({
   return (
     <div
       ref={examRoomRef}
-      className="space-y-4 bg-background p-0 [:fullscreen]:h-screen [:fullscreen]:overflow-y-auto [:fullscreen]:p-4"
+      className="space-y-3 bg-background pb-20 [:fullscreen]:h-screen [:fullscreen]:overflow-y-auto [:fullscreen]:p-4 md:space-y-4 md:pb-0"
     >
-      <div className="grid gap-3 rounded-lg border bg-card p-4 text-sm md:grid-cols-6">
-        <InfoItem label="Status" value={<StatusPill value={attempt.status} />} />
-        <InfoItem
-          label="Sisa Waktu"
-          value={
+      <header className="sticky top-0 z-30 rounded-b-lg border bg-background/95 px-3 py-2 shadow-sm backdrop-blur md:rounded-lg md:px-4 md:py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+              <Clock3 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span
+                className={cn(
+                  "tabular-nums",
+                  remainingSeconds <= 300 && "text-destructive",
+                )}
+              >
+                {formatRemainingTime(remainingSeconds)}
+              </span>
+              <span className="text-muted-foreground">|</span>
+              <span className="truncate">
+                {answeredCount}/{questions.length} Terjawab
+              </span>
+              <span className="text-muted-foreground">|</span>
+              <span
+                className={cn(
+                  "truncate",
+                  isOnline ? "text-emerald-700" : "text-destructive",
+                )}
+              >
+                {connectionText}
+              </span>
+            </div>
+            <div className="mt-1 flex gap-1.5 overflow-x-auto text-[11px] text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <CompactStatusChip
+                icon={<Clock3 className="h-3 w-3" aria-hidden="true" />}
+                label="Sisa Waktu"
+                value={formatRemainingTime(remainingSeconds)}
+                tone={remainingSeconds <= 300 ? "danger" : "default"}
+              />
+              <CompactStatusChip
+                icon={
+                  isOnline ? (
+                    <Wifi className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <WifiOff className="h-3 w-3" aria-hidden="true" />
+                  )
+                }
+                label="Koneksi"
+                value={connectionText}
+                tone={isOnline ? "success" : "danger"}
+              />
+              <CompactStatusChip
+                icon={
+                  saveSummary === "error" ? (
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  ) : saveSummary === "saving" ? (
+                    <Save className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                  )
+                }
+                label="Simpan"
+                value={saveStatusText}
+                tone={
+                  saveSummary === "error"
+                    ? "danger"
+                    : saveSummary === "saving"
+                      ? "warning"
+                      : "success"
+                }
+              />
+              <CompactStatusChip
+                icon={<CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
+                label="Terjawab"
+                value={`${answeredCount}/${questions.length}`}
+                tone="default"
+              />
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsDetailOpen(true)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted"
+              aria-label="Buka detail ujian"
+              title="Detail ujian"
+            >
+              <Info className="h-4 w-4" aria-hidden="true" />
+            </button>
+            {!isReadOnly ? (
+              <button
+                type="button"
+                onClick={requestFullscreen}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted"
+                aria-label="Masuk layar penuh"
+                title="Layar penuh"
+              >
+                <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      <ExamDetailDialog
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        items={[
+          {
+            label: "Status",
+            value: <StatusPill value={attempt.status} />,
+          },
+          {
+            label: "Sisa Waktu",
+            value: (
             <span
               className={cn(
                 "font-semibold",
@@ -780,59 +902,42 @@ export function ExamRoomWorkspace({
             >
               {formatRemainingTime(remainingSeconds)}
             </span>
-          }
-        />
-        <InfoItem
-          label="Batas Waktu"
-          value={formatDateTime(schedule?.end_at)}
-        />
-        <InfoItem
-          label="Mulai"
-          value={formatDateTime(attempt.started_at)}
-        />
-        <InfoItem
-          label="Soal Terjawab"
-          value={`${answeredCount}/${questions.length}`}
-        />
-      <InfoItem
-        label="Pelanggaran"
-        value={`${violationCount}/${maxAntiCheatViolations}`}
+            ),
+          },
+          {
+            label: "Koneksi",
+            value: connectionText,
+          },
+          {
+            label: "Penyimpanan",
+            value: saveStatusText,
+          },
+          ...(lastSavedAt
+            ? [
+                {
+                  label: "Terakhir Tersimpan",
+                  value: formatDateTime(lastSavedAt),
+                },
+              ]
+            : []),
+          {
+            label: "Waktu Mulai",
+            value: formatDateTime(attempt.started_at),
+          },
+          {
+            label: "Batas Waktu",
+            value: formatDateTime(schedule?.end_at),
+          },
+          {
+            label: "Pelanggaran",
+            value: `${violationCount}/${maxAntiCheatViolations}`,
+          },
+          {
+            label: "Cadangan Offline",
+            value: `${answeredCount}/${questions.length}`,
+          },
+        ]}
       />
-      </div>
-
-      <div
-        className={cn(
-          "grid gap-3 rounded-lg border p-3 text-sm md:grid-cols-4",
-          !isOnline || failedSaveCount > 0
-            ? "border-destructive/30 bg-destructive/10 text-destructive"
-            : pendingSaveCount > 0
-              ? "border-amber-200 bg-amber-50 text-amber-900"
-              : "bg-card text-muted-foreground",
-        )}
-      >
-        <InfoItem
-          label="Status Koneksi"
-          value={isOnline ? "Online" : "Offline"}
-        />
-        <InfoItem
-          label="Status Simpan"
-          value={
-            failedSaveCount > 0
-              ? `${failedSaveCount} gagal`
-              : pendingSaveCount > 0
-                ? `${pendingSaveCount} menyimpan`
-                : "Aman"
-          }
-        />
-        <InfoItem
-          label="Terakhir Tersimpan"
-          value={lastSavedAt ? formatDateTime(lastSavedAt) : "-"}
-        />
-        <InfoItem
-          label="Jawaban Lokal"
-          value={`${answeredCount}/${questions.length}`}
-        />
-      </div>
 
       {isLocked ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -848,43 +953,27 @@ export function ExamRoomWorkspace({
         </div>
       ) : null}
 
-      {!isReadOnly ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
-          <span>
-            Mode ujian aktif. Tetap di halaman ini dan gunakan fullscreen bila
-            diminta pengawas.
-          </span>
-          <button
-            type="button"
-            onClick={requestFullscreen}
-            className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium hover:bg-amber-100"
-          >
-            Masuk Fullscreen
-          </button>
-        </div>
-      ) : null}
-
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <section className="rounded-lg border bg-card p-4 shadow-sm md:p-6">
-          <div className="mb-5 flex flex-col gap-3 border-b pb-4 md:flex-row md:items-start md:justify-between">
+        <section className="rounded-lg border bg-card p-3 shadow-sm md:p-6">
+          <div className="mb-3 flex flex-col gap-2 border-b pb-3 md:mb-5 md:flex-row md:items-start md:justify-between md:pb-4">
             <div>
-              <p className="text-xs font-medium uppercase text-muted-foreground">
+              <p className="text-[11px] font-medium uppercase text-muted-foreground md:text-xs">
                 Soal {activeIndex + 1} dari {questions.length}
               </p>
-              <h2 className="mt-1 text-base font-semibold">
+              <h2 className="mt-0.5 text-sm font-semibold md:mt-1 md:text-base">
                 {examPackage?.subjects?.name ?? "Mata pelajaran"}
               </h2>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="rounded-md bg-muted px-2 py-1">
-                {currentQuestion.type === "essay" ? "Essay" : "Pilihan ganda"}
+            <div className="flex flex-wrap gap-1.5 text-[10px] md:gap-2 md:text-xs">
+              <span className="rounded bg-muted px-1.5 py-0.5 md:rounded-md md:px-2 md:py-1">
+                {currentQuestion.type === "essay" ? "Esai" : "Pilihan ganda"}
               </span>
-              <span className="rounded-md bg-muted px-2 py-1">
+              <span className="rounded bg-muted px-1.5 py-0.5 md:rounded-md md:px-2 md:py-1">
                 {Number(currentQuestion.point ?? 0)} poin
               </span>
               <span
                 className={cn(
-                  "rounded-md px-2 py-1",
+                  "rounded px-1.5 py-0.5 md:rounded-md md:px-2 md:py-1",
                   saveStatus[currentQuestion.id] === "error"
                     ? "bg-destructive/10 text-destructive"
                     : "bg-muted text-muted-foreground",
@@ -904,9 +993,9 @@ export function ExamRoomWorkspace({
                 <button
                   type="button"
                   onClick={() => retryFailedAnswer(currentQuestion.id)}
-                  className="rounded-md border border-destructive/30 px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                  className="rounded border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/10 md:rounded-md md:px-2 md:py-1 md:text-xs"
                 >
-                  Retry simpan
+                  Coba lagi
                 </button>
               ) : null}
             </div>
@@ -916,7 +1005,7 @@ export function ExamRoomWorkspace({
           <QuestionContent content={currentQuestion.content} />
           <QuestionAttachments attachments={currentQuestion.question_attachments} />
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-4 space-y-2.5 md:mt-6 md:space-y-3">
             {currentQuestion.type === "multiple_choice" ? (
               (currentQuestion.question_options ?? [])
                 .slice()
@@ -965,7 +1054,7 @@ export function ExamRoomWorkspace({
                 onChange={(event) =>
                   handleEssayChange(currentQuestion.id, event.target.value)
                 }
-                placeholder="Tulis jawaban essay di sini..."
+                placeholder="Tulis jawaban esai di sini..."
                 className="min-h-44 w-full rounded-lg border bg-background px-3 py-3 text-sm leading-6 outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
               />
             )}
@@ -973,7 +1062,9 @@ export function ExamRoomWorkspace({
 
           <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="min-h-5 text-xs text-muted-foreground">
-              {saveMessage}
+              {saveMessage === "Jawaban tersimpan."
+                ? "Semua jawaban tersimpan."
+                : saveMessage}
               {failedSaveCount > 0
                 ? " Jangan kumpulkan ujian sebelum jawaban gagal berhasil disimpan."
                 : ""}
@@ -997,7 +1088,7 @@ export function ExamRoomWorkspace({
                 }
                 className="rounded-md border px-4 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Selanjutnya
+                Berikutnya
               </button>
             </div>
           </div>
@@ -1089,7 +1180,7 @@ export function ExamRoomWorkspace({
                 setSaveMessage(
                   pendingSaveCount > 0
                     ? "Tunggu proses simpan selesai sebelum submit."
-                    : "Ada jawaban gagal tersimpan. Retry dulu sebelum submit.",
+                    : "Ada jawaban gagal tersimpan. Coba simpan lagi sebelum dikumpulkan.",
                 );
                 return;
               }
@@ -1116,7 +1207,7 @@ export function ExamRoomWorkspace({
                 : pendingSaveCount > 0
                   ? "Menunggu simpan..."
                   : failedSaveCount > 0
-                    ? "Retry jawaban dulu"
+                    ? "Simpan ulang dulu"
                     : "Kumpulkan Ujian"}
             </button>
           </form>
@@ -1134,6 +1225,55 @@ export function ExamRoomWorkspace({
             }}
           />
         </aside>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 py-2 shadow-[0_-8px_20px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-2">
+          <button
+            type="button"
+            disabled={activeIndex === 0}
+            onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Soal sebelumnya"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {questions.map(({ question }, index) => {
+              const active = index === activeIndex;
+              const answered = isAnswered(answers[question.id]);
+
+              return (
+                <button
+                  key={`mobile-${question.id}`}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  className={cn(
+                    "h-8 min-w-8 rounded-md border px-2 text-xs font-medium transition",
+                    active && "border-primary bg-primary text-primary-foreground",
+                    !active && answered && "border-emerald-300 bg-emerald-50 text-emerald-700",
+                    !active && !answered && "bg-background text-muted-foreground",
+                  )}
+                  aria-label={`Buka soal ${index + 1}`}
+                >
+                  {index + 1}
+                  {answered ? " ✓" : ""}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={activeIndex === questions.length - 1}
+            onClick={() =>
+              setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
+            }
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Soal berikutnya"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {warning ? (
@@ -1163,18 +1303,96 @@ export function ExamRoomWorkspace({
   );
 }
 
-function InfoItem({
-  label,
-  value,
-}: {
+type DetailItem = {
   label: string;
   value: React.ReactNode;
+};
+
+function CompactStatusChip({
+  icon,
+  label,
+  value,
+  tone = "default",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone?: "default" | "success" | "warning" | "danger";
 }) {
   return (
-    <div>
-      <div className="text-muted-foreground">{label}</div>
-      <div className="font-medium">{value}</div>
-    </div>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5",
+        tone === "default" && "bg-muted text-muted-foreground",
+        tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+        tone === "warning" && "border-amber-200 bg-amber-50 text-amber-800",
+        tone === "danger" && "border-destructive/30 bg-destructive/10 text-destructive",
+      )}
+    >
+      {icon}
+      <span className="sr-only">{label}: </span>
+      <span>{value}</span>
+    </span>
+  );
+}
+
+function ExamDetailDialog({
+  isOpen,
+  items,
+  onClose,
+}: {
+  isOpen: boolean;
+  items: DetailItem[];
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      dialogRef.current?.showModal();
+    } else {
+      dialogRef.current?.close();
+    }
+  }, [isOpen]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="w-[calc(100vw-2rem)] max-w-md rounded-lg border bg-background p-0 text-foreground shadow-xl backdrop:bg-black/45"
+      onCancel={onClose}
+    >
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <h2 className="text-base font-semibold">Detail Ujian</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted"
+          aria-label="Tutup detail ujian"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+      <dl className="grid gap-3 px-4 py-4 text-sm">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-4 border-b pb-2 last:border-0 last:pb-0"
+          >
+            <dt className="text-muted-foreground">{item.label}</dt>
+            <dd className="text-right font-medium">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="border-t px-4 py-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Tutup
+        </button>
+      </div>
+    </dialog>
   );
 }
 
@@ -1347,6 +1565,30 @@ function formatRemainingTime(totalSeconds: number) {
   }
 
   return `${paddedMinutes}:${paddedSeconds}`;
+}
+
+function getSaveSummary(pendingSaveCount: number, failedSaveCount: number) {
+  if (failedSaveCount > 0) {
+    return "error";
+  }
+
+  if (pendingSaveCount > 0) {
+    return "saving";
+  }
+
+  return "saved";
+}
+
+function getSaveStatusText(pendingSaveCount: number, failedSaveCount: number) {
+  if (failedSaveCount > 0) {
+    return `${failedSaveCount} jawaban gagal tersimpan`;
+  }
+
+  if (pendingSaveCount > 0) {
+    return `${pendingSaveCount} jawaban sedang disimpan`;
+  }
+
+  return "Semua jawaban tersimpan";
 }
 
 function getViolationStorageKey(attemptId: string) {

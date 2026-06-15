@@ -71,6 +71,7 @@ export function formatJakartaDateTime(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
     timeStyle: "short",
+    hour12: false,
     timeZone: JAKARTA_TIME_ZONE,
   }).format(new Date(value));
 }

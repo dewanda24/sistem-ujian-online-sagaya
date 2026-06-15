@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { Eye, Pencil, Power } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
@@ -130,19 +135,19 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                 : "-"}
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
-                <Link
+              <TableActions>
+                <TableActionLink
                   href={`/dashboard/super-admin/schools/${school.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  icon={Eye}
                 >
                   Detail
-                </Link>
-                <Link
+                </TableActionLink>
+                <TableActionLink
                   href={`/dashboard/super-admin/schools/${school.id}?edit=1`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  icon={Pencil}
                 >
                   Edit
-                </Link>
+                </TableActionLink>
                 <form action={toggleSchoolAction}>
                   <input
                     type="hidden"
@@ -155,15 +160,16 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                     name="is_active"
                     value={school.is_active ? "false" : "true"}
                   />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={Power}
                     confirmMessage={`${
                       school.is_active ? "Nonaktifkan" : "Aktifkan"
                     } ${school.name}?`}
                   >
                     {school.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
-              </div>
+              </TableActions>
             </td>
           </tr>
         ))}

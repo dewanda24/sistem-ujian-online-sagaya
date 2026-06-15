@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { Pencil, Power } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { SubmitButton } from "@/components/dashboard/submit-button";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
@@ -116,15 +121,15 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                   </td>
                   <td className="px-3 py-2"><StatusBadge active={Boolean(year.is_active)} /></td>
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Link href={`/dashboard/master-data/academic-years/${year.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                    <TableActions>
+                      <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon={Pencil}>Edit</TableActionLink>
                       <form action={toggleAcademicYearAction}>
                         <input type="hidden" name="id" value={year.id} />
                         <input type="hidden" name="school_id" value={year.school_id} />
                         <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
-                        <ConfirmSubmitButton confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                        <TableActionSubmit icon={Power} confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
                           {year.is_active ? "Nonaktifkan" : "Aktifkan"}
-                        </ConfirmSubmitButton>
+                        </TableActionSubmit>
                       </form>
                       {activeSemester ? (
                         <form action={toggleSemesterAction}>
@@ -132,12 +137,12 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                           <input type="hidden" name="id" value={activeSemester.id} />
                           <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
                           <input type="hidden" name="is_active" value="false" />
-                          <ConfirmSubmitButton confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`} className="h-7 rounded-lg px-2 text-xs">
+                          <TableActionSubmit icon={Power} confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
                             Nonaktifkan Semester
-                          </ConfirmSubmitButton>
+                          </TableActionSubmit>
                         </form>
                       ) : null}
-                    </div>
+                    </TableActions>
                   </td>
                 </tr>
               );
@@ -166,7 +171,28 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                 <StatusBadge active={Boolean(year.is_active)} />
               </div>
               <div className="mt-2 flex items-center gap-1.5">
-                <Link href={`/dashboard/master-data/academic-years/${year.id}/edit`} className="rounded-lg border border-[#E2E8F0] px-2 py-1 text-xs hover:bg-[#F8FAFC]">Edit</Link>
+                <TableActions>
+                  <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <form action={toggleAcademicYearAction}>
+                    <input type="hidden" name="id" value={year.id} />
+                    <input type="hidden" name="school_id" value={year.school_id} />
+                    <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
+                    <TableActionSubmit icon={Power} confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
+                      {year.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                  {activeSemester ? (
+                    <form action={toggleSemesterAction}>
+                      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
+                      <input type="hidden" name="id" value={activeSemester.id} />
+                      <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
+                      <input type="hidden" name="is_active" value="false" />
+                      <TableActionSubmit icon={Power} confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
+                        Nonaktifkan Semester
+                      </TableActionSubmit>
+                    </form>
+                  ) : null}
+                </TableActions>
               </div>
             </article>
           );

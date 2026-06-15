@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Archive,
   ChevronLeft,
   ChevronRight,
   Eye,
-  MoreHorizontal,
   Pencil,
   Send,
   Trash2,
@@ -16,6 +14,12 @@ import {
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionButton,
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { UI_LABELS } from "@/constants/ui-labels";
 import {
   bulkQuestionAction,
@@ -281,26 +285,10 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                   <QuestionStatusBadge status={question.status ?? "draft"} />
                 </td>
                 <td className={cellClassName}>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewQuestion(question)}
-                      title={UI_LABELS.actions.preview}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    >
-                      <Eye className="size-3.5" />
-                      <span className="sr-only">{UI_LABELS.actions.preview}</span>
-                    </button>
-                    <Link
-                      href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                      title={UI_LABELS.actions.update}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                    >
-                      <Pencil className="size-3.5" />
-                      <span className="sr-only">{UI_LABELS.actions.update}</span>
-                    </Link>
-                    <MoreMenu question={question} />
-                  </div>
+                  <QuestionActions
+                    question={question}
+                    onPreview={() => setPreviewQuestion(question)}
+                  />
                 </td>
               </tr>
             ))}
@@ -346,20 +334,10 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                   <QuestionStatusBadge status={question.status ?? "draft"} />
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewQuestion(question)}
-                    className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-                  >
-                    {UI_LABELS.actions.preview}
-                  </button>
-                  <Link
-                    href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-                    className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-                  >
-                    {UI_LABELS.actions.update}
-                  </Link>
-                  <MoreMenu question={question} compact />
+                  <QuestionActions
+                    question={question}
+                    onPreview={() => setPreviewQuestion(question)}
+                  />
                 </div>
               </div>
             </div>
@@ -385,59 +363,56 @@ export function QuestionTable({ questions }: QuestionTableProps) {
   );
 }
 
-function MoreMenu({
+function QuestionActions({
   question,
-  compact = false,
+  onPreview,
 }: {
   question: QuestionRow;
-  compact?: boolean;
+  onPreview: () => void;
 }) {
   return (
-    <details className="relative">
-      <summary
-        className={cn(
-          "inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC]",
-          compact ? "h-7 px-2 text-xs" : "h-7 w-7",
-        )}
-        aria-label="More"
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onPreview}>
+        {UI_LABELS.actions.preview}
+      </TableActionButton>
+      <TableActionLink
+        href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
+        icon={Pencil}
       >
-        <MoreHorizontal className="size-3.5" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-2 grid min-w-40 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
-        <form action={updateQuestionStatusAction}>
-          <input type="hidden" name="id" value={question.id} />
-          <input
-            type="hidden"
-            name="status"
-            value={question.status === "published" ? "draft" : "published"}
-          />
-          <ConfirmSubmitButton
-            confirmMessage={
-              question.status === "published"
-                ? "Ubah soal ini menjadi belum diterbitkan?"
-                : "Terbitkan soal ini?"
-            }
-            variant="outline"
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
-            {question.status === "published"
-              ? UI_LABELS.actions.unpublish
-              : UI_LABELS.actions.publish}
-          </ConfirmSubmitButton>
-        </form>
-        <form action={updateQuestionStatusAction}>
-          <input type="hidden" name="id" value={question.id} />
-          <input type="hidden" name="status" value="archived" />
-          <ConfirmSubmitButton
-            confirmMessage="Arsipkan soal ini?"
-            variant="danger"
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
-            Arsipkan
-          </ConfirmSubmitButton>
-        </form>
-      </div>
-    </details>
+        {UI_LABELS.actions.update}
+      </TableActionLink>
+      <form action={updateQuestionStatusAction}>
+        <input type="hidden" name="id" value={question.id} />
+        <input
+          type="hidden"
+          name="status"
+          value={question.status === "published" ? "draft" : "published"}
+        />
+        <TableActionSubmit
+          icon={question.status === "published" ? Undo2 : Send}
+          confirmMessage={
+            question.status === "published"
+              ? "Ubah soal ini menjadi belum diterbitkan?"
+              : "Terbitkan soal ini?"
+          }
+        >
+          {question.status === "published"
+            ? UI_LABELS.actions.unpublish
+            : UI_LABELS.actions.publish}
+        </TableActionSubmit>
+      </form>
+      <form action={updateQuestionStatusAction}>
+        <input type="hidden" name="id" value={question.id} />
+        <input type="hidden" name="status" value="archived" />
+        <TableActionSubmit
+          icon={Archive}
+          confirmMessage="Arsipkan soal ini?"
+          tone="danger"
+        >
+          Arsipkan
+        </TableActionSubmit>
+      </form>
+    </TableActions>
   );
 }
 

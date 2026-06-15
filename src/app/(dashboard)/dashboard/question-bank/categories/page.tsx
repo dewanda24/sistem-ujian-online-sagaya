@@ -1,7 +1,13 @@
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
+import { Archive, Pencil, Power } from "lucide-react";
+
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { SubmitButton } from "@/components/dashboard/submit-button";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -154,13 +160,13 @@ export default async function QuestionCategoriesPage({
 
 function CategoryActions({ category }: { category: QuestionCategoryRow }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <a
+    <TableActions>
+      <TableActionLink
         href={`/dashboard/question-bank/categories?edit=${category.id}`}
-        className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-xs hover:bg-[#F8FAFC]"
+        icon={Pencil}
       >
         Edit
-      </a>
+      </TableActionLink>
       <form action={toggleQuestionCategoryAction}>
         <input type="hidden" name="id" value={category.id} />
         <input
@@ -168,26 +174,26 @@ function CategoryActions({ category }: { category: QuestionCategoryRow }) {
           name="is_active"
           value={category.is_active ? "false" : "true"}
         />
-        <ConfirmSubmitButton
+        <TableActionSubmit
+          icon={Power}
           confirmMessage={`${
             category.is_active ? "Nonaktifkan" : "Aktifkan"
           } kategori ${category.name}?`}
-          className="rounded-xl"
         >
           {category.is_active ? "Nonaktifkan" : "Aktifkan"}
-        </ConfirmSubmitButton>
+        </TableActionSubmit>
       </form>
       <form action={deleteQuestionCategoryAction}>
         <input type="hidden" name="id" value={category.id} />
-        <ConfirmSubmitButton
+        <TableActionSubmit
+          icon={Archive}
           confirmMessage={`Arsipkan kategori ${category.name}?`}
           confirmationText="HAPUS"
-          variant="danger"
-          className="rounded-xl"
+          tone="danger"
         >
           Arsipkan
-        </ConfirmSubmitButton>
+        </TableActionSubmit>
       </form>
-    </div>
+    </TableActions>
   );
 }

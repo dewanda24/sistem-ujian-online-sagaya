@@ -1,11 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Eye, MoreHorizontal, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, KeyRound, Pencil, Power, Trash2 } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionButton,
+  TableActionDisabled,
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { toggleUserStatusAction } from "@/lib/actions/master-data-actions";
 
@@ -141,36 +146,38 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
   );
 }
 
-function RowActions({ row, onDetail, compact = false }: { row: StudentRow; onDetail: () => void; compact?: boolean }) {
+function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; compact?: boolean }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <button type="button" onClick={onDetail} className={`${compact ? "h-7 px-2" : "h-7 w-7"} inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]`}>
-        <Eye className="size-3.5" />
-      </button>
-      {!compact ? (
-        <Link href={`/dashboard/master-data/students/${row.id}/edit`} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]">
-          <Pencil className="size-3.5" />
-        </Link>
-      ) : null}
-      <details className="relative">
-        <summary className={`${compact ? "h-7 px-2" : "h-7 w-7"} inline-flex cursor-pointer list-none items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]`}>
-          <MoreHorizontal className="size-3.5" />
-        </summary>
-        <div className="absolute right-0 z-30 mt-2 grid min-w-44 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 text-xs shadow-lg">
-          {compact ? <Link href={`/dashboard/master-data/students/${row.id}/edit`} className="rounded-lg px-2 py-1.5 hover:bg-[#F8FAFC]">Edit</Link> : null}
-          <button type="button" disabled className="rounded-lg px-2 py-1.5 text-left text-[#94A3B8]">Reset Password</button>
-          <form action={toggleUserStatusAction}>
-            <input type="hidden" name="target" value="students" />
-            <input type="hidden" name="id" value={row.id} />
-            <input type="hidden" name="status" value={row.status === "active" ? "inactive" : "active"} />
-            <ConfirmSubmitButton confirmMessage={`${row.status === "active" ? "Nonaktifkan" : "Aktifkan"} akun ${row.name}?`} className="w-full justify-start rounded-lg border-0 px-2">
-              {row.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-            </ConfirmSubmitButton>
-          </form>
-          <button type="button" disabled className="rounded-lg px-2 py-1.5 text-left text-[#94A3B8]">Hapus</button>
-        </div>
-      </details>
-    </div>
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onDetail}>
+        Detail
+      </TableActionButton>
+      <TableActionLink
+        href={`/dashboard/master-data/students/${row.id}/edit`}
+        icon={Pencil}
+      >
+        Edit
+      </TableActionLink>
+      <TableActionDisabled icon={KeyRound}>Reset Password</TableActionDisabled>
+      <form action={toggleUserStatusAction}>
+        <input type="hidden" name="target" value="students" />
+        <input type="hidden" name="id" value={row.id} />
+        <input
+          type="hidden"
+          name="status"
+          value={row.status === "active" ? "inactive" : "active"}
+        />
+        <TableActionSubmit
+          icon={Power}
+          confirmMessage={`${
+            row.status === "active" ? "Nonaktifkan" : "Aktifkan"
+          } akun ${row.name}?`}
+        >
+          {row.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+        </TableActionSubmit>
+      </form>
+      <TableActionDisabled icon={Trash2}>Hapus</TableActionDisabled>
+    </TableActions>
   );
 }
 

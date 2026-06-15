@@ -1,6 +1,13 @@
+import { KeyRound, Pencil, Power } from "lucide-react";
+
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
@@ -240,17 +247,17 @@ export async function OperationalRoleUsersPage({
               <StatusBadge active={item.status === "active"} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-2">
-                <a
+              <TableActions>
+                <TableActionLink
                   href={`${redirectPath}?edit=${item.id}${
                     searchParams.school_id
                       ? `&school_id=${searchParams.school_id}`
                       : ""
                   }`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                  icon={Pencil}
                 >
                   Edit
-                </a>
+                </TableActionLink>
                 <form action={toggleAdminUserStatusAction}>
                   <input type="hidden" name="redirect_path" value={redirectPath} />
                   <input type="hidden" name="id" value={item.id} />
@@ -259,15 +266,16 @@ export async function OperationalRoleUsersPage({
                     name="status"
                     value={item.status === "active" ? "inactive" : "active"}
                   />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={Power}
                     confirmMessage={`${
                       item.status === "active" ? "Nonaktifkan" : "Aktifkan"
                     } akun ${item.profile?.full_name ?? item.username}?`}
                   >
                     {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
-                <form action={resetAdminUserPasswordAction} className="flex gap-2">
+                <form action={resetAdminUserPasswordAction} className="grid gap-1.5">
                   <input type="hidden" name="redirect_path" value={redirectPath} />
                   <input type="hidden" name="id" value={item.id} />
                   <input
@@ -277,15 +285,16 @@ export async function OperationalRoleUsersPage({
                     className="w-36 rounded-md border px-2 py-1 text-xs"
                     required
                   />
-                  <ConfirmSubmitButton
+                  <TableActionSubmit
+                    icon={KeyRound}
                     confirmMessage={`Reset password untuk ${item.profile?.full_name ?? item.username}?`}
                     confirmationText="RESET"
-                    variant="danger"
+                    tone="danger"
                   >
                     Reset
-                  </ConfirmSubmitButton>
+                  </TableActionSubmit>
                 </form>
-              </div>
+              </TableActions>
             </td>
           </tr>
         ))}

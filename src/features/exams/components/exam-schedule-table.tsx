@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clipboard,
   Eye,
-  MoreHorizontal,
   Pencil,
   ScreenShare,
   Send,
@@ -16,9 +15,14 @@ import {
   UserCheck,
 } from "lucide-react";
 
-import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import {
+  TableActionButton,
+  TableActionLink,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import { UI_LABELS } from "@/constants/ui-labels";
 import {
   archiveExamScheduleAction,
@@ -162,36 +166,12 @@ export function ExamScheduleTable({
                     ) : null}
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewSchedule(schedule)}
-                        title={UI_LABELS.actions.preview}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                      >
-                        <Eye className="size-3.5" />
-                        <span className="sr-only">{UI_LABELS.actions.preview}</span>
-                      </button>
-                      <Link
-                        href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
-                        title={UI_LABELS.actions.update}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                      >
-                        <Pencil className="size-3.5" />
-                        <span className="sr-only">{UI_LABELS.actions.update}</span>
-                      </Link>
-                      <Link
-                        href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
-                        title={UI_LABELS.navigation.examMonitoring}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-                      >
-                        <ScreenShare className="size-3.5" />
-                        <span className="sr-only">
-                          {UI_LABELS.navigation.examMonitoring}
-                        </span>
-                      </Link>
-                      <MoreMenu schedule={schedule} readiness={readiness} />
-                    </div>
+                    <ScheduleActions
+                      schedule={schedule}
+                      readiness={readiness}
+                      monitoringBasePath={monitoringBasePath}
+                      onPreview={() => setPreviewSchedule(schedule)}
+                    />
                   </td>
                 </tr>
               );
@@ -214,23 +194,11 @@ export function ExamScheduleTable({
               <StatusPill value={displayStatus(schedule)} />
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPreviewSchedule(schedule)}
-                className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-              >
-                {UI_LABELS.actions.preview}
-              </button>
-              <Link
-                href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
-                className="rounded-xl border border-[#E2E8F0] px-2.5 py-1 text-xs"
-              >
-                {UI_LABELS.actions.update}
-              </Link>
-              <MoreMenu
+              <ScheduleActions
                 schedule={schedule}
                 readiness={readinessBySchedule[schedule.id]}
-                compact
+                monitoringBasePath={monitoringBasePath}
+                onPreview={() => setPreviewSchedule(schedule)}
               />
             </div>
           </article>
@@ -248,14 +216,16 @@ export function ExamScheduleTable({
   );
 }
 
-function MoreMenu({
+function ScheduleActions({
   schedule,
   readiness,
-  compact = false,
+  monitoringBasePath,
+  onPreview,
 }: {
   schedule: ExamScheduleRow;
   readiness?: ExamReadinessResult;
-  compact?: boolean;
+  monitoringBasePath: string;
+  onPreview: () => void;
 }) {
   async function copyToken() {
     if (schedule.access_token) {
@@ -264,108 +234,102 @@ function MoreMenu({
   }
 
   return (
-    <details className="relative">
-      <summary
-        className={`inline-flex cursor-pointer list-none items-center justify-center rounded-lg border border-[#E2E8F0] hover:bg-[#F8FAFC] ${
-          compact ? "h-7 px-2 text-xs" : "h-7 w-7"
-        }`}
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onPreview}>
+        {UI_LABELS.actions.preview}
+      </TableActionButton>
+      <TableActionLink
+        href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
+        icon={Pencil}
       >
-        <MoreHorizontal className="size-3.5" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-2 grid min-w-44 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
-        <button
-          type="button"
-          onClick={copyToken}
-          disabled={!schedule.access_token}
-          className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Clipboard className="size-3.5" />
-          {UI_LABELS.actions.copyToken}
-        </button>
-        <form action={regenerateExamTokenAction}>
-          <input type="hidden" name="id" value={schedule.id} />
-          <ConfirmSubmitButton
-            confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi."
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
+        {UI_LABELS.actions.update}
+      </TableActionLink>
+      <TableActionLink
+        href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
+        icon={ScreenShare}
+      >
+        {UI_LABELS.navigation.examMonitoring}
+      </TableActionLink>
+      <TableActionButton
+        icon={Clipboard}
+        onClick={copyToken}
+        disabled={!schedule.access_token}
+      >
+        {UI_LABELS.actions.copyToken}
+      </TableActionButton>
+      <form action={regenerateExamTokenAction}>
+        <input type="hidden" name="id" value={schedule.id} />
+        <TableActionSubmit confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi.">
           {UI_LABELS.actions.generateToken}
-          </ConfirmSubmitButton>
-        </form>
-        <Link
-          href={`/dashboard/exams/proctors?schedule_id=${schedule.id}`}
-          className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F8FAFC]"
-        >
-          <UserCheck className="size-3.5" />
-          Penugasan Pengawas
-        </Link>
-        {schedule.status === "draft" || schedule.status === "cancelled" ? (
-          <form action={updateExamScheduleStatusAction}>
-            <input type="hidden" name="id" value={schedule.id} />
-            <input type="hidden" name="status" value="scheduled" />
-            <input
-              type="hidden"
-              name="confirm_warnings"
-              value={
-                readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
-                  ? "true"
-                  : "false"
-              }
-            />
-            <ConfirmSubmitButton
-              confirmMessage={
-                readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
-                  ? "Tetap publish? Jadwal masih memiliki warning readiness."
-                  : "Publish jadwal ujian ini?"
-              }
-              className="w-full justify-start rounded-lg border-0 px-2"
-            >
-              <Send className="size-3.5" />
-              Publish Jadwal
-            </ConfirmSubmitButton>
-          </form>
-        ) : null}
-        <form action={toggleExamScheduleActiveAction}>
-          <input type="hidden" name="id" value={schedule.id} />
-          <input
-            type="hidden"
-            name="is_active"
-            value={schedule.is_active ? "false" : "true"}
-          />
-          <ConfirmSubmitButton
-            confirmMessage={
-              schedule.is_active
-                ? "Nonaktifkan jadwal ujian ini?"
-                : "Aktifkan jadwal ujian ini?"
-            }
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
-            <ToggleLeft className="size-3.5" />
-            {schedule.is_active ? "Nonaktifkan" : "Aktifkan"}
-          </ConfirmSubmitButton>
-        </form>
+        </TableActionSubmit>
+      </form>
+      <TableActionLink
+        href={`/dashboard/exams/proctors?schedule_id=${schedule.id}`}
+        icon={UserCheck}
+      >
+        Penugasan Pengawas
+      </TableActionLink>
+      {schedule.status === "draft" || schedule.status === "cancelled" ? (
         <form action={updateExamScheduleStatusAction}>
           <input type="hidden" name="id" value={schedule.id} />
-          <input type="hidden" name="status" value="cancelled" />
-          <ConfirmSubmitButton
-            confirmMessage="Batalkan jadwal ujian ini?"
-            className="w-full justify-start rounded-lg border-0 px-2"
+          <input type="hidden" name="status" value="scheduled" />
+          <input
+            type="hidden"
+            name="confirm_warnings"
+            value={
+              readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                ? "true"
+                : "false"
+            }
+          />
+          <TableActionSubmit
+            icon={Send}
+            confirmMessage={
+              readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                ? "Tetap publish? Jadwal masih memiliki warning readiness."
+                : "Publish jadwal ujian ini?"
+            }
           >
-            Batalkan
-          </ConfirmSubmitButton>
+            Publish Jadwal
+          </TableActionSubmit>
         </form>
-        <form action={archiveExamScheduleAction}>
-          <input type="hidden" name="id" value={schedule.id} />
-          <ConfirmSubmitButton
-            confirmMessage="Arsipkan jadwal ujian ini?"
-            variant="danger"
-            className="w-full justify-start rounded-lg border-0 px-2"
-          >
-            <Archive className="size-3.5" />
-            {UI_LABELS.actions.archive}
-          </ConfirmSubmitButton>
-        </form>
-      </div>
-    </details>
+      ) : null}
+      <form action={toggleExamScheduleActiveAction}>
+        <input type="hidden" name="id" value={schedule.id} />
+        <input
+          type="hidden"
+          name="is_active"
+          value={schedule.is_active ? "false" : "true"}
+        />
+        <TableActionSubmit
+          icon={ToggleLeft}
+          confirmMessage={
+            schedule.is_active
+              ? "Nonaktifkan jadwal ujian ini?"
+              : "Aktifkan jadwal ujian ini?"
+          }
+        >
+          {schedule.is_active ? "Nonaktifkan" : "Aktifkan"}
+        </TableActionSubmit>
+      </form>
+      <form action={updateExamScheduleStatusAction}>
+        <input type="hidden" name="id" value={schedule.id} />
+        <input type="hidden" name="status" value="cancelled" />
+        <TableActionSubmit confirmMessage="Batalkan jadwal ujian ini?">
+          Batalkan
+        </TableActionSubmit>
+      </form>
+      <form action={archiveExamScheduleAction}>
+        <input type="hidden" name="id" value={schedule.id} />
+        <TableActionSubmit
+          icon={Archive}
+          confirmMessage="Arsipkan jadwal ujian ini?"
+          tone="danger"
+        >
+          {UI_LABELS.actions.archive}
+        </TableActionSubmit>
+      </form>
+    </TableActions>
   );
 }
 

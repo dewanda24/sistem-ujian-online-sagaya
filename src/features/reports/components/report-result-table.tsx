@@ -9,11 +9,16 @@ import {
   Download,
   Eye,
   FileText,
-  MoreHorizontal,
+  PenLine,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import {
+  TableActionButton,
+  TableActionLink,
+  TableActions,
+} from "@/components/dashboard/table-actions";
 import { UI_LABELS } from "@/constants/ui-labels";
 
 type ReportResultRow = {
@@ -253,69 +258,28 @@ export function ReportResultTable({
 function RowActions({
   row,
   onDetail,
-  compact = false,
 }: {
   row: ReportResultRow;
   onDetail: () => void;
   compact?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={onDetail}
-        title="Rincian"
-        className={`inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] ${
-          compact ? "h-7 px-2 text-xs" : "h-7 w-7"
-        }`}
-      >
-        <Eye className="size-3.5" />
-        <span className="sr-only">Rincian</span>
-      </button>
-      {!compact ? (
-        <Link
-          href={exportHref(row)}
-          title={UI_LABELS.actions.exportData}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
-        >
-          <Download className="size-3.5" />
-          <span className="sr-only">{UI_LABELS.actions.exportData}</span>
-        </Link>
+    <TableActions>
+      <TableActionButton icon={Eye} onClick={onDetail}>
+        Rincian
+      </TableActionButton>
+      <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon={FileText}>
+        Lihat Jawaban
+      </TableActionLink>
+      {row.gradingStatus === "needs_manual_grading" ? (
+        <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon={PenLine}>
+          Koreksi Esai
+        </TableActionLink>
       ) : null}
-      <details className="relative">
-        <summary
-          className={`inline-flex cursor-pointer list-none items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] ${
-            compact ? "h-7 px-2 text-xs" : "h-7 w-7"
-          }`}
-        >
-          <MoreHorizontal className="size-3.5" />
-        </summary>
-        <div className="absolute right-0 z-30 mt-2 grid min-w-44 gap-1 rounded-xl border border-[#E2E8F0] bg-white p-2 text-xs shadow-lg">
-          <Link
-            href={`/dashboard/exam-results/${row.id}`}
-            className="rounded-lg px-2 py-1.5 hover:bg-[#F8FAFC]"
-          >
-            Lihat Jawaban
-          </Link>
-          {row.gradingStatus === "needs_manual_grading" ? (
-            <Link
-              href={`/dashboard/exam-results/${row.id}`}
-              className="rounded-lg px-2 py-1.5 hover:bg-[#F8FAFC]"
-            >
-              Koreksi Essay
-            </Link>
-          ) : null}
-          {compact ? (
-            <Link
-              href={exportHref(row)}
-              className="rounded-lg px-2 py-1.5 hover:bg-[#F8FAFC]"
-            >
-              {UI_LABELS.actions.exportData}
-            </Link>
-          ) : null}
-        </div>
-      </details>
-    </div>
+      <TableActionLink href={exportHref(row)} icon={Download}>
+        {UI_LABELS.actions.exportData}
+      </TableActionLink>
+    </TableActions>
   );
 }
 
