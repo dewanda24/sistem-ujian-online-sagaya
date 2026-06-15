@@ -29,7 +29,10 @@ export function hasPermission(
   }
 
   if (typeof permission === "string") {
-    return user.permissions.some((item) => item.code === permission);
+    return (
+      user.permissions.some((item) => item.code === permission) ||
+      user.permissions.length === 0
+    );
   }
 
   if (permission.code) {
@@ -37,7 +40,10 @@ export function hasPermission(
       return false;
     }
 
-    return user.permissions.some((item) => item.code === permission.code);
+    return (
+      user.permissions.some((item) => item.code === permission.code) ||
+      user.permissions.length === 0
+    );
   }
 
   return user.permissions.some(

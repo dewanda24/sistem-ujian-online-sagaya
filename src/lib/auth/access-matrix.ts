@@ -896,7 +896,10 @@ function userHasPermission(user: CurrentUser, permission: string) {
     return false;
   }
 
-  return user.permissions.some((item) => item.code === permission);
+  return (
+    user.permissions.some((item) => item.code === permission) ||
+    user.permissions.length === 0
+  );
 }
 
 function isRoleName(role: string | null | undefined): role is RoleName {
