@@ -47,11 +47,15 @@ export async function proxy(request: NextRequest) {
   const isAuthPage = pathname === "/login";
 
   if (!user && isProtectedRoute) {
-    return redirectWithSessionCookies(request, response, "/login");
+    return redirectWithSessionCookies(
+      request,
+      response,
+      "/login?error=session-expired",
+    );
   }
 
   if (!user) {
-    return response;
+    return withSessionHeaders(response, isProtectedRoute);
   }
 
   const { data: appUser } = await supabase
@@ -75,7 +79,7 @@ export async function proxy(request: NextRequest) {
   const isDemoUser = isDemoEmail(appUser?.email);
 
   if (!role) {
-    return response;
+    return withSessionHeaders(response, isProtectedRoute);
   }
 
   if (
@@ -105,7 +109,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  return response;
+  return withSessionHeaders(response, isProtectedRoute);
 }
 
 function isMutationRequest(request: NextRequest) {
@@ -134,6 +138,21 @@ function redirectWithSessionCookies(
   });
 
   return redirectResponse;
+}
+
+function withSessionHeaders(response: NextResponse, isProtectedRoute: boolean) {
+  if (!isProtectedRoute) {
+    return response;
+  }
+
+  response.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  );
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+
+  return response;
 }
 
 export const config = {

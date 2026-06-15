@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { notifyClientLogout } from "@/features/auth/components/session-guard";
 
 export function LogoutButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,8 +14,9 @@ export function LogoutButton() {
     const supabase = createClient();
 
     await supabase.auth.signOut();
+    notifyClientLogout();
 
-    window.location.href = "/login";
+    window.location.replace("/login?error=signed-out");
   }
 
   return (

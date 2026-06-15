@@ -9,6 +9,7 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardToaster } from "@/components/dashboard/dashboard-toaster";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
 import { getDashboardMenu } from "@/constants/dashboard-menu";
+import { SessionGuard } from "@/features/auth/components/session-guard";
 import type { CurrentUser } from "@/types/auth";
 
 interface DashboardShellProps {
@@ -34,6 +35,7 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[#F8FAFC]">
+      <SessionGuard />
       <DashboardSidebar menuItems={menuItems} />
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopbar user={user} onOpenSidebar={() => setMobileOpen(true)} />

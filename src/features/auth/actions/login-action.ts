@@ -38,7 +38,7 @@ export async function loginAction(
   formData: FormData,
 ): Promise<LoginActionState> {
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
+    identifier: formData.get("identifier"),
     password: formData.get("password"),
   });
 
@@ -49,9 +49,9 @@ export async function loginAction(
     };
   }
 
-  const { email, password } = parsed.data;
+  const { identifier, password } = parsed.data;
 
-  return signInAndResolveDashboard(email, password);
+  return signInAndResolveDashboard(identifier, password);
 }
 
 export async function demoLoginAction(
@@ -88,10 +88,18 @@ export async function demoLoginAction(
 }
 
 async function signInAndResolveDashboard(
-  email: string,
+  identifier: string,
   password: string,
 ): Promise<LoginActionState> {
   const supabase = await createClient();
+  const email = await resolveLoginEmail(identifier);
+
+  if (!email) {
+    return {
+      error: "invalid",
+      message: "Username atau kata sandi yang Anda masukkan tidak sesuai.",
+    };
+  }
 
   const { data: authData, error: authError } =
     await supabase.auth.signInWithPassword({
@@ -102,7 +110,7 @@ async function signInAndResolveDashboard(
   if (authError || !authData.user) {
     return {
       error: "invalid",
-      message: "Email atau password tidak valid.",
+      message: "Username atau kata sandi yang Anda masukkan tidak sesuai.",
     };
   }
 
@@ -117,7 +125,7 @@ async function signInAndResolveDashboard(
 
     return {
       error: "no-user",
-      message: "Akun auth belum terhubung dengan data pengguna aplikasi.",
+      message: "Akun belum siap digunakan. Silakan hubungi operator sekolah.",
     };
   }
 
@@ -126,7 +134,7 @@ async function signInAndResolveDashboard(
 
     return {
       error: "inactive",
-      message: "Akun pengguna tidak aktif.",
+      message: "Akun Anda sedang tidak aktif. Silakan hubungi operator sekolah.",
     };
   }
 
@@ -135,7 +143,7 @@ async function signInAndResolveDashboard(
 
     return {
       error: "no-role",
-      message: "Akun pengguna belum memiliki peran.",
+      message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
     };
   }
 
@@ -150,13 +158,30 @@ async function signInAndResolveDashboard(
 
     return {
       error: "no-role",
-      message: "Peran pengguna tidak ditemukan.",
+      message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
     };
   }
 
   return {
     redirectTo: getDashboardPath(roleData.name),
   };
+}
+
+async function resolveLoginEmail(identifier: string) {
+  const value = identifier.trim();
+
+  if (value.includes("@")) {
+    return value;
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("users")
+    .select("email")
+    .eq("username", value)
+    .maybeSingle();
+
+  return data?.email ?? null;
 }
 
 function isDemoRole(value: FormDataEntryValue | null): value is DemoRole {
