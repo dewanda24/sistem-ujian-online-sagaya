@@ -32,8 +32,8 @@ export default async function ExamProctorsPage({ searchParams }: PageProps) {
     <div className="space-y-5">
       <ActionToast status={params.notice} message={params.message} />
       <DashboardPageHeader
-        title="Penugasan Pengawas"
-        description="Tugaskan guru sebagai pengawas ujian per jadwal tanpa mengubah role utama guru."
+        title="Pengawas Ujian"
+        description="Kelola pengawas internal maupun eksternal untuk pelaksanaan ujian."
       />
 
       <section className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">

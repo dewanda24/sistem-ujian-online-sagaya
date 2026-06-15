@@ -210,6 +210,11 @@ export async function getReportSummary() {
           return total + (maxScore > 0 ? (Number(attempt.score ?? 0) / maxScore) * 100 : 0);
         }, 0) / finalized.length
       : 0;
+  const passed = finalized.filter((attempt) => {
+    const maxScore = Number(attempt.max_score ?? 0);
+
+    return maxScore > 0 && (Number(attempt.score ?? 0) / maxScore) * 100 >= 75;
+  }).length;
 
   return {
     totalAttempts: attempts.length,
@@ -221,6 +226,8 @@ export async function getReportSummary() {
     absent: absent.length,
     averageScore,
     averagePercent,
+    passed,
+    notPassed: Math.max(0, finalized.length - passed),
   };
 }
 

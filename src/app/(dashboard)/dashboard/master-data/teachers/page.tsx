@@ -37,7 +37,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
     <div className="space-y-5">
       <ActionToast status={params.status} message={params.message} />
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <DashboardPageHeader title="Guru" description="Kelola data guru dan status pengawas secara ringkas." />
+        <DashboardPageHeader title="Guru" description="Kelola data guru, akun, dan status akses." />
         <Link href="/dashboard/master-data/teachers/create" className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">Tambah Guru</Link>
       </div>
 

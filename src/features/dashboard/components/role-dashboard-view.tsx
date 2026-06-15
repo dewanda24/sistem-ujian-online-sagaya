@@ -5,13 +5,10 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
-  Circle,
   ClipboardCheck,
-  Download,
   GraduationCap,
   PenSquare,
   School,
-  Upload,
   Users,
 } from "lucide-react";
 
@@ -493,26 +490,17 @@ function AdminDashboardOverview({
   stats,
   operationalData,
 }: AdminDashboardOverviewProps) {
-  const primaryStats = ["Guru", "Siswa", "Kelas", "Ujian Aktif"]
+  const primaryStats = [
+    "Ujian Aktif",
+    "Jadwal Mendatang",
+    "Total Guru",
+    "Total Siswa",
+    "Peserta Sedang Ujian",
+    "Peserta Bermasalah",
+  ]
     .map((title) => stats.find((stat) => stat.title === title))
     .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
-    .map((stat) =>
-      stat.title === "Ujian Aktif"
-        ? {
-            ...stat,
-            title: "Ujian Aktif",
-            description: "Ujian yang sedang berlangsung.",
-          }
-        : stat,
-    );
-  const completedProgress = operationalData.setupProgress.filter(
-    (item) => item.done,
-  ).length;
-  const progressPercent = operationalData.setupProgress.length
-    ? Math.round(
-        (completedProgress / operationalData.setupProgress.length) * 100,
-      )
-    : 0;
+    .map((stat) => stat);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 text-[#0F172A]">
@@ -576,9 +564,9 @@ function AdminDashboardOverview({
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-base font-semibold">Perlu Ditindaklanjuti</h2>
+            <h2 className="text-base font-semibold">Notifikasi Penting</h2>
             <p className="mt-1 text-sm text-[#64748B]">
-              Pekerjaan sekolah yang perlu diselesaikan sebelum atau saat ujian.
+              Hal penting yang perlu dicek operator sekolah.
             </p>
           </div>
           <div className="grid gap-3">
@@ -619,50 +607,11 @@ function AdminDashboardOverview({
           </div>
         </div>
 
-        <DataIssueSummary issues={operationalData.dataIssues} />
-
         <ExamReadinessWidget
           readiness={operationalData.examReadiness}
         />
 
-        <RecoveryCenterWidget
-          summary={operationalData.recoverySummary}
-        />
-
-        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold">Kesiapan Sekolah</h2>
-            <p className="mt-1 text-sm text-[#64748B]">
-              {completedProgress} dari {operationalData.setupProgress.length} tahap siap.
-            </p>
-          </div>
-          <div className="mb-4 h-2 rounded-full bg-[#E2E8F0]">
-            <div
-              className="h-2 rounded-full bg-[#2563EB]"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="grid gap-2">
-            {operationalData.setupProgress.map((item) => {
-              const Icon = item.done ? CheckCircle2 : Circle;
-
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-                >
-                  <span>{item.label}</span>
-                  <Icon
-                    className={`size-4 ${
-                      item.done ? "text-emerald-600" : "text-[#94A3B8]"
-                    }`}
-                  />
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        <UpcomingSchedulesWidget schedules={operationalData.upcomingSchedules} />
       </section>
 
       <AdminOperationalWorkbench />
@@ -703,55 +652,47 @@ function AdminDashboardOverview({
   );
 }
 
-function RecoveryCenterWidget({
-  summary,
+function UpcomingSchedulesWidget({
+  schedules,
 }: {
-  summary: AdminOperationalDashboardData["recoverySummary"];
+  schedules: AdminOperationalDashboardData["upcomingSchedules"];
 }) {
-  const items = [
-    {
-      label: "Mendesak",
-      value: summary.critical,
-      className: "bg-red-50 text-red-700 ring-red-100",
-    },
-    {
-      label: "Perlu Dicek",
-      value: summary.warning,
-      className: "bg-amber-50 text-amber-700 ring-amber-100",
-    },
-    {
-      label: "Informasi",
-      value: summary.info,
-      className: "bg-blue-50 text-blue-700 ring-blue-100",
-    },
-  ];
-
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Pusat Pemulihan</h2>
+        <h2 className="text-base font-semibold">Jadwal Terdekat</h2>
         <p className="mt-1 text-sm text-[#64748B]">
-          Daftar tindak lanjut untuk ujian yang perlu dibantu.
+          Ujian yang akan dimulai dalam waktu dekat.
         </p>
       </div>
-      <Link
-        href="/dashboard/recovery-center"
-        className="grid gap-2 hover:opacity-95"
-      >
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-          >
-            <span>{item.label}</span>
-            <span
-              className={`rounded-full px-2 py-1 text-[11px] font-semibold ring-1 ${item.className}`}
+      <div className="grid gap-2">
+        {schedules.length ? (
+          schedules.map((schedule) => (
+            <Link
+              key={schedule.id}
+              href="/dashboard/exams/schedules"
+              className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
             >
-              {item.value}
-            </span>
-          </div>
-        ))}
-      </Link>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">
+                  {schedule.title}
+                </span>
+                <span className="text-xs text-[#64748B]">
+                  {formatDashboardDate(schedule.startAt)}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-100">
+                {schedule.participantCount} peserta
+              </span>
+            </Link>
+          ))
+        ) : (
+          <EmptyState
+            title="Belum ada jadwal mendatang"
+            description="Jadwal terdekat akan muncul setelah ujian diterbitkan."
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -810,63 +751,6 @@ function ExamReadinessWidget({
   );
 }
 
-function DataIssueSummary({
-  issues,
-}: {
-  issues: AdminOperationalDashboardData["dataIssues"];
-}) {
-  const visibleIssues = issues.slice(0, 6);
-
-  return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-base font-semibold">Data yang Perlu Dilengkapi</h2>
-        <p className="mt-1 text-sm text-[#64748B]">
-          Data sekolah yang perlu dibereskan sebelum penjadwalan ujian.
-        </p>
-      </div>
-      <div className="grid gap-2">
-        {visibleIssues.length ? (
-          visibleIssues.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-            >
-              <span className="min-w-0 truncate">{item.title}</span>
-              <span
-                className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${issueBadgeClass(
-                  item.severity,
-                )}`}
-              >
-                {issueBadgeLabel(item.severity)}
-              </span>
-            </Link>
-          ))
-        ) : (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-            Data sekolah siap digunakan.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function issueBadgeLabel(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
-  if (severity === "critical") return "Mendesak";
-  if (severity === "warning") return "Perlu Dicek";
-
-  return "Informasi";
-}
-
-function issueBadgeClass(severity: AdminOperationalDashboardData["dataIssues"][number]["severity"]) {
-  if (severity === "critical") return "bg-red-50 text-red-700 ring-1 ring-red-100";
-  if (severity === "warning") return "bg-amber-50 text-amber-700 ring-1 ring-amber-100";
-
-  return "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
-}
-
 function DashboardInfoChip({
   label,
   value,
@@ -898,6 +782,12 @@ function formatDashboardDate(value: string | null) {
 function AdminOperationalWorkbench() {
   const actions = [
     {
+      title: "Buat Jadwal Ujian",
+      description: "Atur waktu, peserta, dan durasi ujian.",
+      href: "/dashboard/exams/schedules/create",
+      icon: CalendarDays,
+    },
+    {
       title: "Tambah Siswa",
       description: "Kelola data dan akun siswa.",
       href: "/dashboard/master-data/students/create",
@@ -910,28 +800,10 @@ function AdminOperationalWorkbench() {
       icon: Users,
     },
     {
-      title: "Penugasan Guru",
-      description: "Hubungkan guru, mata pelajaran, dan kelas.",
-      href: "/dashboard/master-data/teacher-assignments",
+      title: "Monitoring Ujian",
+      description: "Pantau peserta yang sedang mengerjakan ujian.",
+      href: "/dashboard/admin/monitoring",
       icon: ClipboardCheck,
-    },
-    {
-      title: "Jadwal Ujian",
-      description: "Atur waktu dan peserta ujian.",
-      href: "/dashboard/exams/schedules",
-      icon: CalendarDays,
-    },
-    {
-      title: "Import Data",
-      description: "Unggah guru, siswa, kelas, dan penugasan.",
-      href: "/dashboard/import-export?tab=import",
-      icon: Upload,
-    },
-    {
-      title: "Unduh Data",
-      description: "Unduh data sekolah yang dibutuhkan operator.",
-      href: "/dashboard/import-export?tab=export",
-      icon: Download,
     },
   ];
 

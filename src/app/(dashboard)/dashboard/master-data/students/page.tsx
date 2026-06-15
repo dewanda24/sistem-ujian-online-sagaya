@@ -67,7 +67,7 @@ export default async function StudentsPage({ searchParams }: PageProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <DashboardPageHeader
           title="Siswa"
-          description="Kelola data dasar siswa tanpa form panjang di halaman daftar."
+          description="Kelola data siswa, kelas, dan status akun."
         />
         <div className="flex gap-2">
           <Link

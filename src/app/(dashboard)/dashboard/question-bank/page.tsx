@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FolderTree, ListChecks, Plus } from "lucide-react";
+import { Download, FolderTree, ListChecks } from "lucide-react";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -7,22 +7,22 @@ import { requirePermission } from "@/lib/auth/require-permission";
 
 const modules = [
   {
-    title: "Semua Soal",
+    title: "Bank Soal",
     href: "/dashboard/question-bank/questions",
     icon: ListChecks,
-    description: "Lihat, filter, edit, dan kelola status soal dari tabel ringkas.",
-  },
-  {
-    title: "Tambah Soal",
-    href: "/dashboard/question-bank/questions/create",
-    icon: Plus,
-    description: "Buat soal melalui wizard sederhana dengan preview sesuai kebutuhan.",
+    description: "Buat dan kelola soal pilihan ganda, esai, dan media soal.",
   },
   {
     title: "Kategori Soal",
     href: "/dashboard/question-bank/categories",
     icon: FolderTree,
-    description: "Tambah, edit, nonaktifkan, atau arsipkan kategori soal.",
+    description: "Atur kategori, topik, bab, atau tingkat kesulitan soal.",
+  },
+  {
+    title: "Impor & Ekspor Soal",
+    href: "/dashboard/question-bank/import-excel",
+    icon: Download,
+    description: "Unggah atau unduh soal menggunakan template yang tersedia.",
   },
 ];
 
@@ -32,8 +32,8 @@ export default async function QuestionBankPage() {
   return (
     <div>
       <DashboardPageHeader
-        title="Bank Soal"
-        description="Pilih alur yang dibutuhkan. Import dan unduh soal dikelola terpusat melalui pusat import."
+        title="Kelola Soal"
+        description="Buat, susun, dan atur soal untuk berbagai kebutuhan ujian."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {modules.map((module) => {

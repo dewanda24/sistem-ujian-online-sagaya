@@ -43,6 +43,14 @@ export type AdminRecentActivity = {
   href: string;
 };
 
+export type AdminUpcomingSchedule = {
+  id: string;
+  title: string;
+  startAt: string | null;
+  status: string | null;
+  participantCount: number;
+};
+
 export type AdminOperationalDashboardData = {
   activeAcademicYearName: string | null;
   activeSemesterName: string | null;
@@ -60,6 +68,7 @@ export type AdminOperationalDashboardData = {
   };
   setupProgress: AdminSetupProgressItem[];
   recentActivities: AdminRecentActivity[];
+  upcomingSchedules: AdminUpcomingSchedule[];
 };
 
 async function getAdminSchoolId() {
@@ -120,82 +129,6 @@ async function countUsersByRole(roleName: RoleName) {
   const { count } = await query;
 
   return count ?? 0;
-}
-
-async function countSchedulesToday() {
-  const schoolId = await getAdminSchoolId();
-  const supabase = await createClient();
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
-
-  let query = supabase
-    .from("exam_schedules")
-    .select("id", { count: "exact", head: true })
-    .is("deleted_at", null)
-    .gte("start_at", start.toISOString())
-    .lte("start_at", end.toISOString());
-
-  if (schoolId) {
-    query = query.eq("school_id", schoolId);
-  }
-
-  const { count } = await query;
-
-  return count ?? 0;
-}
-
-async function countSchedulesWithoutParticipants() {
-  const schoolId = await getAdminSchoolId();
-  const supabase = await createClient();
-  let query = supabase
-    .from("exam_schedules")
-    .select("id, exam_participants(id)")
-    .is("deleted_at", null)
-    .eq("is_active", true)
-    .in("status", ["scheduled", "active"]);
-
-  if (schoolId) {
-    query = query.eq("school_id", schoolId);
-  }
-
-  const { data } = await query;
-
-  return (data ?? []).filter(
-    (schedule) => (schedule.exam_participants ?? []).length === 0,
-  ).length;
-}
-
-async function getClassReadinessCounts() {
-  const schoolId = await getAdminSchoolId();
-  const supabase = await createClient();
-  let query = supabase
-    .from("classes")
-    .select("id, homeroom_teacher_id, class_members(id, left_at)")
-    .eq("is_active", true);
-
-  if (schoolId) {
-    query = query.eq("school_id", schoolId);
-  }
-
-  const { data } = await query;
-
-  const classes = data ?? [];
-
-  return {
-    withoutStudents: classes.filter(
-      (classItem) =>
-        !(classItem.class_members ?? []).some(
-          (member: { left_at?: string | null }) => !member.left_at,
-        ),
-    ).length,
-    withoutHomeroom: classes.filter(
-      (classItem) => !classItem.homeroom_teacher_id,
-    ).length,
-  };
 }
 
 async function getTeacherOperationalStats(teacherId: string) {
@@ -374,6 +307,7 @@ export async function getAdminOperationalDashboardData(
       },
       setupProgress: [],
       recentActivities: [],
+      upcomingSchedules: [],
     };
   }
 
@@ -417,7 +351,7 @@ export async function getAdminOperationalDashboardData(
       .order("created_at", { ascending: false }),
     supabase
       .from("exam_schedules")
-      .select("id, title, status, created_at, exam_participants(id)")
+      .select("id, title, status, start_at, created_at, exam_participants(id)")
       .eq("school_id", schoolId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -569,6 +503,28 @@ export async function getAdminOperationalDashboardData(
     .filter((item) => Boolean(item.createdAt))
     .sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     .slice(0, 6);
+  const now = new Date();
+  const upcomingSchedules = (schedules ?? [])
+    .filter((schedule) => {
+      const startAt = schedule.start_at ? new Date(schedule.start_at) : null;
+
+      return (
+        schedule.status === "scheduled" &&
+        Boolean(startAt && startAt >= now)
+      );
+    })
+    .sort(
+      (left, right) =>
+        Date.parse(left.start_at ?? "") - Date.parse(right.start_at ?? ""),
+    )
+    .slice(0, 5)
+    .map((schedule) => ({
+      id: schedule.id as string,
+      title: schedule.title ?? "-",
+      startAt: schedule.start_at as string | null,
+      status: schedule.status ?? null,
+      participantCount: schedule.exam_participants?.length ?? 0,
+    }));
 
   return {
     activeAcademicYearName: activeAcademicYear?.name ?? null,
@@ -587,6 +543,7 @@ export async function getAdminOperationalDashboardData(
     },
     setupProgress,
     recentActivities,
+    upcomingSchedules,
   };
 }
 
@@ -646,97 +603,54 @@ export async function getRoleDashboardStats(
     const [
       students,
       teachers,
-      classes,
-      subjects,
       activeSchedules,
-      todaySchedules,
-      schedulesWithoutParticipants,
-      classReadiness,
-      summary,
+      operationalSummary,
+      recoveryCenter,
     ] = await Promise.all([
       countUsersByRole("student"),
       countUsersByRole("teacher"),
-      countTable("classes", schoolId),
-      countTable("subjects", schoolId),
       countWhere("exam_schedules", "status", "active", schoolId),
-      countSchedulesToday(),
-      countSchedulesWithoutParticipants(),
-      getClassReadinessCounts(),
-      getReportSummary(),
+      getProctorOperationalSummary(user),
+      getRecoveryCenterData(user),
     ]);
+    const problemParticipantCount = recoveryCenter.queue.length;
 
     return [
       {
-        title: "Siswa",
-        value: String(students),
-        description: "Siswa aktif yang terdaftar di sekolah.",
-        href: "/dashboard/master-data/students",
+        title: "Ujian Aktif",
+        value: String(activeSchedules),
+        description: "Ujian yang sedang berlangsung.",
+        href: "/dashboard/admin/monitoring",
       },
       {
-        title: "Guru",
+        title: "Jadwal Mendatang",
+        value: String(operationalSummary.upcomingSchedules.length),
+        description: "Jadwal ujian yang akan dimulai.",
+        href: "/dashboard/exams/schedules",
+      },
+      {
+        title: "Total Guru",
         value: String(teachers),
         description: "Guru aktif yang terdaftar di sekolah.",
         href: "/dashboard/master-data/teachers",
       },
       {
-        title: "Kelas",
-        value: String(classes),
-        description: "Kelas yang siap digunakan untuk pembagian peserta.",
-        href: "/dashboard/master-data/classes",
+        title: "Total Siswa",
+        value: String(students),
+        description: "Siswa aktif yang terdaftar di sekolah.",
+        href: "/dashboard/master-data/students",
       },
       {
-        title: "Mata Pelajaran",
-        value: String(subjects),
-        description: "Mata pelajaran yang tersedia untuk ujian.",
-        href: "/dashboard/master-data/subjects",
+        title: "Peserta Sedang Ujian",
+        value: String(operationalSummary.inProgress),
+        description: "Peserta yang sedang mengerjakan ujian.",
+        href: "/dashboard/admin/monitoring?status=in_progress",
       },
       {
-        title: "Jadwal Hari Ini",
-        value: String(todaySchedules),
-        description: "Ujian yang dijadwalkan mulai hari ini.",
-        href: "/dashboard/exams/schedules",
-      },
-      {
-        title: "Ujian Aktif",
-        value: String(activeSchedules),
-        description: "Ujian yang sedang berlangsung.",
-        href: "/dashboard/exams/schedules?status=active",
-      },
-      {
-        title: "Tanpa Peserta",
-        value: String(schedulesWithoutParticipants),
-        description: "Jadwal yang belum memiliki daftar peserta.",
-        href: "/dashboard/exams/schedules",
-      },
-      {
-        title: "Kelas Tanpa Siswa",
-        value: String(classReadiness.withoutStudents),
-        description: "Kelas yang belum memiliki siswa aktif.",
-        href: "/dashboard/master-data/classes",
-      },
-      {
-        title: "Kelas Tanpa Wali",
-        value: String(classReadiness.withoutHomeroom),
-        description: "Kelas yang belum memiliki wali kelas.",
-        href: "/dashboard/master-data/classes",
-      },
-      {
-        title: "Sudah Selesai",
-        value: String(summary.submitted),
-        description: "Ujian yang sudah selesai dikerjakan.",
-        href: "/dashboard/reports",
-      },
-      {
-        title: "Perlu Koreksi",
-        value: String(summary.pending),
-        description: "Jawaban esai yang masih perlu dinilai.",
-        href: "/dashboard/teacher/grading",
-      },
-      {
-        title: "Rata-rata Nilai",
-        value: `${summary.averagePercent.toFixed(2)}%`,
-        description: "Rata-rata nilai dari hasil yang sudah selesai.",
-        href: "/dashboard/reports",
+        title: "Peserta Bermasalah",
+        value: String(problemParticipantCount),
+        description: "Peserta yang membutuhkan bantuan operator.",
+        href: "/dashboard/recovery-center",
       },
     ];
   }

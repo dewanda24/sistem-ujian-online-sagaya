@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { requirePermission } from "@/lib/auth/require-permission";
@@ -29,6 +31,29 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
+const preparationModules = [
+  {
+    title: "Tahun Ajaran & Semester",
+    href: "/dashboard/master-data/academic-years",
+    description: "Kelola periode akademik dan semester aktif sekolah.",
+  },
+  {
+    title: "Kelas",
+    href: "/dashboard/master-data/classes",
+    description: "Atur kelas, wali kelas, dan anggota kelas.",
+  },
+  {
+    title: "Mata Pelajaran",
+    href: "/dashboard/master-data/subjects",
+    description: "Kelola mata pelajaran yang digunakan dalam ujian.",
+  },
+  {
+    title: "Penugasan Guru",
+    href: "/dashboard/master-data/teacher-assignments",
+    description: "Hubungkan guru dengan kelas dan mata pelajaran.",
+  },
+];
+
 function relationName<T extends { name?: string | null }>(
   value: T | T[] | null | undefined,
 ) {
@@ -48,7 +73,7 @@ function getCreatedAt(item: { created_at?: string | null }) {
 
 export default async function MasterDataPage() {
   await requirePermission("master_data.view");
-  const scope = await requireSchoolScope();
+  await requireSchoolScope();
 
   const [
     academicYears,
@@ -146,13 +171,21 @@ export default async function MasterDataPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Ringkasan Akademik"
-        description={
-          scope.schoolName
-            ? `Kondisi data akademik ${scope.schoolName}: periode aktif, siswa, guru, kelas, dan mata pelajaran.`
-            : "Kondisi data akademik seluruh sekolah: periode aktif, siswa, guru, kelas, dan mata pelajaran."
-        }
+        title="Persiapan Sekolah"
+        description="Kelola data dasar yang dibutuhkan sebelum pelaksanaan ujian."
       />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {preparationModules.map((module) => (
+          <Link key={module.href} href={module.href}>
+            <DashboardCard
+              title={module.title}
+              description={module.description}
+              className="h-full transition hover:border-primary/40 hover:shadow-md"
+            />
+          </Link>
+        ))}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <DashboardCard

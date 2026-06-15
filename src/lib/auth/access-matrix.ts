@@ -177,7 +177,7 @@ const questionBankMenu = (roles: RoleName[]): AccessMenuItem => ({
 
 const adminExamMenu = (roles: RoleName[]): AccessMenuItem => ({
   label: "Kelola Ujian",
-  description: "Siapkan paket, jadwal, peserta, dan pengawas ujian.",
+  description: "Siapkan paket, jadwal, dan peserta ujian sekolah.",
   href: "/dashboard/exams",
   icon: "file-text",
   roles,
@@ -350,8 +350,8 @@ const teacherReportMenu: AccessMenuItem = {
 };
 
 const adminUserMenu: AccessMenuItem = {
-  label: "Pengaturan",
-  description: "Kelola profil dan pengaturan sistem sekolah.",
+  label: "Pengguna Sekolah",
+  description: "Kelola data guru, siswa, dan pengawas ujian.",
   href: "/dashboard/master-data/teachers",
   icon: "users",
   roles: ["admin"],
@@ -611,11 +611,11 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
       academicMenu(["admin"]),
+      adminUserMenu,
       questionBankMenu(["admin"]),
       adminExamMenu(["admin"]),
       adminExecutionMenu,
       reportMenu(["admin"]),
-      adminUserMenu,
       profileItem("admin"),
     ],
   },
