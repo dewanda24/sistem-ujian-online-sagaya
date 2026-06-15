@@ -2,6 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardPath } from "@/lib/auth/role-redirect";
+import {
+  type DemoEmailEnvKey,
+  getDemoEmailByEnvKey,
+  isDemoModeEnabled,
+} from "@/lib/auth/demo-mode";
 import { loginSchema } from "@/validations/auth";
 
 const demoRoles = [
@@ -14,7 +19,7 @@ const demoRoles = [
 
 type DemoRole = (typeof demoRoles)[number];
 
-const demoAccountEnvByRole: Record<DemoRole, string> = {
+const demoAccountEnvByRole: Record<DemoRole, DemoEmailEnvKey> = {
   admin: "DEMO_ADMIN_EMAIL",
   teacher: "DEMO_TEACHER_EMAIL",
   student: "DEMO_STUDENT_EMAIL",
@@ -53,7 +58,7 @@ export async function demoLoginAction(
   _previousState: LoginActionState,
   formData: FormData,
 ): Promise<LoginActionState> {
-  if (process.env.DEMO_ENABLED !== "true") {
+  if (!isDemoModeEnabled()) {
     return {
       error: "inactive",
       message: "Mode demo belum diaktifkan di konfigurasi server.",
@@ -69,10 +74,10 @@ export async function demoLoginAction(
     };
   }
 
-  const email = process.env[demoAccountEnvByRole[demoRole]];
-  const password = process.env.DEMO_PASSWORD;
+  const email = getDemoEmailByEnvKey(demoAccountEnvByRole[demoRole]);
+  const password = process.env.DEMO_PASSWORD?.trim();
 
-  if (!email || !password) {
+  if (!password) {
     return {
       error: "validation",
       message: "Akun demo untuk peran ini belum dikonfigurasi.",
