@@ -25,40 +25,40 @@ export default async function SuperAdminDashboardPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Dashboard Pusat"
-        description="Pantau kesiapan sekolah, masalah operasional, dan tindakan cepat platform Sagaya."
+        description="Ringkasan kondisi seluruh sekolah dan aktivitas sistem."
       />
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
           title="Total Sekolah"
           value={String(summary.totalSchools)}
-          description="Sekolah terdaftar."
+          description="Sekolah yang sudah terdaftar di sistem."
         />
         <DashboardCard
           title="Sekolah Aktif"
           value={String(summary.activeSchools)}
-          description="Sekolah yang dapat memakai layanan."
+          description="Sekolah yang aktif menggunakan sistem."
         />
         <DashboardCard
           title="Total Pengguna"
           value={String(totalUsers)}
-          description="Admin, guru, dan siswa."
+          description="Akun admin sekolah, guru, dan siswa."
         />
         <DashboardCard
           title="Ujian Berjalan"
           value={String(summary.totalActiveExams)}
-          description="Jadwal aktif lintas sekolah."
+          description="Ujian yang sedang berlangsung di sekolah."
         />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <DashboardCard
-          title="Perlu Perhatian"
-          description="Masalah yang perlu ditindaklanjuti Super Admin."
+          title="Perlu Ditindaklanjuti"
+          description="Kondisi sekolah atau data yang perlu dicek."
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <AttentionLink
-              label="Sekolah belum siap CBT"
+              label="Sekolah belum siap ujian"
               value={summary.attentionSchools}
               href="/dashboard/super-admin/support"
             />
@@ -80,7 +80,7 @@ export default async function SuperAdminDashboardPage() {
           </div>
         </DashboardCard>
 
-        <DashboardCard title="Aksi Cepat" description="Jalur paling sering dipakai.">
+        <DashboardCard title="Aksi Cepat" description="Akses cepat untuk pekerjaan harian Super Admin.">
           <div className="grid gap-2 text-sm">
             <QuickAction href="/dashboard/super-admin/schools/new" label="Tambah Sekolah" />
             <QuickAction href="/dashboard/super-admin/admins" label="Tambah Admin Sekolah" />
@@ -91,8 +91,8 @@ export default async function SuperAdminDashboardPage() {
       </section>
 
       <DashboardCard
-        title="Backup Status"
-        description="Ringkasan cadangan aplikasi untuk Super Admin. Coverage saat ini masih snapshot terbatas."
+        title="Status Cadangan Data"
+        description="Ringkasan cadangan dan pemulihan data sistem."
       >
         <div className="grid gap-3 text-sm sm:grid-cols-4">
           <BackupStatusItem
@@ -126,8 +126,8 @@ export default async function SuperAdminDashboardPage() {
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <DashboardCard
-          title="Pusat Notifikasi"
-          description="Notifikasi yang membutuhkan tindakan."
+          title="Pusat Pemberitahuan"
+          description="Pemberitahuan yang perlu ditinjau."
         >
           <div className="space-y-2">
             {notifications.length > 0 ? (
@@ -165,7 +165,7 @@ export default async function SuperAdminDashboardPage() {
 
         <DashboardCard
           title="Sekolah Prioritas"
-          description="Sekolah yang belum siap CBT atau punya masalah operasional."
+          description="Sekolah yang perlu dibantu agar pelaksanaan ujian berjalan lancar."
         >
           <div className="space-y-2">
             {attentionSchools.slice(0, 6).map((school) => (
@@ -194,12 +194,12 @@ export default async function SuperAdminDashboardPage() {
       </section>
 
       <DataTable
-        columns={["Nama Sekolah", "Status", "Kesiapan CBT", "Kondisi", "Admin", "Guru", "Siswa", "Aksi"]}
+        columns={["Nama Sekolah", "Status", "Kesiapan Ujian", "Kondisi", "Admin", "Guru", "Siswa", "Aksi"]}
         isEmpty={schools.length === 0}
         empty={
           <EmptyState
             title="Belum ada sekolah"
-            description="Tambahkan sekolah untuk mulai memantau kesiapan CBT."
+            description="Tambahkan sekolah untuk mulai memantau kesiapan ujian."
           />
         }
       >

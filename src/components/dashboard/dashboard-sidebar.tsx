@@ -141,6 +141,10 @@ export function DashboardSidebar({
               <Link
                 href={item.href}
                 onClick={onNavigate}
+                title={item.description ?? item.label}
+                aria-label={
+                  item.description ? `${item.label}. ${item.description}` : item.label
+                }
                 className={cn(
                   "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition",
                   active

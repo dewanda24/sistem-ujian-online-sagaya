@@ -1,4 +1,3 @@
-import { UI_LABELS } from "@/constants/ui-labels";
 import type { CurrentUser, RoleName } from "@/types/auth";
 
 export type DashboardIconName =
@@ -24,6 +23,7 @@ export type DashboardIconName =
 
 export type AccessMenuItem = {
   label: string;
+  description?: string;
   href: string;
   icon: DashboardIconName;
   roles: RoleName[];
@@ -62,7 +62,26 @@ const reportRoles: RoleName[] = ["super_admin", "admin", "principal", "teacher"]
 const commonPermissions = ["dashboard.view"];
 
 const dashboardItem = (role: RoleName, href: string): AccessMenuItem => ({
-  label: "Dashboard",
+  label:
+    role === "super_admin"
+      ? "Dashboard Pusat"
+      : role === "teacher"
+        ? "Dashboard Guru"
+        : role === "proctor"
+          ? "Dashboard Pengawas"
+          : "Dashboard",
+  description:
+    role === "super_admin"
+      ? "Ringkasan kondisi seluruh sekolah dan aktivitas sistem."
+      : role === "admin"
+        ? "Ringkasan aktivitas, ujian berjalan, dan informasi penting sekolah."
+        : role === "teacher"
+          ? "Ringkasan aktivitas mengajar dan pelaksanaan ujian."
+          : role === "proctor"
+            ? "Ringkasan ujian yang sedang diawasi."
+            : role === "student"
+              ? "Ringkasan ujian, jadwal, dan informasi penting untuk siswa."
+              : "Ringkasan aktivitas dan informasi penting.",
   href,
   icon: "layout-dashboard",
   roles: [role],
@@ -70,14 +89,16 @@ const dashboardItem = (role: RoleName, href: string): AccessMenuItem => ({
 });
 
 const profileItem = (role: RoleName): AccessMenuItem => ({
-  label: UI_LABELS.navigation.profile,
+  label: "Profil",
+  description: "Kelola informasi akun dan profil pribadi.",
   href: "/dashboard/profile",
   icon: "users",
   roles: [role],
 });
 
 const academicMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Akademik",
+  label: "Persiapan Sekolah",
+  description: "Kelola data dasar yang dibutuhkan sebelum pelaksanaan ujian.",
   href: "/dashboard/master-data",
   icon: "database",
   roles,
@@ -116,7 +137,10 @@ const academicMenu = (roles: RoleName[]): AccessMenuItem => ({
 });
 
 const questionBankMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Bank Soal",
+  label: roles.includes("teacher") ? "Soal Saya" : "Kelola Soal",
+  description: roles.includes("teacher")
+    ? "Kelola soal yang digunakan dalam ujian mata pelajaran."
+    : "Buat, susun, dan atur soal untuk berbagai kebutuhan ujian.",
   href: "/dashboard/question-bank",
   icon: "book-open",
   roles,
@@ -152,7 +176,8 @@ const questionBankMenu = (roles: RoleName[]): AccessMenuItem => ({
 });
 
 const adminExamMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Ujian",
+  label: "Kelola Ujian",
+  description: "Siapkan paket, jadwal, peserta, dan pengawas ujian.",
   href: "/dashboard/exams",
   icon: "file-text",
   roles,
@@ -172,6 +197,17 @@ const adminExamMenu = (roles: RoleName[]): AccessMenuItem => ({
       roles,
       permission: "exam_schedules.view",
     },
+  ],
+});
+
+const adminExecutionMenu: AccessMenuItem = {
+  label: "Pelaksanaan Ujian",
+  description: "Pantau ujian yang sedang berlangsung dan tangani kendala peserta.",
+  href: "/dashboard/admin/monitoring",
+  icon: "activity",
+  roles: ["admin"],
+  permission: "exam_monitoring.view",
+  children: [
     {
       label: "Monitoring Ujian",
       href: "/dashboard/admin/monitoring",
@@ -183,14 +219,15 @@ const adminExamMenu = (roles: RoleName[]): AccessMenuItem => ({
       label: "Pusat Pemulihan",
       href: "/dashboard/recovery-center",
       icon: "activity",
-      roles,
+      roles: ["admin"],
       permission: "exam_monitoring.view",
     },
   ],
-});
+};
 
 const teacherExamMenu: AccessMenuItem = {
-  label: "Ujian",
+  label: "Ujian Saya",
+  description: "Atur paket dan jadwal ujian yang menjadi tanggung jawab Anda.",
   href: "/dashboard/exams",
   icon: "file-text",
   roles: ["teacher"],
@@ -210,6 +247,17 @@ const teacherExamMenu: AccessMenuItem = {
       roles: ["teacher"],
       permission: "exam_schedules.view",
     },
+  ],
+};
+
+const teacherMonitoringMenu: AccessMenuItem = {
+  label: "Pengawasan Ujian",
+  description: "Pantau pelaksanaan ujian yang Anda awasi.",
+  href: "/dashboard/teacher/monitoring",
+  icon: "activity",
+  roles: ["teacher"],
+  permission: "exam_monitoring.view",
+  children: [
     {
       label: "Monitoring Ujian",
       href: "/dashboard/teacher/monitoring",
@@ -228,7 +276,8 @@ const teacherExamMenu: AccessMenuItem = {
 };
 
 const proctorExamMenu: AccessMenuItem = {
-  label: "Ujian",
+  label: "Ujian Diawasi",
+  description: "Daftar ujian yang menjadi tanggung jawab pengawasan.",
   href: "/dashboard/proctor/monitoring",
   icon: "file-text",
   roles: ["proctor"],
@@ -252,7 +301,10 @@ const proctorExamMenu: AccessMenuItem = {
 };
 
 const reportMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Laporan",
+  label: roles.includes("teacher") ? "Hasil Siswa" : "Hasil & Laporan",
+  description: roles.includes("teacher")
+    ? "Lihat hasil dan perkembangan peserta ujian."
+    : "Analisis hasil ujian dan unduh laporan sekolah.",
   href: "/dashboard/reports",
   icon: "activity",
   roles,
@@ -298,7 +350,8 @@ const teacherReportMenu: AccessMenuItem = {
 };
 
 const adminUserMenu: AccessMenuItem = {
-  label: "Pengguna",
+  label: "Pengaturan",
+  description: "Kelola profil dan pengaturan sistem sekolah.",
   href: "/dashboard/master-data/teachers",
   icon: "users",
   roles: ["admin"],
@@ -328,7 +381,8 @@ const adminUserMenu: AccessMenuItem = {
 };
 
 const superAdminAcademicMenu: AccessMenuItem = {
-  label: "Akademik",
+  label: "Manajemen Sekolah",
+  description: "Kelola sekolah, admin sekolah, dan data organisasi.",
   href: "/dashboard/super-admin/schools",
   icon: "database",
   roles: ["super_admin"],
@@ -356,7 +410,8 @@ const superAdminAcademicMenu: AccessMenuItem = {
 };
 
 const superAdminUserMenu: AccessMenuItem = {
-  label: "Pengguna",
+  label: "Pengguna & Akses",
+  description: "Atur pengguna, peran, dan hak akses sistem.",
   href: "/dashboard/super-admin/users",
   icon: "users",
   roles: ["super_admin"],
@@ -388,7 +443,8 @@ const superAdminUserMenu: AccessMenuItem = {
 };
 
 const superAdminExamMenu: AccessMenuItem = {
-  label: "Ujian",
+  label: "Monitoring Sistem",
+  description: "Pantau aktivitas, audit, dan operasional platform.",
   href: "/dashboard/super-admin/monitoring",
   icon: "file-text",
   roles: ["super_admin"],
@@ -418,7 +474,8 @@ const superAdminExamMenu: AccessMenuItem = {
 };
 
 const superAdminReportMenu: AccessMenuItem = {
-  label: "Laporan",
+  label: "Data & Cadangan",
+  description: "Kelola impor, ekspor, cadangan, dan pemulihan data.",
   href: "/dashboard/super-admin/reports",
   icon: "activity",
   roles: ["super_admin"],
@@ -449,7 +506,8 @@ const superAdminReportMenu: AccessMenuItem = {
 };
 
 const superAdminSystemMenu: AccessMenuItem = {
-  label: "Sistem",
+  label: "Pengaturan Sistem",
+  description: "Atur konfigurasi dan kebijakan sistem secara global.",
   href: "/dashboard/super-admin/settings",
   icon: "settings",
   roles: ["super_admin"],
@@ -555,6 +613,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       academicMenu(["admin"]),
       questionBankMenu(["admin"]),
       adminExamMenu(["admin"]),
+      adminExecutionMenu,
       reportMenu(["admin"]),
       adminUserMenu,
       profileItem("admin"),
@@ -601,6 +660,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       dashboardItem("teacher", "/dashboard/teacher"),
       questionBankMenu(["teacher"]),
       teacherExamMenu,
+      teacherMonitoringMenu,
       teacherReportMenu,
       profileItem("teacher"),
     ],
@@ -619,14 +679,16 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("student", "/dashboard/student"),
       {
-        label: UI_LABELS.navigation.activeExams,
+        label: "Ujian Saya",
+        description: "Lihat dan kerjakan ujian yang tersedia.",
         href: "/dashboard/student/active-exams",
         icon: "graduation-cap",
         roles: ["student"],
         permission: "active_exams.view",
       },
       {
-        label: "Riwayat Ujian",
+        label: "Hasil Saya",
+        description: "Lihat nilai dan hasil ujian yang telah selesai.",
         href: "/dashboard/student/history",
         icon: "history",
         roles: ["student"],

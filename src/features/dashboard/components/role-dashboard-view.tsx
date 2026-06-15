@@ -18,7 +18,6 @@ import {
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { UI_LABELS } from "@/constants/ui-labels";
 import {
   getAdminOperationalDashboardData,
   getRoleDashboardStats,
@@ -57,8 +56,8 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       },
       {
         title: "Kesiapan Sistem",
-        value: "Sprint 2",
-        description: "Beranda siap menerima modul akademik berikutnya.",
+        value: "Siap",
+        description: "Ringkasan sistem siap digunakan.",
       },
     ],
     workbenchTitle: "Belum ada ringkasan pengelolaan sistem",
@@ -66,9 +65,9 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Kartu ini disiapkan untuk ringkasan pengguna, hak akses, izin akses, dan catatan aktivitas.",
   },
   admin: {
-    title: "Beranda Admin Sekolah",
+    title: "Dashboard",
     description:
-      "Kelola pengguna, data sekolah, dan kesiapan pelaksanaan ujian.",
+      "Ringkasan aktivitas, ujian berjalan, dan informasi penting sekolah.",
     stats: [
       {
         title: "Pengguna",
@@ -82,13 +81,13 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       },
       {
         title: "Operasional",
-        value: "Stable",
-        description: "Tampilan beranda siap untuk pekerjaan administrasi.",
+        value: "Siap",
+        description: "Ringkasan pekerjaan sekolah siap digunakan.",
       },
     ],
     workbenchTitle: "Belum ada pekerjaan administrasi aktif",
     workbenchDescription:
-      "Nanti area ini dapat menampilkan onboarding user, validasi akun, dan jadwal ujian.",
+      "Area ini menampilkan pekerjaan sekolah yang perlu ditindaklanjuti.",
   },
   principal: {
     title: "Beranda Kepala Sekolah",
@@ -113,12 +112,12 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
     ],
     workbenchTitle: "Belum ada laporan yang tersedia",
     workbenchDescription:
-      "Sprint berikutnya dapat mengisi ringkasan nilai, tingkat partisipasi, dan status ujian.",
+      "Ringkasan nilai dan partisipasi akan tampil setelah data ujian tersedia.",
   },
   teacher: {
-    title: "Beranda Guru",
+    title: "Dashboard Guru",
     description:
-      "Ruang kerja guru untuk bank soal, penyusunan ujian, dan penilaian hasil siswa.",
+      "Ringkasan aktivitas mengajar dan pelaksanaan ujian.",
     stats: [
       {
         title: "Bank Soal",
@@ -133,9 +132,9 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
         href: "/dashboard/exams",
       },
       {
-        title: "Koreksi Essay",
+        title: "Koreksi Esai",
         value: "Siap",
-        description: "Fondasi penilaian sudah memiliki route dan menu.",
+        description: "Area penilaian siap digunakan saat ada jawaban esai.",
       },
     ],
     workbenchTitle: "Belum ada ujian yang perlu dinilai",
@@ -143,54 +142,54 @@ const contentByRole: Record<RoleName, RoleDashboardContent> = {
       "Setelah ujian aktif, area ini dapat menampilkan soal belum diterbitkan dan pekerjaan koreksi.",
   },
   student: {
-    title: "Beranda Siswa",
+    title: "Dashboard",
     description:
-      "Halaman peserta untuk melihat ujian aktif, riwayat ujian, dan jadwal pengerjaan.",
+      "Ringkasan ujian, jadwal, dan informasi penting untuk siswa.",
     stats: [
       {
         title: "Ujian Berlangsung",
         value: "0",
-        description: "Belum ada ujian aktif yang ditautkan ke peserta.",
+        description: "Belum ada ujian yang dapat dikerjakan sekarang.",
       },
       {
         title: "Riwayat",
         value: "0",
-        description: "Riwayat ujian akan tampil setelah modul exam berjalan.",
+        description: "Hasil ujian akan tampil setelah ujian selesai.",
       },
       {
         title: "Akses",
-        value: "Aman",
-        description: "Akses siswa dilindungi oleh sistem login.",
+        value: "Aktif",
+        description: "Akun siswa siap digunakan untuk mengikuti ujian.",
       },
     ],
-    workbenchTitle: "Tidak ada ujian aktif",
+    workbenchTitle: "Belum ada ujian yang perlu dikerjakan",
     workbenchDescription:
-      "Saat guru atau pengawas membuka ujian, daftar ujian peserta akan muncul di sini.",
+      "Ujian yang tersedia akan muncul saat jadwal sekolah sudah dibuka.",
   },
   proctor: {
-    title: "Beranda Pengawas Khusus",
+    title: "Dashboard Pengawas",
     description:
-      "Pantau pelaksanaan ujian sebagai akun pengawas non-guru.",
+      "Ringkasan ujian yang sedang diawasi.",
     stats: [
       {
         title: "Pengawasan",
         value: "Siap",
-        description: "Halaman pengawasan khusus sudah tersedia.",
+        description: "Akun pengawas siap memantau pelaksanaan ujian.",
       },
       {
         title: "Sesi Ujian",
         value: "0",
-        description: "Sesi ujian akan muncul setelah modul exam aktif.",
+        description: "Ujian akan muncul saat jadwal pengawasan tersedia.",
       },
       {
         title: "Hak Akses",
-        value: "Pengawas Khusus",
-        description: "Halaman hanya dapat dibuka oleh akun pengawas khusus.",
+        value: "Pengawas",
+        description: "Akses difokuskan untuk pemantauan peserta ujian.",
       },
     ],
-    workbenchTitle: "Belum ada sesi ujian berjalan",
+    workbenchTitle: "Belum ada ujian yang sedang diawasi",
     workbenchDescription:
-      "Area ini disiapkan untuk daftar peserta, status koneksi, dan progres pengerjaan ujian.",
+      "Daftar peserta dan status ujian akan muncul saat jadwal berlangsung.",
   },
 };
 
@@ -304,36 +303,36 @@ function TeacherDashboardOverview({
     {
       title: "Kelas Saya",
       value: String(kelasCount),
-      description: "Kelas yang sedang diajar.",
+      description: "Kelas dan mata pelajaran yang menjadi tanggung jawab Anda.",
       href: "/dashboard/teacher/assignments",
       icon: GraduationCap,
     },
     {
       title: "Bank Soal",
       value: String(bankSoalCount),
-      description: "Soal belum diterbitkan dan sudah diterbitkan.",
+      description: "Soal yang sudah dibuat untuk kebutuhan ujian.",
       href: "/dashboard/question-bank/questions",
       icon: BookOpen,
     },
     {
       title: "Ujian Aktif",
       value: String(ujianAktif),
-      description: "Ujian yang sedang berjalan.",
+      description: "Ujian yang sedang berlangsung.",
       href: "/dashboard/exams/schedules?status=active",
       icon: CalendarDays,
     },
     {
       title: "Perlu Dinilai",
       value: String(perluDinilai),
-      description: "Jawaban essay menunggu koreksi.",
+      description: "Jawaban esai yang menunggu penilaian.",
       href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
       icon: ClipboardCheck,
     },
   ];
   const tasks = [
     {
-      title: `${perluDinilai} Jawaban Essay Belum Dinilai`,
-      description: "Selesaikan koreksi agar nilai siswa bisa final.",
+      title: `${perluDinilai} Jawaban Esai Belum Dinilai`,
+      description: "Selesaikan penilaian agar hasil siswa dapat dibaca.",
       href: "/dashboard/teacher/grading?grading_status=needs_manual_grading",
       action: "Nilai Sekarang",
       urgent: perluDinilai > 0,
@@ -360,14 +359,14 @@ function TeacherDashboardOverview({
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#2563EB]">
-              {UI_LABELS.navigation.home} Guru
+              Dashboard Guru
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-normal sm:text-3xl">
               Halo, {displayName}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B] sm:text-base">
-              Mulai dari kelas yang diajar, buat soal, buat ujian, koreksi essay,
-              lalu lihat nilai siswa.
+              Ringkasan aktivitas mengajar, soal, ujian yang berlangsung, dan
+              hasil siswa yang perlu ditindaklanjuti.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[520px]">
@@ -390,7 +389,7 @@ function TeacherDashboardOverview({
               className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
             >
               <ClipboardCheck className="size-4" />
-              Koreksi Essay
+              Koreksi Esai
             </Link>
           </div>
         </div>
@@ -502,7 +501,7 @@ function AdminDashboardOverview({
         ? {
             ...stat,
             title: "Ujian Aktif",
-            description: "Ujian yang sedang berjalan.",
+            description: "Ujian yang sedang berlangsung.",
           }
         : stat,
     );
@@ -522,11 +521,14 @@ function AdminDashboardOverview({
           <div className="min-w-0 space-y-4">
             <div>
               <p className="text-sm font-medium text-[#2563EB]">
-                {UI_LABELS.navigation.home} Admin Sekolah
+                Dashboard Admin Sekolah
               </p>
               <h1 className="mt-2 text-2xl font-semibold tracking-normal md:text-3xl">
                 Selamat Datang, {displayName}
               </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B]">
+                Ringkasan aktivitas, ujian berjalan, dan informasi penting sekolah.
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <DashboardInfoChip
@@ -576,7 +578,7 @@ function AdminDashboardOverview({
           <div className="mb-4">
             <h2 className="text-base font-semibold">Perlu Ditindaklanjuti</h2>
             <p className="mt-1 text-sm text-[#64748B]">
-              Pekerjaan operasional yang menghambat setup atau pelaksanaan.
+              Pekerjaan sekolah yang perlu diselesaikan sebelum atau saat ujian.
             </p>
           </div>
           <div className="grid gap-3">
@@ -629,7 +631,7 @@ function AdminDashboardOverview({
 
         <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-base font-semibold">Progress Setup Sekolah</h2>
+            <h2 className="text-base font-semibold">Kesiapan Sekolah</h2>
             <p className="mt-1 text-sm text-[#64748B]">
               {completedProgress} dari {operationalData.setupProgress.length} tahap siap.
             </p>
@@ -669,7 +671,7 @@ function AdminDashboardOverview({
         <div className="mb-4">
           <h2 className="text-base font-semibold">Aktivitas Terbaru Sekolah</h2>
           <p className="mt-1 text-sm text-[#64748B]">
-            Perubahan data terbaru dalam lingkup sekolah.
+            Perubahan terbaru pada data dan kegiatan sekolah.
           </p>
         </div>
         <div className="grid gap-2">
@@ -785,7 +787,7 @@ function ExamReadinessWidget({
       <div className="mb-4">
         <h2 className="text-base font-semibold">Kesiapan Ujian</h2>
         <p className="mt-1 text-sm text-[#64748B]">
-          Status kesiapan jadwal sebelum diterbitkan dan dilaksanakan.
+          Kondisi jadwal sebelum ujian diterbitkan dan dilaksanakan.
         </p>
       </div>
       <div className="grid gap-2">
@@ -818,9 +820,9 @@ function DataIssueSummary({
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Masalah Data</h2>
+        <h2 className="text-base font-semibold">Data yang Perlu Dilengkapi</h2>
         <p className="mt-1 text-sm text-[#64748B]">
-          Validasi data master sebelum penjadwalan dan ujian.
+          Data sekolah yang perlu dibereskan sebelum penjadwalan ujian.
         </p>
       </div>
       <div className="grid gap-2">
@@ -843,7 +845,7 @@ function DataIssueSummary({
           ))
         ) : (
           <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-            Data master siap digunakan.
+            Data sekolah siap digunakan.
           </div>
         )}
       </div>

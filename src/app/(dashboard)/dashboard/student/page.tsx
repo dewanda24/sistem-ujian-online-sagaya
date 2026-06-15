@@ -139,11 +139,11 @@ export default async function StudentDashboardPage() {
       <section className="rounded-lg bg-blue-700 p-5 text-white sm:p-6">
         <p className="text-sm font-medium text-blue-100">Halo, {studentName}</p>
         <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
-          Cek ujian hari ini dan mulai saat waktunya tiba.
+          Ringkasan ujian, jadwal, dan informasi penting untuk siswa.
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base">
-          Di sini kamu cukup melihat ujian yang aktif, jadwal terdekat, dan hasil
-          terakhir.
+          Lihat ujian yang tersedia, jadwal terdekat, dan hasil ujian yang sudah
+          selesai.
         </p>
       </section>
 
@@ -157,10 +157,10 @@ export default async function StudentDashboardPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-950">
-              Ujian Aktif Hari Ini
+              Ujian Saya
             </h2>
             <p className="text-sm text-slate-600">
-              Kalau ada ujian yang sedang berlangsung, mulai dari kartu ini.
+              Ujian yang dapat dikerjakan akan tampil di sini.
             </p>
           </div>
           <Link
@@ -194,7 +194,7 @@ export default async function StudentDashboardPage() {
                 Jadwal Ujian Terdekat
               </h2>
               <p className="text-sm text-slate-600">
-                Jadwal berikutnya untuk kelasmu.
+                Jadwal ujian berikutnya untuk kelasmu.
               </p>
             </div>
             <Link
@@ -234,9 +234,9 @@ function LatestResultCard({
   if (!attempt) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-lg font-bold text-slate-950">Nilai Terakhir</h2>
+        <h2 className="text-lg font-bold text-slate-950">Hasil Terakhir</h2>
         <p className="mt-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-          Belum ada hasil ujian.
+          Belum ada hasil ujian yang dapat ditampilkan.
         </p>
       </div>
     );
@@ -253,7 +253,7 @@ function LatestResultCard({
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">Nilai Terakhir</h2>
+          <h2 className="text-lg font-bold text-slate-950">Hasil Terakhir</h2>
           <p className="mt-1 text-sm text-slate-600">
             {subject?.code ?? "-"} - {subject?.name ?? "Mata pelajaran"}
           </p>
