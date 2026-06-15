@@ -62,6 +62,35 @@ function addMinutes(time: string, minutes: number) {
   ).padStart(2, "0")}`;
 }
 
+function normalizeTime(value: string) {
+  const digits = value.replace(/[^\d:]/g, "");
+
+  if (/^\d{2}:\d{2}$/.test(digits)) {
+    return digits;
+  }
+
+  const compact = digits.replace(/:/g, "").slice(0, 4);
+
+  if (compact.length <= 2) {
+    return compact;
+  }
+
+  return `${compact.slice(0, 2)}:${compact.slice(2)}`;
+}
+
+function isValidTime(value: string) {
+  const match = value.match(/^(\d{2}):(\d{2})$/);
+
+  if (!match) {
+    return false;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
 function splitDatetime(value?: string) {
   if (!value) {
     return { date: todayDate(), time: "" };
@@ -174,6 +203,8 @@ export function ExamScheduleForm({
     if (!title.trim()) nextErrors.push("Nama jadwal wajib diisi.");
     if (!academicYearId) nextErrors.push("Tahun ajaran wajib dipilih.");
     if (!date || !startTime || !endTime) nextErrors.push("Tanggal dan waktu wajib diisi.");
+    if (startTime && !isValidTime(startTime)) nextErrors.push("Jam mulai wajib format 24 jam, contoh 08:00 atau 13:30.");
+    if (endTime && !isValidTime(endTime)) nextErrors.push("Jam selesai wajib format 24 jam, contoh 09:00 atau 15:45.");
     if (selectedClasses.length === 0) nextErrors.push("Pilih minimal satu kelas target.");
 
     setErrors(nextErrors);
@@ -305,20 +336,28 @@ export function ExamScheduleForm({
             className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           />
           <input
-            type="time"
+            type="text"
+            inputMode="numeric"
+            pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+            placeholder="08:00"
             value={startTime}
             onChange={(event) => {
-              setStartTime(event.target.value);
-              if (selectedPackage?.durationMinutes) {
-                setEndTime(addMinutes(event.target.value, selectedPackage.durationMinutes));
+              const nextTime = normalizeTime(event.target.value);
+
+              setStartTime(nextTime);
+              if (selectedPackage?.durationMinutes && isValidTime(nextTime)) {
+                setEndTime(addMinutes(nextTime, selectedPackage.durationMinutes));
               }
             }}
             className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           />
           <input
-            type="time"
+            type="text"
+            inputMode="numeric"
+            pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+            placeholder="09:00"
             value={endTime}
-            onChange={(event) => setEndTime(event.target.value)}
+            onChange={(event) => setEndTime(normalizeTime(event.target.value))}
             className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
           />
         </div>

@@ -67,6 +67,7 @@ function formatTime(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
     timeZone: "Asia/Jakarta",
   }).format(new Date(value));
 }
