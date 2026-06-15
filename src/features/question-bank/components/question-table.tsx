@@ -5,8 +5,6 @@ import {
   Archive,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Pencil,
   Send,
   Trash2,
   Undo2,
@@ -372,12 +370,12 @@ function QuestionActions({
 }) {
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onPreview}>
+      <TableActionButton icon="eye" onClick={onPreview}>
         {UI_LABELS.actions.preview}
       </TableActionButton>
       <TableActionLink
         href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
-        icon={Pencil}
+        icon="pencil"
       >
         {UI_LABELS.actions.update}
       </TableActionLink>
@@ -389,7 +387,7 @@ function QuestionActions({
           value={question.status === "published" ? "draft" : "published"}
         />
         <TableActionSubmit
-          icon={question.status === "published" ? Undo2 : Send}
+          icon={question.status === "published" ? "undo" : "send"}
           confirmMessage={
             question.status === "published"
               ? "Ubah soal ini menjadi belum diterbitkan?"
@@ -405,7 +403,7 @@ function QuestionActions({
         <input type="hidden" name="id" value={question.id} />
         <input type="hidden" name="status" value="archived" />
         <TableActionSubmit
-          icon={Archive}
+          icon="archive"
           confirmMessage="Arsipkan soal ini?"
           tone="danger"
         >

@@ -1,4 +1,3 @@
-import { KeyRound, Pencil, Power } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -254,7 +253,7 @@ export async function OperationalRoleUsersPage({
                       ? `&school_id=${searchParams.school_id}`
                       : ""
                   }`}
-                  icon={Pencil}
+                  icon="pencil"
                 >
                   Edit
                 </TableActionLink>
@@ -267,7 +266,7 @@ export async function OperationalRoleUsersPage({
                     value={item.status === "active" ? "inactive" : "active"}
                   />
                   <TableActionSubmit
-                    icon={Power}
+                    icon="power"
                     confirmMessage={`${
                       item.status === "active" ? "Nonaktifkan" : "Aktifkan"
                     } akun ${item.profile?.full_name ?? item.username}?`}
@@ -286,7 +285,7 @@ export async function OperationalRoleUsersPage({
                     required
                   />
                   <TableActionSubmit
-                    icon={KeyRound}
+                    icon="key-round"
                     confirmMessage={`Reset password untuk ${item.profile?.full_name ?? item.username}?`}
                     confirmationText="RESET"
                     tone="danger"

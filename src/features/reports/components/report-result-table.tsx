@@ -6,10 +6,7 @@ import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
-  Eye,
   FileText,
-  PenLine,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -265,18 +262,18 @@ function RowActions({
 }) {
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onDetail}>
+      <TableActionButton icon="eye" onClick={onDetail}>
         Rincian
       </TableActionButton>
-      <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon={FileText}>
+      <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon="file-text">
         Lihat Jawaban
       </TableActionLink>
       {row.gradingStatus === "needs_manual_grading" ? (
-        <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon={PenLine}>
+        <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon="pen-line">
           Koreksi Esai
         </TableActionLink>
       ) : null}
-      <TableActionLink href={exportHref(row)} icon={Download}>
+      <TableActionLink href={exportHref(row)} icon="download">
         {UI_LABELS.actions.exportData}
       </TableActionLink>
     </TableActions>

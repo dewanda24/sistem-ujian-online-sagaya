@@ -1,7 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { MoreHorizontal, type LucideIcon } from "lucide-react";
+import {
+  Archive,
+  CalendarPlus,
+  Clipboard,
+  Download,
+  Eye,
+  FileText,
+  KeyRound,
+  MoreHorizontal,
+  PenLine,
+  Pencil,
+  Power,
+  RotateCcw,
+  ScreenShare,
+  Send,
+  ShieldAlert,
+  ToggleLeft,
+  Trash2,
+  Undo2,
+  Unlock,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
@@ -15,17 +37,18 @@ type TableActionsProps = {
 };
 
 type TableActionTone = "default" | "danger" | "muted";
+export type TableActionIconName = keyof typeof tableActionIcons;
 
 type TableActionLinkProps = {
   href: string;
   children: ReactNode;
-  icon?: LucideIcon;
+  icon?: TableActionIconName;
   tone?: TableActionTone;
   className?: string;
 };
 
 type TableActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  icon?: LucideIcon;
+  icon?: TableActionIconName;
   tone?: TableActionTone;
 };
 
@@ -35,7 +58,7 @@ type TableActionSubmitProps = {
   confirmTitle?: string;
   confirmationText?: "HAPUS" | "RESET";
   disabled?: boolean;
-  icon?: LucideIcon;
+  icon?: TableActionIconName;
   tone?: Exclude<TableActionTone, "muted">;
 };
 
@@ -66,10 +89,12 @@ export function TableActions({
 export function TableActionLink({
   href,
   children,
-  icon: Icon,
+  icon,
   tone = "default",
   className,
 }: TableActionLinkProps) {
+  const Icon = icon ? tableActionIcons[icon] : null;
+
   return (
     <Link href={href} className={cn(tableActionClassName(tone), className)}>
       {Icon ? <Icon className="size-3.5" aria-hidden="true" /> : null}
@@ -80,12 +105,14 @@ export function TableActionLink({
 
 export function TableActionButton({
   children,
-  icon: Icon,
+  icon,
   tone = "default",
   className,
   type = "button",
   ...props
 }: TableActionButtonProps) {
+  const Icon = icon ? tableActionIcons[icon] : null;
+
   return (
     <button
       {...props}
@@ -104,9 +131,11 @@ export function TableActionSubmit({
   confirmTitle,
   confirmationText,
   disabled,
-  icon: Icon,
+  icon,
   tone = "default",
 }: TableActionSubmitProps) {
+  const ActionIcon = icon ? tableActionIcons[icon] : null;
+
   return (
     <ConfirmSubmitButton
       confirmMessage={confirmMessage}
@@ -119,7 +148,9 @@ export function TableActionSubmit({
         "h-auto w-full justify-start rounded-md border-0 px-2 py-1.5 text-xs",
       )}
     >
-      {Icon ? <Icon className="size-3.5" aria-hidden="true" /> : null}
+      {ActionIcon ? (
+        <ActionIcon className="size-3.5" aria-hidden="true" />
+      ) : null}
       <span>{children}</span>
     </ConfirmSubmitButton>
   );
@@ -127,11 +158,13 @@ export function TableActionSubmit({
 
 export function TableActionDisabled({
   children,
-  icon: Icon,
+  icon,
 }: {
   children: ReactNode;
-  icon?: LucideIcon;
+  icon?: TableActionIconName;
 }) {
+  const Icon = icon ? tableActionIcons[icon] : null;
+
   return (
     <span className={cn(tableActionClassName("muted"), "cursor-not-allowed")}>
       {Icon ? <Icon className="size-3.5" aria-hidden="true" /> : null}
@@ -148,3 +181,25 @@ function tableActionClassName(tone: TableActionTone) {
     tone === "muted" && "text-[#94A3B8]",
   );
 }
+
+const tableActionIcons = {
+  archive: Archive,
+  "calendar-plus": CalendarPlus,
+  clipboard: Clipboard,
+  download: Download,
+  eye: Eye,
+  "file-text": FileText,
+  "key-round": KeyRound,
+  "pen-line": PenLine,
+  pencil: Pencil,
+  power: Power,
+  "rotate-ccw": RotateCcw,
+  "screen-share": ScreenShare,
+  send: Send,
+  "shield-alert": ShieldAlert,
+  "toggle-left": ToggleLeft,
+  trash: Trash2,
+  undo: Undo2,
+  unlock: Unlock,
+  "user-check": UserCheck,
+} satisfies Record<string, LucideIcon>;

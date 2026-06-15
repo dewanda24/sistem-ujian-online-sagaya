@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import {
-  Archive,
-  CalendarPlus,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Pencil,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -230,18 +226,18 @@ function PackageActions({
 }) {
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onPreview}>
+      <TableActionButton icon="eye" onClick={onPreview}>
         {UI_LABELS.actions.preview}
       </TableActionButton>
       <TableActionLink
         href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-        icon={Pencil}
+        icon="pencil"
       >
         {UI_LABELS.actions.update}
       </TableActionLink>
       <TableActionLink
         href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
-        icon={CalendarPlus}
+        icon="calendar-plus"
       >
         Jadwalkan
       </TableActionLink>
@@ -276,7 +272,7 @@ function PackageActions({
       <form action={archiveExamPackageAction}>
         <input type="hidden" name="id" value={examPackage.id} />
         <TableActionSubmit
-          icon={Archive}
+          icon="archive"
           confirmMessage="Arsipkan paket ujian ini?"
           tone="danger"
         >

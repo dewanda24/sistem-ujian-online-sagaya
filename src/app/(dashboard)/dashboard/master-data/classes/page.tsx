@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -76,11 +75,11 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2"><StatusBadge active={Boolean(classItem.is_active)} /></td>
                   <td className="px-3 py-2">
                     <TableActions>
-                      <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                      <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon="pencil">Edit</TableActionLink>
                       <form action={toggleClassAction}>
                         <input type="hidden" name="id" value={classItem.id} />
                         <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
-                        <TableActionSubmit icon={Power} confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
+                        <TableActionSubmit icon="power" confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
                           {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
@@ -106,11 +105,11 @@ export default async function ClassesPage({ searchParams }: PageProps) {
               </div>
               <div className="mt-2">
                 <TableActions>
-                  <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <TableActionLink href={`/dashboard/master-data/classes/${classItem.id}/edit`} icon="pencil">Edit</TableActionLink>
                   <form action={toggleClassAction}>
                     <input type="hidden" name="id" value={classItem.id} />
                     <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
-                    <TableActionSubmit icon={Power} confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
+                    <TableActionSubmit icon="power" confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
                       {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
                     </TableActionSubmit>
                   </form>

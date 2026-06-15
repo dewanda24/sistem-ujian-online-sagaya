@@ -1,4 +1,3 @@
-import { Archive, Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -197,7 +196,7 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
               <TableActions>
                 <TableActionLink
                   href={`/dashboard/question-bank/stimuli?edit=${stimulus.id}`}
-                  icon={Pencil}
+                  icon="pencil"
                 >
                   Edit
                 </TableActionLink>
@@ -209,7 +208,7 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
                     value={stimulus.is_active ? "false" : "true"}
                   />
                   <TableActionSubmit
-                    icon={Power}
+                    icon="power"
                     confirmMessage={`${
                       stimulus.is_active ? "Nonaktifkan" : "Aktifkan"
                     } stimulus ${stimulus.title}?`}
@@ -220,7 +219,7 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
                 <form action={deleteQuestionStimulusAction}>
                   <input type="hidden" name="id" value={stimulus.id} />
                   <TableActionSubmit
-                    icon={Archive}
+                    icon="archive"
                     confirmMessage="Arsipkan stimulus ini? Soal lama yang masih memakai stimulus ini tetap menyimpan relasinya, tetapi stimulus tidak akan muncul sebagai pilihan aktif."
                     confirmationText="HAPUS"
                     tone="danger"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Eye, KeyRound, Pencil, Power, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
@@ -149,16 +149,16 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
 function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; compact?: boolean }) {
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onDetail}>
+      <TableActionButton icon="eye" onClick={onDetail}>
         Detail
       </TableActionButton>
       <TableActionLink
         href={`/dashboard/master-data/students/${row.id}/edit`}
-        icon={Pencil}
+        icon="pencil"
       >
         Edit
       </TableActionLink>
-      <TableActionDisabled icon={KeyRound}>Reset Password</TableActionDisabled>
+      <TableActionDisabled icon="key-round">Reset Password</TableActionDisabled>
       <form action={toggleUserStatusAction}>
         <input type="hidden" name="target" value="students" />
         <input type="hidden" name="id" value={row.id} />
@@ -168,7 +168,7 @@ function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; 
           value={row.status === "active" ? "inactive" : "active"}
         />
         <TableActionSubmit
-          icon={Power}
+          icon="power"
           confirmMessage={`${
             row.status === "active" ? "Nonaktifkan" : "Aktifkan"
           } akun ${row.name}?`}
@@ -176,7 +176,7 @@ function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; 
           {row.status === "active" ? "Nonaktifkan" : "Aktifkan"}
         </TableActionSubmit>
       </form>
-      <TableActionDisabled icon={Trash2}>Hapus</TableActionDisabled>
+      <TableActionDisabled icon="trash">Hapus</TableActionDisabled>
     </TableActions>
   );
 }

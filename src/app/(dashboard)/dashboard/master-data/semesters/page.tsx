@@ -1,4 +1,3 @@
-import { Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -132,7 +131,7 @@ export default async function SemestersPage({ searchParams }: PageProps) {
               <TableActions>
                 <TableActionLink
                   href={`/dashboard/master-data/semesters?edit=${semester.id}`}
-                  icon={Pencil}
+                  icon="pencil"
                 >
                   Edit
                 </TableActionLink>
@@ -149,7 +148,7 @@ export default async function SemestersPage({ searchParams }: PageProps) {
                     value={semester.is_active ? "false" : "true"}
                   />
                   <TableActionSubmit
-                    icon={Power}
+                    icon="power"
                     confirmMessage={`${semester.is_active ? "Nonaktifkan" : "Aktifkan"} semester ${semester.name}?`}
                   >
                     {semester.is_active ? "Nonaktifkan" : "Aktifkan"}

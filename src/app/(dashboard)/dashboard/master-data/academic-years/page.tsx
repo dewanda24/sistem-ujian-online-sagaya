@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -122,12 +121,12 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2"><StatusBadge active={Boolean(year.is_active)} /></td>
                   <td className="px-3 py-2">
                     <TableActions>
-                      <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                      <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">Edit</TableActionLink>
                       <form action={toggleAcademicYearAction}>
                         <input type="hidden" name="id" value={year.id} />
                         <input type="hidden" name="school_id" value={year.school_id} />
                         <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
-                        <TableActionSubmit icon={Power} confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
+                        <TableActionSubmit icon="power" confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
                           {year.is_active ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
@@ -137,7 +136,7 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                           <input type="hidden" name="id" value={activeSemester.id} />
                           <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
                           <input type="hidden" name="is_active" value="false" />
-                          <TableActionSubmit icon={Power} confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
+                          <TableActionSubmit icon="power" confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
                             Nonaktifkan Semester
                           </TableActionSubmit>
                         </form>
@@ -172,12 +171,12 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
               </div>
               <div className="mt-2 flex items-center gap-1.5">
                 <TableActions>
-                  <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">Edit</TableActionLink>
                   <form action={toggleAcademicYearAction}>
                     <input type="hidden" name="id" value={year.id} />
                     <input type="hidden" name="school_id" value={year.school_id} />
                     <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
-                    <TableActionSubmit icon={Power} confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
+                    <TableActionSubmit icon="power" confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
                       {year.is_active ? "Nonaktifkan" : "Aktifkan"}
                     </TableActionSubmit>
                   </form>
@@ -187,7 +186,7 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                       <input type="hidden" name="id" value={activeSemester.id} />
                       <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
                       <input type="hidden" name="is_active" value="false" />
-                      <TableActionSubmit icon={Power} confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
+                      <TableActionSubmit icon="power" confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
                         Nonaktifkan Semester
                       </TableActionSubmit>
                     </form>

@@ -1,4 +1,3 @@
-import { Archive, Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -163,7 +162,7 @@ function CategoryActions({ category }: { category: QuestionCategoryRow }) {
     <TableActions>
       <TableActionLink
         href={`/dashboard/question-bank/categories?edit=${category.id}`}
-        icon={Pencil}
+        icon="pencil"
       >
         Edit
       </TableActionLink>
@@ -175,7 +174,7 @@ function CategoryActions({ category }: { category: QuestionCategoryRow }) {
           value={category.is_active ? "false" : "true"}
         />
         <TableActionSubmit
-          icon={Power}
+          icon="power"
           confirmMessage={`${
             category.is_active ? "Nonaktifkan" : "Aktifkan"
           } kategori ${category.name}?`}
@@ -186,7 +185,7 @@ function CategoryActions({ category }: { category: QuestionCategoryRow }) {
       <form action={deleteQuestionCategoryAction}>
         <input type="hidden" name="id" value={category.id} />
         <TableActionSubmit
-          icon={Archive}
+          icon="archive"
           confirmMessage={`Arsipkan kategori ${category.name}?`}
           confirmationText="HAPUS"
           tone="danger"

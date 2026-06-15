@@ -4,11 +4,6 @@ import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Eye,
-  RotateCcw,
-  Send,
-  ShieldAlert,
-  Unlock,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -370,10 +365,10 @@ function ParticipantActions({
 
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onDetail}>
+      <TableActionButton icon="eye" onClick={onDetail}>
         Detail
       </TableActionButton>
-      <TableActionButton icon={Eye}>Lihat Jawaban</TableActionButton>
+      <TableActionButton icon="eye">Lihat Jawaban</TableActionButton>
       {canControlSessions ? (
         <ActionForms participant={participant} attempt={attempt} returnTo={returnTo} />
       ) : null}
@@ -397,7 +392,7 @@ function ActionForms({
           <input type="hidden" name="attempt_id" value={attempt.id} />
           <input type="hidden" name="return_to" value={returnTo} />
           <TableActionSubmit
-            icon={Send}
+            icon="send"
             disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
             confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
           >
@@ -409,7 +404,7 @@ function ActionForms({
             <input type="hidden" name="attempt_id" value={attempt.id} />
             <input type="hidden" name="return_to" value={returnTo} />
             <TableActionSubmit
-              icon={Unlock}
+              icon="unlock"
               confirmMessage="Buka kunci pengerjaan siswa ini? Siswa bisa lanjut mengerjakan."
             >
               Buka Kunci
@@ -425,7 +420,7 @@ function ActionForms({
               value="Dikunci dari pengawasan ujian."
             />
             <TableActionSubmit
-              icon={ShieldAlert}
+              icon="shield-alert"
               disabled={attempt.status !== "in_progress"}
               confirmMessage="Kunci pengerjaan siswa ini? Siswa tidak bisa menyimpan jawaban atau menyelesaikan ujian sampai dibuka."
             >
@@ -437,7 +432,7 @@ function ActionForms({
           <input type="hidden" name="attempt_id" value={attempt.id} />
           <input type="hidden" name="return_to" value={returnTo} />
           <TableActionSubmit
-            icon={RotateCcw}
+            icon="rotate-ccw"
             tone="danger"
             confirmationText="RESET"
             disabled={attempt.status === "cancelled"}

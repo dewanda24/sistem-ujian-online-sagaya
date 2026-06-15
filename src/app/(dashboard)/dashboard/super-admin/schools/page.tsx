@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Eye, Pencil, Power } from "lucide-react";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -138,13 +137,13 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
               <TableActions>
                 <TableActionLink
                   href={`/dashboard/super-admin/schools/${school.id}`}
-                  icon={Eye}
+                  icon="eye"
                 >
                   Detail
                 </TableActionLink>
                 <TableActionLink
                   href={`/dashboard/super-admin/schools/${school.id}?edit=1`}
-                  icon={Pencil}
+                  icon="pencil"
                 >
                   Edit
                 </TableActionLink>
@@ -161,7 +160,7 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                     value={school.is_active ? "false" : "true"}
                   />
                   <TableActionSubmit
-                    icon={Power}
+                    icon="power"
                     confirmMessage={`${
                       school.is_active ? "Nonaktifkan" : "Aktifkan"
                     } ${school.name}?`}

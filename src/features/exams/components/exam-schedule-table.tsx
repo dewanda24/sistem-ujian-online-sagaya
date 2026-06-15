@@ -3,16 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Archive,
   CheckCircle2,
-  Clipboard,
-  Eye,
-  Pencil,
-  ScreenShare,
-  Send,
   ShieldAlert,
-  ToggleLeft,
-  UserCheck,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -235,23 +227,23 @@ function ScheduleActions({
 
   return (
     <TableActions>
-      <TableActionButton icon={Eye} onClick={onPreview}>
+      <TableActionButton icon="eye" onClick={onPreview}>
         {UI_LABELS.actions.preview}
       </TableActionButton>
       <TableActionLink
         href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
-        icon={Pencil}
+        icon="pencil"
       >
         {UI_LABELS.actions.update}
       </TableActionLink>
       <TableActionLink
         href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
-        icon={ScreenShare}
+        icon="screen-share"
       >
         {UI_LABELS.navigation.examMonitoring}
       </TableActionLink>
       <TableActionButton
-        icon={Clipboard}
+        icon="clipboard"
         onClick={copyToken}
         disabled={!schedule.access_token}
       >
@@ -265,7 +257,7 @@ function ScheduleActions({
       </form>
       <TableActionLink
         href={`/dashboard/exams/proctors?schedule_id=${schedule.id}`}
-        icon={UserCheck}
+        icon="user-check"
       >
         Penugasan Pengawas
       </TableActionLink>
@@ -283,7 +275,7 @@ function ScheduleActions({
             }
           />
           <TableActionSubmit
-            icon={Send}
+            icon="send"
             confirmMessage={
               readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
                 ? "Tetap publish? Jadwal masih memiliki warning readiness."
@@ -302,7 +294,7 @@ function ScheduleActions({
           value={schedule.is_active ? "false" : "true"}
         />
         <TableActionSubmit
-          icon={ToggleLeft}
+          icon="toggle-left"
           confirmMessage={
             schedule.is_active
               ? "Nonaktifkan jadwal ujian ini?"
@@ -322,7 +314,7 @@ function ScheduleActions({
       <form action={archiveExamScheduleAction}>
         <input type="hidden" name="id" value={schedule.id} />
         <TableActionSubmit
-          icon={Archive}
+          icon="archive"
           confirmMessage="Arsipkan jadwal ujian ini?"
           tone="danger"
         >

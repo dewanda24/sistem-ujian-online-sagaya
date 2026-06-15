@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Pencil, Power } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -82,12 +81,12 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2"><span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-[#64748B]">Tidak</span></td>
                   <td className="px-3 py-2">
                     <TableActions>
-                      <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                      <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon="pencil">Edit</TableActionLink>
                       <form action={toggleUserStatusAction}>
                         <input type="hidden" name="target" value="teachers" />
                         <input type="hidden" name="id" value={teacher.id} />
                         <input type="hidden" name="status" value={teacher.status === "active" ? "inactive" : "active"} />
-                        <TableActionSubmit icon={Power} confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${name}?`}>
+                        <TableActionSubmit icon="power" confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${name}?`}>
                           {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
@@ -112,12 +111,12 @@ export default async function TeachersPage({ searchParams }: PageProps) {
               </div>
               <div className="mt-2">
                 <TableActions>
-                  <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon={Pencil}>Edit</TableActionLink>
+                  <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon="pencil">Edit</TableActionLink>
                   <form action={toggleUserStatusAction}>
                     <input type="hidden" name="target" value="teachers" />
                     <input type="hidden" name="id" value={teacher.id} />
                     <input type="hidden" name="status" value={teacher.status === "active" ? "inactive" : "active"} />
-                    <TableActionSubmit icon={Power} confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${profile?.full_name ?? teacher.username}?`}>
+                    <TableActionSubmit icon="power" confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${profile?.full_name ?? teacher.username}?`}>
                       {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                     </TableActionSubmit>
                   </form>
