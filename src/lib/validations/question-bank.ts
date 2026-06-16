@@ -7,6 +7,29 @@ const optionalUuidField = z
   .or(z.literal(""))
   .optional()
   .transform((value) => (value ? value : null));
+const mediaUrlField = (message: string) =>
+  z
+    .string()
+    .refine(
+      (value) => {
+        if (value === "") return true;
+
+        try {
+          if (value.startsWith("/")) {
+            const url = new URL(value, "http://localhost");
+
+            return url.pathname === "/api/question-bank/media";
+          }
+
+          const url = new URL(value);
+
+          return ["http:", "https:"].includes(url.protocol);
+        } catch {
+          return false;
+        }
+      },
+      { message },
+    );
 
 export const questionCategorySchema = z.object({
   id: optionalUuidField,
@@ -88,7 +111,7 @@ export const questionStimulusSchema = z.object({
   subject_id: optionalUuidField,
   title: z.string().min(2, "Judul stimulus wajib diisi"),
   content: z.string().optional().default(""),
-  media_url: z.string().url("URL media stimulus tidak valid").or(z.literal("")).optional(),
+  media_url: mediaUrlField("URL media stimulus tidak valid").optional(),
   media_type: z
     .enum(["image", "audio", "video", "file", "link"])
     .or(z.literal(""))
@@ -98,7 +121,9 @@ export const questionStimulusSchema = z.object({
 
 export const questionAttachmentSchema = z.object({
   media_type: z.enum(["image", "audio", "video", "file", "link"]),
-  url: z.string().url("URL media soal tidak valid"),
+  url: mediaUrlField("URL media soal tidak valid").refine(Boolean, {
+    message: "URL media soal tidak valid",
+  }),
   file_name: z.string().optional().default(""),
   caption: z.string().optional().default(""),
   order_number: z.coerce.number().int().min(1).default(1),

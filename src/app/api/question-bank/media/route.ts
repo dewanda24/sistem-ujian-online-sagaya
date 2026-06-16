@@ -121,7 +121,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const stableUrl = `/api/question-bank/media?path=${encodeURIComponent(path)}`;
+  const stableUrl = new URL(
+    `/api/question-bank/media?path=${encodeURIComponent(path)}`,
+    request.url,
+  ).toString();
 
   return NextResponse.json({
     ok: true,
