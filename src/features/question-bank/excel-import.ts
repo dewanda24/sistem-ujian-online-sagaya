@@ -103,8 +103,10 @@ export function validateExcelImportRow(
     errors.push("Konten kosong");
   }
 
-  if (!Number(row.point) || Number(row.point) <= 0) {
-    errors.push("Poin harus lebih dari 0");
+  const point = Number(row.point);
+
+  if (!Number.isInteger(point) || point <= 0) {
+    errors.push("Poin harus berupa bilangan bulat seperti 1, 2, atau 3");
   }
 
   if (row.type === "multiple_choice") {

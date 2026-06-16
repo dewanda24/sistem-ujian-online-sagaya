@@ -144,7 +144,7 @@ export async function saveExcelImportAction(formData: FormData) {
         difficulty: row.difficulty || "medium",
         content: row.content,
         explanation: row.explanation || null,
-        point: Number(row.point || 1),
+        point: Number.parseInt(row.point || "1", 10),
         status: "draft",
         current_version: 1,
         is_active: true,

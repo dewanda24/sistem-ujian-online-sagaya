@@ -36,7 +36,10 @@ export const questionSchema = z
     difficulty: z.enum(["easy", "medium", "hard"]),
     content: z.string().min(3, "Konten soal wajib diisi"),
     explanation: z.string().optional().default(""),
-    point: z.coerce.number().positive("Poin harus lebih dari 0"),
+    point: z.coerce
+      .number()
+      .int("Poin harus berupa bilangan bulat seperti 1, 2, atau 3")
+      .positive("Poin harus lebih dari 0"),
     status: z.enum(["draft", "published"]).default("draft"),
     is_active: z.boolean().default(true),
     options: z.array(questionOptionSchema).default([]),

@@ -78,12 +78,12 @@ type UploadState = {
 } | null;
 
 const mathTemplates = [
-  { label: "Pecahan", value: "\\frac{a}{b}" },
-  { label: "Akar", value: "\\sqrt{x}" },
-  { label: "Pangkat", value: "x^{2}" },
-  { label: "Integral", value: "\\int_{a}^{b} f(x)\\,dx" },
-  { label: "Sigma", value: "\\sum_{i=1}^{n} i" },
-  { label: "Limit", value: "\\lim_{x \\to a} f(x)" },
+  { label: "Pecahan", value: "\\frac{3}{4}" },
+  { label: "Akar", value: "\\sqrt{16}=4" },
+  { label: "Pangkat", value: "x^{2}+2x+1" },
+  { label: "Persamaan", value: "2x+5=17" },
+  { label: "Limit", value: "\\lim_{x \\to 2}(x^2)=4" },
+  { label: "Integral", value: "\\int_{0}^{1} x^2\\,dx" },
 ] as const;
 
 function optionValue(question: EditableQuestion | null | undefined, label: string) {
@@ -104,6 +104,16 @@ function firstAttachment(question: EditableQuestion | null | undefined) {
   return [...(question?.question_attachments ?? [])].sort(
     (a, b) => a.order_number - b.order_number,
   )[0];
+}
+
+function formatPointValue(point: EditableQuestion["point"]) {
+  const numericPoint = Number(point ?? 1);
+
+  if (!Number.isFinite(numericPoint) || numericPoint <= 0) {
+    return "1";
+  }
+
+  return String(Math.round(numericPoint));
 }
 
 function Panel({
@@ -194,7 +204,7 @@ export function QuestionForm({
   const [type, setType] = useState(editable?.type ?? "multiple_choice");
   const [content, setContent] = useState(editable?.content ?? "");
   const [explanation, setExplanation] = useState(editable?.explanation ?? "");
-  const [point, setPoint] = useState(String(editable?.point ?? "1"));
+  const [point, setPoint] = useState(formatPointValue(editable?.point));
   const [correct, setCorrect] = useState(correctOption(editable));
   const [options, setOptions] = useState<Record<string, string>>({
     A: optionValue(editable, "A"),
@@ -257,8 +267,10 @@ export function QuestionForm({
 
     if (!subjectId) nextKesalahans.push("Mapel wajib dipilih.");
     if (!content.trim()) nextKesalahans.push("Pertanyaan wajib diisi.");
-    if (!Number(point) || Number(point) <= 0) {
-      nextKesalahans.push("Poin wajib lebih dari 0.");
+    const parsedPoint = Number(point);
+
+    if (!Number.isInteger(parsedPoint) || parsedPoint <= 0) {
+      nextKesalahans.push("Poin wajib berupa bilangan bulat seperti 1, 2, atau 3.");
     }
 
     if (isMultipleChoice) {
@@ -438,8 +450,9 @@ export function QuestionForm({
               <input
                 name="point"
                 type="number"
-                min="0.01"
-                step="0.01"
+                min="1"
+                step="1"
+                inputMode="numeric"
                 value={point}
                 onChange={(event) => setPoint(event.target.value)}
                 className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
@@ -467,7 +480,7 @@ export function QuestionForm({
             name="content"
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            placeholder="Tulis konten soal. Gunakan $...$ untuk rumus inline atau $$...$$ untuk rumus blok."
+            placeholder="Contoh: Hitung nilai $\\frac{3}{4}+\\frac{1}{2}$. Untuk rumus besar gunakan $$x^2+2x+1=0$$."
             className="min-h-72 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
           />
           <div className="mt-3 rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm">

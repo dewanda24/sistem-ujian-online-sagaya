@@ -23,6 +23,44 @@ const ALLOWED_TYPES = new Set([
   "application/pdf",
 ]);
 
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+
+  if (!user?.school_id) {
+    return NextResponse.json(
+      { ok: false, message: "Akun belum memiliki scope sekolah." },
+      { status: 403 },
+    );
+  }
+
+  const path = new URL(request.url).searchParams.get("path") ?? "";
+  const mediaSchoolId = path.split("/")[0];
+
+  if (!path || mediaSchoolId !== user.school_id) {
+    return NextResponse.json(
+      { ok: false, message: "Media tidak dapat diakses." },
+      { status: 403 },
+    );
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+
+  if (error || !data) {
+    return NextResponse.json(
+      { ok: false, message: error?.message ?? "Media tidak ditemukan." },
+      { status: 404 },
+    );
+  }
+
+  return new Response(data, {
+    headers: {
+      "Cache-Control": "private, max-age=3600",
+      "Content-Type": data.type || "application/octet-stream",
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
@@ -83,23 +121,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error: signedUrlError } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
-
-  if (signedUrlError || !data?.signedUrl) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: signedUrlError?.message ?? "Gagal membuat URL media.",
-      },
-      { status: 500 },
-    );
-  }
+  const stableUrl = `/api/question-bank/media?path=${encodeURIComponent(path)}`;
 
   return NextResponse.json({
     ok: true,
-    url: data.signedUrl,
+    url: stableUrl,
     storage_path: path,
     media_type: resolveMediaType(file.type),
     file_name: file.name,
