@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, Save, Upload } from "lucide-react";
+import { Eye, Save, Send, Upload } from "lucide-react";
 
 import { saveQuestionAction } from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
@@ -58,17 +58,11 @@ type QuestionFormProps = {
   stimuli: QuestionFormOption[];
   defaultSubjectId?: string;
   defaultCategoryId?: string;
+  canPublish?: boolean;
 };
 
 const labels = ["A", "B", "C", "D", "E"] as const;
 const requiredLabels = ["A", "B", "C", "D"] as const;
-const steps = [
-  "Informasi",
-  "Pertanyaan",
-  "Jawaban",
-  "Stimulus & Media",
-  "Lanjutan",
-] as const;
 type StimulusMode = "none" | "existing" | "new";
 type UploadTarget = "attachment" | "stimulus";
 type UploadState = {
@@ -126,7 +120,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+    <section className="rounded-lg border border-[#E2E8F0] bg-white p-5 shadow-sm">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-[#0F172A]">{title}</h2>
         {description ? (
@@ -146,7 +140,7 @@ function Accordion({
   children: ReactNode;
 }) {
   return (
-    <details className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+    <details className="rounded-lg border border-[#E2E8F0] bg-white p-4 shadow-sm">
       <summary className="cursor-pointer text-sm font-semibold text-[#0F172A]">
         {title}
       </summary>
@@ -176,7 +170,7 @@ function KesalahanList({ errors }: { errors: string[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
+    <div className="rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
       <div className="font-medium">Periksa lagi sebelum menyimpan:</div>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {errors.map((error) => (
@@ -195,11 +189,12 @@ export function QuestionForm({
   stimuli,
   defaultSubjectId,
   defaultCategoryId,
+  canPublish = false,
 }: QuestionFormProps) {
   const attachment = firstAttachment(editable);
   const initialSubjectId =
     editable?.subject_id ?? defaultSubjectId ?? subjects[0]?.value ?? "";
-  const [step, setStep] = useState(0);
+  const statusInputRef = useRef<HTMLInputElement>(null);
   const [subjectId, setSubjectId] = useState(initialSubjectId);
   const [type, setType] = useState(editable?.type ?? "multiple_choice");
   const [content, setContent] = useState(editable?.content ?? "");
@@ -261,6 +256,12 @@ export function QuestionForm({
         }
       : null);
   const isMultipleChoice = type === "multiple_choice";
+
+  function setSubmitStatus(status: "draft" | "published") {
+    if (statusInputRef.current) {
+      statusInputRef.current.value = status;
+    }
+  }
 
   function validate() {
     const nextKesalahans: string[] = [];
@@ -359,150 +360,92 @@ export function QuestionForm({
     >
       <input type="hidden" name="id" defaultValue={editable?.id ?? ""} />
       <input type="hidden" name="school_id" value={schoolId} />
-      <input type="hidden" name="status" value="draft" />
+      <input ref={statusInputRef} type="hidden" name="status" defaultValue="draft" />
       <input type="hidden" name="stimulus_mode" value={stimulusMode} />
 
       <KesalahanList errors={errors} />
 
-      <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-5">
-          {steps.map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setStep(index)}
-              className={cn(
-                "rounded-xl border px-3 py-2 text-left text-sm transition",
-                step === index
-                  ? "border-[#2563EB] bg-[#2563EB] text-white"
-                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC]",
-              )}
+      <Panel title="Informasi Soal">
+        <div className="grid gap-4 md:grid-cols-3">
+          <FieldLabel label="Mapel">
+            <select
+              name="subject_id"
+              value={subjectId}
+              onChange={(event) => {
+                setSubjectId(event.target.value);
+                setStimulusId("");
+                setStimulusMode("none");
+              }}
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
             >
-              <span className="block text-xs opacity-80">Step {index + 1}</span>
-              <span className="font-medium">{label}</span>
-            </button>
-          ))}
+              <option value="">Pilih mapel</option>
+              {subjects.map((subject) => (
+                <option key={subject.value} value={subject.value}>
+                  {subject.label}
+                </option>
+              ))}
+            </select>
+          </FieldLabel>
+          <FieldLabel label="Kategori">
+            <select
+              name="category_id"
+              defaultValue={editable?.category_id ?? defaultCategoryId ?? ""}
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+            >
+              <option value="">Tanpa kategori</option>
+              {filteredCategories.map((category) => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </FieldLabel>
+          <FieldLabel label="Tipe Soal">
+            <select
+              name="type"
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+            >
+              <option value="multiple_choice">Pilihan ganda</option>
+              <option value="essay">Essay</option>
+            </select>
+          </FieldLabel>
         </div>
-      </div>
+      </Panel>
 
-      <div className={step === 0 ? "block" : "hidden"}>
-        <Panel
-          title="Informasi Soal"
-          description="Pilih metadata utama soal sebelum menulis pertanyaan."
-        >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <FieldLabel label="Mapel">
-              <select
-                name="subject_id"
-                value={subjectId}
-                onChange={(event) => {
-                  setSubjectId(event.target.value);
-                  setStimulusId("");
-                  setStimulusMode("none");
-                }}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              >
-                <option value="">Pilih mapel</option>
-                {subjects.map((subject) => (
-                  <option key={subject.value} value={subject.value}>
-                    {subject.label}
-                  </option>
-                ))}
-              </select>
-            </FieldLabel>
-            <FieldLabel label="Kategori">
-              <select
-                name="category_id"
-                defaultValue={editable?.category_id ?? defaultCategoryId ?? ""}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              >
-                <option value="">Tanpa kategori</option>
-                {filteredCategories.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-            </FieldLabel>
-            <FieldLabel label="Tipe Soal">
-              <select
-                name="type"
-                value={type}
-                onChange={(event) => setType(event.target.value)}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              >
-                <option value="multiple_choice">Pilihan ganda</option>
-                <option value="essay">Essay</option>
-              </select>
-            </FieldLabel>
-            <FieldLabel label="Difficulty">
-              <select
-                name="difficulty"
-                defaultValue={editable?.difficulty ?? "medium"}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              >
-                <option value="easy">Mudah</option>
-                <option value="medium">Sedang</option>
-                <option value="hard">Sulit</option>
-              </select>
-            </FieldLabel>
-            <FieldLabel label="Poin">
-              <input
-                name="point"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={point}
-                onChange={(event) => setPoint(event.target.value)}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              />
-            </FieldLabel>
+      <Panel title="Soal">
+        <div className="grid gap-5">
+          <div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {mathTemplates.map((template) => (
+                <button
+                  key={template.label}
+                  type="button"
+                  onClick={() => insertMathTemplate(template.value)}
+                  className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs text-[#0F172A] hover:bg-[#F8FAFC]"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              name="content"
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              placeholder="Tulis pertanyaan soal di sini."
+              className="min-h-64 w-full rounded-lg border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
+            />
+            <div className="mt-3 rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm">
+              <div className="mb-2 font-medium text-[#0F172A]">Pratinjau matematika</div>
+              {content ? (
+                <QuestionMathRenderer content={content} className="leading-7" />
+              ) : (
+                <p className="text-[#64748B]">Pratinjau muncul saat konten soal diisi.</p>
+              )}
+            </div>
           </div>
-        </Panel>
-      </div>
 
-      <div className={step === 1 ? "block" : "hidden"}>
-        <Panel title="Pertanyaan" description="Editor utama dibuat besar agar fokus ke isi soal.">
-          <div className="mb-3 flex flex-wrap gap-2">
-            {mathTemplates.map((template) => (
-              <button
-                key={template.label}
-                type="button"
-                onClick={() => insertMathTemplate(template.value)}
-                className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs text-[#0F172A] hover:bg-[#F8FAFC]"
-              >
-                {template.label}
-              </button>
-            ))}
-          </div>
-          <textarea
-            name="content"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            placeholder="Contoh: Hitung nilai $\\frac{3}{4}+\\frac{1}{2}$. Untuk rumus besar gunakan $$x^2+2x+1=0$$."
-            className="min-h-72 w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm leading-7"
-          />
-          <div className="mt-3 rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm">
-            <div className="mb-2 font-medium text-[#0F172A]">Pratinjau matematika</div>
-            {content ? (
-              <QuestionMathRenderer content={content} className="leading-7" />
-            ) : (
-              <p className="text-[#64748B]">Pratinjau muncul saat konten soal diisi.</p>
-            )}
-          </div>
-        </Panel>
-      </div>
-
-      <div className={step === 2 ? "block" : "hidden"}>
-        <Panel
-          title="Jawaban"
-          description={
-            isMultipleChoice
-              ? "Isi opsi A-D. Opsi E tersedia jika dibutuhkan."
-              : "Soal essay tidak membutuhkan pilihan jawaban."
-          }
-        >
           {isMultipleChoice ? (
             <div className="grid gap-4">
               <FieldLabel label="Jawaban Benar">
@@ -510,7 +453,7 @@ export function QuestionForm({
                   name="correct_option"
                   value={correct}
                   onChange={(event) => setCorrect(event.target.value)}
-                  className="max-w-sm rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                  className="max-w-sm rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                 >
                   <option value="">Pilih jawaban benar</option>
                   {labels.map((label) => (
@@ -536,24 +479,58 @@ export function QuestionForm({
                         }))
                       }
                       placeholder={`Opsi ${label}${label === "E" ? " (opsional)" : ""}`}
-                      className="min-h-24 flex-1 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                      className="min-h-24 flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                     />
                   </label>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
-              Jawaban essay akan dinilai melalui alur koreksi. Gunakan pembahasan
-              atau catatan koreksi di pengaturan lanjutan jika diperlukan.
+            <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-sm text-[#64748B]">
+              Soal essay tidak membutuhkan pilihan jawaban. Tambahkan pembahasan di
+              pengaturan tambahan bila diperlukan.
             </div>
           )}
-        </Panel>
-      </div>
+        </div>
+      </Panel>
 
-      <div className={step === 3 ? "block" : "hidden"}>
-        <Accordion title="Stimulus dan Media">
-          <div className="grid gap-5">
+      <Accordion title="Pengaturan Tambahan">
+        <div className="grid gap-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <FieldLabel label="Difficulty">
+              <select
+                name="difficulty"
+                defaultValue={editable?.difficulty ?? "medium"}
+                className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+              >
+                <option value="easy">Mudah</option>
+                <option value="medium">Sedang</option>
+                <option value="hard">Sulit</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Poin">
+              <input
+                name="point"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={point}
+                onChange={(event) => setPoint(event.target.value)}
+                className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+              />
+            </FieldLabel>
+            <FieldLabel label="Tag">
+              <input
+                name="tags"
+                placeholder="Opsional"
+                className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+              />
+            </FieldLabel>
+          </div>
+
+          <div className="grid gap-4 border-t border-[#E2E8F0] pt-5">
+            <div className="font-medium text-[#0F172A]">Stimulus</div>
             <div className="grid gap-2 text-sm md:grid-cols-3">
               {[
                 ["none", "Tanpa stimulus"],
@@ -562,7 +539,7 @@ export function QuestionForm({
               ].map(([value, label]) => (
                 <label
                   key={value}
-                  className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2"
+                  className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2"
                 >
                   <input
                     type="radio"
@@ -586,7 +563,7 @@ export function QuestionForm({
                   name="stimulus_id"
                   value={stimulusId}
                   onChange={(event) => setStimulusId(event.target.value)}
-                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                  className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                 >
                   <option value="">Pilih stimulus</option>
                   {filteredStimuli.map((stimulus) => (
@@ -605,13 +582,13 @@ export function QuestionForm({
                   value={newStimulusTitle}
                   onChange={(event) => setNewStimulusTitle(event.target.value)}
                   placeholder="Judul stimulus baru"
-                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                  className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                 />
                 <select
                   name="new_stimulus_media_type"
                   value={newStimulusMediaType}
                   onChange={(event) => setNewStimulusMediaType(event.target.value)}
-                  className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+                  className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
                 >
                   <option value="">Text</option>
                   <option value="image">Image</option>
@@ -626,10 +603,10 @@ export function QuestionForm({
                   value={newStimulusMediaUrl}
                   readOnly
                 />
-                <div className="grid gap-2 rounded-xl border border-[#E2E8F0] p-3 text-sm md:col-span-2">
+                <div className="grid gap-2 rounded-lg border border-[#E2E8F0] p-3 text-sm md:col-span-2">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span className="font-medium text-[#0F172A]">Media stimulus</span>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
                       <Upload className="size-4" />
                       Upload media
                       <input
@@ -672,101 +649,100 @@ export function QuestionForm({
                   value={newStimulusContent}
                   onChange={(event) => setNewStimulusContent(event.target.value)}
                   placeholder="Teks stimulus atau bacaan"
-                  className="min-h-28 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
+                  className="min-h-28 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
                 />
               </div>
             ) : null}
-
-            <div className="grid gap-3 border-t border-[#E2E8F0] pt-5 md:grid-cols-2">
-              <select
-                name="attachment_media_type"
-                value={attachmentMediaType}
-                onChange={(event) => setAttachmentMediaType(event.target.value)}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              >
-                <option value="image">Gambar</option>
-                <option value="audio">Audio</option>
-                <option value="video">Video</option>
-                <option value="file">File/PDF</option>
-                <option value="link">Link</option>
-              </select>
-              <input
-                name="attachment_file_name"
-                value={attachmentFileName}
-                onChange={(event) => setAttachmentFileName(event.target.value)}
-                placeholder="Nama file/link"
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              />
-              <input
-                type="hidden"
-                name="attachment_url"
-                value={attachmentUrl}
-                readOnly
-              />
-              <div className="grid gap-2 rounded-xl border border-[#E2E8F0] p-3 text-sm md:col-span-2">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-medium text-[#0F172A]">Media soal</span>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
-                    <Upload className="size-4" />
-                    Upload media
-                    <input
-                      type="file"
-                      accept="image/*,audio/*,video/*,application/pdf"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-
-                        if (file) void uploadMedia(file, "attachment");
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-                {attachmentUrl ? (
-                  <QuestionMediaPreview
-                    mediaType={attachmentMediaType}
-                    url={attachmentUrl}
-                    title={attachment?.file_name ?? "Media soal"}
-                    caption={attachmentCaption}
-                  />
-                ) : (
-                  <p className="text-[#64748B]">Belum ada media soal.</p>
-                )}
-                {uploadState?.target === "attachment" ? (
-                  <p
-                    className={cn(
-                      "text-xs",
-                      uploadState.status === "error"
-                        ? "text-[#EF4444]"
-                        : "text-[#64748B]",
-                    )}
-                  >
-                    {uploadState.message}
-                  </p>
-                ) : null}
-              </div>
-              <input
-                name="attachment_caption"
-                value={attachmentCaption}
-                onChange={(event) => setAttachmentCaption(event.target.value)}
-                placeholder="Caption media"
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
-              />
-            </div>
           </div>
-        </Accordion>
-      </div>
 
-      <div className={step === 4 ? "block" : "hidden"}>
-        <Accordion title="Pengaturan Lanjutan">
-          <div className="grid gap-4">
-            <textarea
-              name="explanation"
-              value={explanation}
-              onChange={(event) => setExplanation(event.target.value)}
-              placeholder="Pembahasan atau catatan koreksi"
-              className="min-h-32 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+          <div className="grid gap-3 border-t border-[#E2E8F0] pt-5 md:grid-cols-2">
+            <div className="font-medium text-[#0F172A] md:col-span-2">Media Soal</div>
+            <select
+              name="attachment_media_type"
+              value={attachmentMediaType}
+              onChange={(event) => setAttachmentMediaType(event.target.value)}
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+            >
+              <option value="image">Gambar</option>
+              <option value="audio">Audio</option>
+              <option value="video">Video</option>
+              <option value="file">File/PDF</option>
+              <option value="link">Link</option>
+            </select>
+            <input
+              name="attachment_file_name"
+              value={attachmentFileName}
+              onChange={(event) => setAttachmentFileName(event.target.value)}
+              placeholder="Nama file/link"
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
             />
+            <input
+              type="hidden"
+              name="attachment_url"
+              value={attachmentUrl}
+              readOnly
+            />
+            <div className="grid gap-2 rounded-lg border border-[#E2E8F0] p-3 text-sm md:col-span-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="font-medium text-[#0F172A]">Lampiran soal</span>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-xs hover:bg-[#F8FAFC]">
+                  <Upload className="size-4" />
+                  Upload media
+                  <input
+                    type="file"
+                    accept="image/*,audio/*,video/*,application/pdf"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+
+                      if (file) void uploadMedia(file, "attachment");
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+              {attachmentUrl ? (
+                <QuestionMediaPreview
+                  mediaType={attachmentMediaType}
+                  url={attachmentUrl}
+                  title={attachment?.file_name ?? "Media soal"}
+                  caption={attachmentCaption}
+                />
+              ) : (
+                <p className="text-[#64748B]">Belum ada media soal.</p>
+              )}
+              {uploadState?.target === "attachment" ? (
+                <p
+                  className={cn(
+                    "text-xs",
+                    uploadState.status === "error"
+                      ? "text-[#EF4444]"
+                      : "text-[#64748B]",
+                  )}
+                >
+                  {uploadState.message}
+                </p>
+              ) : null}
+            </div>
+            <input
+              name="attachment_caption"
+              value={attachmentCaption}
+              onChange={(event) => setAttachmentCaption(event.target.value)}
+              placeholder="Caption media"
+              className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm md:col-span-2"
+            />
+          </div>
+
+          <div className="grid gap-4 border-t border-[#E2E8F0] pt-5">
+            <FieldLabel label="Pembahasan">
+              <textarea
+                name="explanation"
+                value={explanation}
+                onChange={(event) => setExplanation(event.target.value)}
+                placeholder="Pembahasan atau catatan koreksi"
+                className="min-h-32 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm"
+              />
+            </FieldLabel>
             <label className="flex items-center gap-2 text-sm">
               <input
                 name="is_active"
@@ -776,41 +752,41 @@ export function QuestionForm({
               Status Aktif
             </label>
           </div>
-        </Accordion>
-      </div>
-
-      <div className="flex flex-col gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setStep((current) => Math.max(0, current - 1))}
-            disabled={step === 0}
-            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC] disabled:opacity-50"
-          >
-            Sebelumnya
-          </button>
-          <button
-            type="button"
-            onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}
-            disabled={step === steps.length - 1}
-            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC] disabled:opacity-50"
-          >
-            Berikutnya
-          </button>
         </div>
-        <div className="flex gap-2">
+      </Accordion>
+
+      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-lg border border-[#E2E8F0] bg-white p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
+        <a
+          href="/dashboard/question-bank/questions"
+          className="inline-flex items-center justify-center rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC]"
+        >
+          Batal
+        </a>
+        <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={() => setShowPreview(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC]"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm text-[#0F172A] transition hover:bg-[#F8FAFC]"
           >
             <Eye className="size-4" />
             Pratinjau
           </button>
-          <button className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]">
+          <button
+            onClick={() => setSubmitStatus("draft")}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]"
+          >
             <Save className="size-4" />
-            {editable ? "Simpan Belum Diterbitkan" : "Simpan Belum Diterbitkan"}
+            Simpan Draft
           </button>
+          {canPublish ? (
+            <button
+              onClick={() => setSubmitStatus("published")}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#16A34A] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#15803D]"
+            >
+              <Send className="size-4" />
+              Terbitkan
+            </button>
+          ) : null}
         </div>
       </div>
 

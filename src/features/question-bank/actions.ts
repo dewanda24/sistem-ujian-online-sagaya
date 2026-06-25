@@ -725,7 +725,8 @@ async function replaceQuestionAttachment(
   if (error) {
     redirectTo(QUESTION_PATH, {
       ok: false,
-      message: error.message,
+      message:
+        "Media soal belum bisa disimpan. Pastikan akses bank soal dan kebijakan database lampiran soal sudah aktif.",
     });
   }
 }

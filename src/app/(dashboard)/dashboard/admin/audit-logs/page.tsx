@@ -18,26 +18,55 @@ type PageProps = {
   basePath?: string;
 };
 
-function formatPayload(value: unknown) {
-  if (!value) {
+const actionLabels: Record<string, string> = {
+  "questions.create": "Soal dibuat",
+  "questions.update": "Soal diperbarui",
+  "questions.status_update": "Status soal diubah",
+  "questions.bulk_update": "Soal diperbarui massal",
+  "question_categories.create": "Kategori dibuat",
+  "question_categories.update": "Kategori diperbarui",
+  "question_categories.archive": "Kategori diarsipkan",
+  "question_stimuli.create": "Stimulus dibuat",
+  "question_stimuli.update": "Stimulus diperbarui",
+  "question_stimuli.archive": "Stimulus diarsipkan",
+};
+
+const entityLabels: Record<string, string> = {
+  questions: "Soal",
+  question_categories: "Kategori",
+  question_stimuli: "Stimulus",
+};
+
+function formatAuditAction(action?: string | null) {
+  if (!action) return "-";
+
+  return actionLabels[action] ?? action.replaceAll("_", " ").replaceAll(".", " ");
+}
+
+function formatEntityType(entityType?: string | null) {
+  if (!entityType) return "-";
+
+  return entityLabels[entityType] ?? entityType.replaceAll("_", " ");
+}
+
+function summarizePayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return "-";
   }
 
-  if (typeof value === "string") {
-    return value;
-  }
+  const payload = value as Record<string, unknown>;
+  const parts = [
+    typeof payload.type === "string" ? `Tipe: ${payload.type}` : null,
+    typeof payload.difficulty === "string" ? `Level: ${payload.difficulty}` : null,
+    typeof payload.status === "string" ? `Status: ${payload.status}` : null,
+    typeof payload.is_active === "boolean"
+      ? payload.is_active
+        ? "Aktif"
+        : "Nonaktif"
+      : null,
+  ].filter(Boolean);
 
-  return JSON.stringify(value, null, 2);
-}
-
-function formatShortPayload(value: unknown) {
-  const text = formatPayload(value);
-
-  if (text.length <= 120) {
-    return text;
-  }
-
-  return `${text.slice(0, 120)}...`;
+  return parts.length > 0 ? parts.join(" - ") : "Perubahan tersimpan";
 }
 
 export default async function AuditLogsPage({
@@ -75,16 +104,11 @@ export default async function AuditLogsPage({
         description="Lihat jejak aktivitas sistem dan perubahan data sensitif."
       />
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
           title="Kejadian"
           value={String(auditLogs.rows.length)}
           description="Jumlah event sesuai filter."
-        />
-        <DashboardCard
-          title="Aksi"
-          value={String(actionOptions.length)}
-          description="Jenis aksi pada hasil saat ini."
         />
         <DashboardCard
           title="Pengguna"
@@ -98,7 +122,7 @@ export default async function AuditLogsPage({
         />
       </section>
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-6">
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-5">
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -129,12 +153,6 @@ export default async function AuditLogsPage({
             <option key={entity} value={String(entity)} />
           ))}
         </datalist>
-        <input
-          name="user_id"
-          defaultValue={params.user_id ?? ""}
-          placeholder="ID Pengguna"
-          className="rounded-md border px-3 py-2 text-sm"
-        />
         <select
           name="limit"
           defaultValue={params.limit ?? "100"}
@@ -143,7 +161,7 @@ export default async function AuditLogsPage({
           <option value="50">50 data</option>
           <option value="100">100 data</option>
           <option value="200">200 data</option>
-            <option value="300">300 data</option>
+          <option value="300">300 data</option>
           </select>
         <input
           name="date_from"
@@ -159,7 +177,7 @@ export default async function AuditLogsPage({
           className="rounded-md border px-3 py-2 text-sm"
           aria-label="Tanggal akhir"
         />
-        <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-5">
           <p className="text-xs text-muted-foreground">
             Menampilkan {auditLogs.rows.length} event audit terbaru sesuai filter.
           </p>
@@ -187,7 +205,7 @@ export default async function AuditLogsPage({
       </form>
 
       <DataTable
-        columns={["Waktu", "Aksi", "Data", "Record", "Pengguna", "Catatan"]}
+        columns={["Waktu", "Aktivitas", "Data", "Pengguna", "Ringkasan"]}
         isEmpty={auditLogs.rows.length === 0}
         empty={
           <EmptyState
@@ -210,23 +228,15 @@ export default async function AuditLogsPage({
                 ? new Date(item.created_at).toLocaleString("id-ID")
                 : "-"}
             </td>
-            <td className="px-4 py-3 font-medium">{item.action ?? "-"}</td>
-            <td className="px-4 py-3">{item.entity_type ?? "-"}</td>
-            <td className="px-4 py-3 font-mono text-xs">
-              {item.entity_id ?? "-"}
+            <td className="px-4 py-3 font-medium">
+              {formatAuditAction(item.action)}
             </td>
+            <td className="px-4 py-3">{formatEntityType(item.entity_type)}</td>
             <td className="px-4 py-3 font-mono text-xs">
               {item.user_id ?? "-"}
             </td>
-            <td className="max-w-sm px-4 py-3 text-xs">
-              <details className="group">
-                <summary className="cursor-pointer truncate text-muted-foreground group-open:mb-2">
-                  {formatShortPayload(item.payload)}
-                </summary>
-                <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] leading-5">
-                  {formatPayload(item.payload)}
-                </pre>
-              </details>
+            <td className="max-w-md px-4 py-3 text-sm text-muted-foreground">
+              {summarizePayload(item.payload)}
             </td>
           </tr>
         ))}

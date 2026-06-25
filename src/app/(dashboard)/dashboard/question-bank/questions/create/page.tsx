@@ -11,6 +11,7 @@ import {
   getQuestionStimulusOptions,
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
+import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type PageProps = {
@@ -27,7 +28,9 @@ export default async function CreateQuestionPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const isEditing = Boolean(params.edit);
 
-  await requirePermission(isEditing ? "questions.update" : "questions.create");
+  const currentUser = await requirePermission(
+    isEditing ? "questions.update" : "questions.create",
+  );
 
   const [subjects, schoolId, categories, stimuli, editable] = await Promise.all([
     getScopedSubjectOptions(),
@@ -43,7 +46,7 @@ export default async function CreateQuestionPage({ searchParams }: PageProps) {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <DashboardPageHeader
           title={isEditing ? "Edit Soal" : "Tambah Soal"}
-          description="Buat soal melalui wizard singkat. Stimulus, media, dan pengaturan lanjutan tersedia saat dibutuhkan."
+          description="Isi mapel, pertanyaan, dan jawaban dalam satu halaman. Stimulus, media, dan pengaturan lanjutan tersedia saat dibutuhkan."
         />
         <Link
           href="/dashboard/question-bank/questions"
@@ -62,6 +65,7 @@ export default async function CreateQuestionPage({ searchParams }: PageProps) {
         stimuli={stimuli}
         defaultSubjectId={params.subject_id}
         defaultCategoryId={params.category_id}
+        canPublish={hasPermission(currentUser, "questions.publish")}
       />
     </div>
   );
