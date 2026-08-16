@@ -17,6 +17,8 @@ export type ActiveExamCardExam = {
   tokenRequired?: boolean | null;
 };
 
+import { SubmitButton } from "@/components/dashboard/submit-button";
+
 export function ActiveExamCard({
   exam,
   action,
@@ -28,7 +30,7 @@ export function ActiveExamCard({
   const actionLabel = exam.attemptId ? "Lanjutkan Ujian" : "Mulai Ujian";
 
   return (
-    <section className="rounded-lg border border-blue-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-xl border border-blue-200 bg-white p-5 shadow-xs sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-3">
           <ExamStatusBadge status={exam.status} />
@@ -41,7 +43,7 @@ export function ActiveExamCard({
             </p>
           </div>
         </div>
-        <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-700 lg:min-w-72">
+        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 lg:min-w-72">
           <div className="flex items-start gap-3">
             <Clock className="mt-0.5 size-5 shrink-0 text-blue-700" />
             <div className="space-y-1">
@@ -60,7 +62,7 @@ export function ActiveExamCard({
           <input
             name="access_token"
             placeholder="Token ujian"
-            className="h-12 rounded-lg border border-slate-300 px-4 text-base uppercase outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-44"
+            className="h-12 rounded-xl border border-slate-300 px-4 text-base uppercase font-semibold tracking-wider outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-48"
             autoComplete="off"
             required
           />
@@ -68,19 +70,20 @@ export function ActiveExamCard({
         {exam.attemptId ? (
           <a
             href={`/dashboard/exam-room/${exam.attemptId}`}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-base font-semibold text-white transition hover:bg-blue-800 sm:min-w-48"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-base font-semibold text-white shadow-sm transition-all duration-150 active:scale-[0.98] hover:bg-blue-800 sm:min-w-48"
           >
             <LogIn className="size-5" />
             {actionLabel}
           </a>
         ) : (
-          <button
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-base font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:min-w-48"
+          <SubmitButton
+            loadingText="Membuka Ujian..."
             disabled={!canStart}
+            className="h-12 rounded-xl bg-blue-700 px-6 text-base font-semibold text-white shadow-sm hover:bg-blue-800 sm:min-w-48"
           >
             <LogIn className="size-5" />
             {actionLabel}
-          </button>
+          </SubmitButton>
         )}
       </form>
     </section>

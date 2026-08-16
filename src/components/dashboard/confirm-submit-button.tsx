@@ -3,6 +3,8 @@
 import { useRef, useState, type ButtonHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 
+import { Loader2 } from "lucide-react";
+
 import { ConfirmDialog } from "@/components/common/dialogs/confirm-dialog";
 import { DangerConfirmDialog } from "@/components/common/dialogs/danger-confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -68,19 +70,20 @@ export function ConfirmSubmitButton({
           }
         }}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-150 select-none active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
           variant === "default" &&
-            "bg-[#2563EB] text-white hover:bg-blue-700",
+            "bg-[#2563EB] text-white shadow-sm hover:bg-blue-700 active:bg-blue-800",
           variant === "danger" &&
-            "border border-[#EF4444]/35 text-[#EF4444] hover:bg-red-50",
-          variant === "outline" && "border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]",
+            "border border-[#EF4444]/35 bg-white text-[#EF4444] shadow-sm hover:bg-red-50 active:bg-red-100",
+          variant === "outline" &&
+            "border border-[#E2E8F0] bg-white text-[#0F172A] shadow-sm hover:bg-[#F8FAFC] active:bg-slate-100",
           className,
         )}
       >
         {isBusy ? (
           <>
-            <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            {loadingText}
+            <Loader2 className="size-3.5 animate-spin shrink-0" />
+            <span>{loadingText}</span>
           </>
         ) : (
           children

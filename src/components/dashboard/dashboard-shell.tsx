@@ -1,7 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 
@@ -27,23 +26,68 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   );
 }
 
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("sidebar-toggle", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("sidebar-toggle", callback);
+  };
+}
+
+function getSidebarSnapshot() {
+  try {
+    return localStorage.getItem("sagaya_sidebar_collapsed") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
 function DashboardShellContent({ children, user }: DashboardShellProps) {
   const menuItems = getDashboardMenu(user);
   const pathname = usePathname();
   const isExamRoom = pathname.startsWith("/dashboard/exam-room");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isCollapsed = useSyncExternalStore(
+    subscribe,
+    getSidebarSnapshot,
+    getServerSnapshot,
+  );
+
+  const handleToggleCollapse = () => {
+    try {
+      const next = !isCollapsed;
+      localStorage.setItem("sagaya_sidebar_collapsed", String(next));
+      window.dispatchEvent(new Event("sidebar-toggle"));
+    } catch {
+      // Ignore
+    }
+  };
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[#F8FAFC]">
       <SessionGuard />
-      <DashboardSidebar menuItems={menuItems} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardTopbar user={user} onOpenSidebar={() => setMobileOpen(true)} />
+      <DashboardSidebar
+        menuItems={menuItems}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={handleToggleCollapse}
+      />
+      <div className="flex min-w-0 flex-1 flex-col transition-all duration-300">
+        <DashboardTopbar
+          user={user}
+          isSidebarCollapsed={isCollapsed}
+          onToggleSidebarCollapse={handleToggleCollapse}
+          onOpenSidebar={() => setMobileOpen(true)}
+        />
         {user.is_demo_user ? <DemoModeBanner /> : null}
         <main
           className={
             isExamRoom
-              ? "min-w-0 flex-1 px-3 py-3 lg:px-8 lg:py-6"
+              ? "min-w-0 flex-1 px-3 py-3 lg:px-6 lg:py-4"
               : "min-w-0 flex-1 px-4 py-6 lg:px-8"
           }
         >
@@ -53,14 +97,14 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden animate-in fade-in duration-200">
           <button
             type="button"
             aria-label="Tutup menu"
-            className="absolute inset-0 bg-[#0F172A]/45"
+            className="absolute inset-0 bg-[#0F172A]/50 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative h-full w-[280px] max-w-[85vw] shadow-xl">
+          <div className="relative h-full w-[280px] max-w-[85vw] shadow-2xl animate-in slide-in-from-left duration-250">
             <DashboardSidebar
               menuItems={menuItems}
               variant="mobile"
@@ -80,7 +124,7 @@ function DemoModeBanner() {
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
         <div>
           <p className="font-bold">Mode demo aktif</p>
-          <p className="mt-0.5 leading-6">
+          <p className="mt-0.5 leading-6 text-xs sm:text-sm">
             Data contoh dapat digunakan untuk eksplorasi. Aksi berisiko seperti
             reset, arsip, dan penghapusan dibatasi agar demo tetap stabil.
           </p>

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock3,
   Info,
+  LayoutGrid,
   Maximize2,
   Save,
   Wifi,
@@ -158,6 +159,7 @@ export function ExamRoomWorkspace({
   const [submitLocked, setSubmitLocked] = useState(false);
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
   const [warning, setWarning] = useState<{
     count: number;
     title: string;
@@ -1018,13 +1020,23 @@ export function ExamRoomWorkspace({
                     <label
                       key={option.id}
                       className={cn(
-                        "flex cursor-pointer gap-3 rounded-lg border p-3 text-sm transition",
+                        "flex cursor-pointer items-start gap-3.5 rounded-xl border p-3.5 sm:p-4 text-sm font-medium transition-all duration-150 select-none active:scale-[0.99] min-h-[52px]",
                         checked
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-primary/40 hover:bg-muted/50",
+                          ? "border-[#2563EB] bg-blue-50/80 text-[#0F172A] shadow-xs ring-1 ring-[#2563EB]"
+                          : "border-[#E2E8F0] bg-white hover:border-slate-300 hover:bg-[#F8FAFC]",
                         isReadOnly && "cursor-not-allowed opacity-70",
                       )}
                     >
+                      <div
+                        className={cn(
+                          "flex size-7 shrink-0 items-center justify-center rounded-lg font-bold text-xs transition-colors",
+                          checked
+                            ? "bg-[#2563EB] text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700",
+                        )}
+                      >
+                        {option.option_label}
+                      </div>
                       <input
                         type="radio"
                         name={`question-${currentQuestion.id}`}
@@ -1034,15 +1046,10 @@ export function ExamRoomWorkspace({
                         onChange={() =>
                           handleOptionChange(currentQuestion.id, option.id)
                         }
-                        className="mt-1"
+                        className="sr-only"
                       />
-                      <span className="grid gap-1">
-                        <span className="font-semibold">
-                          {option.option_label}
-                        </span>
-                        <span className="leading-6">
-                          <QuestionMathRenderer content={option.option_text} />
-                        </span>
+                      <span className="flex-1 leading-6 pt-0.5 break-words">
+                        <QuestionMathRenderer content={option.option_text} />
                       </span>
                     </label>
                   );
@@ -1227,54 +1234,133 @@ export function ExamRoomWorkspace({
         </aside>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 py-2 shadow-[0_-8px_20px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto flex max-w-md items-center gap-2">
+      {/* Mobile Floating Bottom Bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E2E8F0] bg-white/95 px-3 py-2.5 shadow-[0_-8px_20px_rgba(15,23,42,0.08)] backdrop-blur select-none md:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-2">
           <button
             type="button"
             disabled={activeIndex === 0}
             onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#0F172A] shadow-xs transition-all duration-150 active:scale-95 hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Soal sebelumnya"
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <ChevronLeft className="size-4 shrink-0" aria-hidden="true" />
+            <span>Prev</span>
           </button>
-          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {questions.map(({ question }, index) => {
-              const active = index === activeIndex;
-              const answered = isAnswered(answers[question.id]);
 
-              return (
-                <button
-                  key={`mobile-${question.id}`}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={cn(
-                    "h-8 min-w-8 rounded-md border px-2 text-xs font-medium transition",
-                    active && "border-primary bg-primary text-primary-foreground",
-                    !active && answered && "border-emerald-300 bg-emerald-50 text-emerald-700",
-                    !active && !answered && "bg-background text-muted-foreground",
-                  )}
-                  aria-label={`Buka soal ${index + 1}`}
-                >
-                  {index + 1}
-                  {answered ? " ✓" : ""}
-                </button>
-              );
-            })}
-          </div>
+          {/* Quick jump to all questions drawer */}
+          <button
+            type="button"
+            onClick={() => setIsMobilePaletteOpen(true)}
+            className="flex flex-1 items-center justify-center gap-1.5 h-11 rounded-xl border border-blue-200 bg-blue-50/80 px-3 text-xs font-bold text-[#2563EB] shadow-xs transition-all duration-150 active:scale-95 hover:bg-blue-100"
+          >
+            <LayoutGrid className="size-4 shrink-0" />
+            <span>Soal {activeIndex + 1} / {questions.length}</span>
+          </button>
+
           <button
             type="button"
             disabled={activeIndex === questions.length - 1}
             onClick={() =>
               setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
             }
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#0F172A] shadow-xs transition-all duration-150 active:scale-95 hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Soal berikutnya"
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <span>Next</span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </button>
         </div>
       </div>
+
+      {/* Mobile Question Palette Bottom Sheet */}
+      {isMobilePaletteOpen ? (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-xs animate-in fade-in duration-150 md:hidden">
+          <button
+            type="button"
+            aria-label="Tutup daftar nomor soal"
+            className="absolute inset-0"
+            onClick={() => setIsMobilePaletteOpen(false)}
+          />
+          <div className="relative z-10 max-h-[80vh] flex flex-col w-full rounded-t-2xl border-t border-[#E2E8F0] bg-white p-4 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#0F172A]">Kisi-Kisi Nomor Soal</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Terjawab: <strong className="text-emerald-600">{answeredCount}</strong> dari {questions.length} soal
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobilePaletteOpen(false)}
+                className="flex size-8 items-center justify-center rounded-lg border border-[#E2E8F0] text-muted-foreground hover:bg-slate-100 active:scale-90"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Status Legend */}
+            <div className="flex flex-wrap items-center gap-3 py-2.5 text-[11px] text-muted-foreground border-b">
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="size-3 rounded-sm bg-[#2563EB]" /> Aktif
+              </span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="size-3 rounded-sm bg-emerald-500" /> Sudah Dijawab
+              </span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="size-3 rounded-sm border border-slate-300 bg-white" /> Belum Dijawab
+              </span>
+            </div>
+
+            {/* Grid numbers */}
+            <div className="flex-1 overflow-y-auto py-4">
+              <div className="grid grid-cols-5 gap-2.5">
+                {questions.map(({ question }, index) => {
+                  const active = index === activeIndex;
+                  const answered = isAnswered(answers[question.id]);
+
+                  return (
+                    <button
+                      key={`palette-${question.id}`}
+                      type="button"
+                      onClick={() => {
+                        setActiveIndex(index);
+                        setIsMobilePaletteOpen(false);
+                      }}
+                      className={cn(
+                        "flex h-11 items-center justify-center rounded-xl border text-sm font-bold transition-all duration-150 select-none active:scale-90",
+                        active && "border-[#2563EB] bg-[#2563EB] text-white shadow-sm ring-2 ring-blue-300",
+                        !active && answered && "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold",
+                        !active && !answered && "border-[#E2E8F0] bg-white text-slate-700 hover:bg-slate-50",
+                      )}
+                    >
+                      {index + 1}
+                      {answered && !active ? " ✓" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Submit button from drawer */}
+            <div className="border-t pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobilePaletteOpen(false);
+                  if (canSubmitManually) {
+                    setIsSubmitConfirmOpen(true);
+                  }
+                }}
+                disabled={!canSubmitManually}
+                className="flex w-full h-11 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-sm text-white shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
+              >
+                Kumpulkan Ujian Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {warning ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4">

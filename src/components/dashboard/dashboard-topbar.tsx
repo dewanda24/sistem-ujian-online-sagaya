@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
 import { DashboardBreadcrumb } from "@/components/dashboard/dashboard-breadcrumb";
 import { RoleBadge } from "@/components/dashboard/role-badge";
@@ -9,9 +9,16 @@ import type { CurrentUser } from "@/types/auth";
 interface DashboardTopbarProps {
   user: CurrentUser;
   onOpenSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebarCollapse?: () => void;
 }
 
-export function DashboardTopbar({ user, onOpenSidebar }: DashboardTopbarProps) {
+export function DashboardTopbar({
+  user,
+  onOpenSidebar,
+  isSidebarCollapsed = false,
+  onToggleSidebarCollapse,
+}: DashboardTopbarProps) {
   const displayName = user.user_profiles?.full_name ?? user.username;
   const initials = displayName
     .split(" ")
@@ -21,17 +28,36 @@ export function DashboardTopbar({ user, onOpenSidebar }: DashboardTopbarProps) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[#E2E8F0] bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-[#E2E8F0] bg-white/95 backdrop-blur select-none">
       <div className="flex min-h-16 items-center justify-between gap-3 px-4 lg:px-6">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {/* Mobile open menu */}
           <button
             type="button"
             onClick={onOpenSidebar}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC] lg:hidden"
-            aria-label="Buka menu"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#0F172A] shadow-xs transition-all duration-150 active:scale-90 hover:bg-[#F8FAFC] lg:hidden"
+            aria-label="Buka menu navigasi"
           >
             <Menu className="size-4" />
           </button>
+
+          {/* Desktop collapse toggle */}
+          {onToggleSidebarCollapse && (
+            <button
+              type="button"
+              onClick={onToggleSidebarCollapse}
+              title={isSidebarCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
+              aria-label="Toggle sidebar"
+              className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#64748B] shadow-xs transition-all duration-150 active:scale-90 hover:bg-[#F8FAFC] hover:text-[#0F172A] lg:inline-flex"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </button>
+          )}
+
           <DashboardBreadcrumb />
         </div>
 
