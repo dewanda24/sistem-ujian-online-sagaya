@@ -2144,7 +2144,22 @@ export async function deleteStudentAction(formData: FormData) {
 
   assertSameSchool(scope, student.school_id);
 
-  // Delete relations
+  // Check if student has exam history to prevent corrupting reports/grades
+  const { data: attempts } = await supabase
+    .from("exam_attempts")
+    .select("id")
+    .eq("student_id", id)
+    .limit(1);
+
+  if (attempts && attempts.length > 0) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message:
+        "Siswa ini memiliki riwayat pengerjaan ujian. Gunakan opsi 'Nonaktifkan Akun' sebagai gantinya agar riwayat nilai rapor tidak hilang.",
+    });
+  }
+
+  // Safe to delete cleanly
   await supabase.from("class_members").delete().eq("student_id", id);
   await supabase.from("exam_participants").delete().eq("student_id", id);
   await supabase.from("user_profiles").delete().eq("user_id", id);
@@ -2180,6 +2195,13 @@ export async function deleteTeacherAction(formData: FormData) {
     redirectTo("/dashboard/master-data/teachers", {
       ok: false,
       message: "ID guru tidak valid.",
+    });
+  }
+
+  if (id === currentUser.id) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif login.",
     });
   }
 
@@ -2252,6 +2274,21 @@ export async function deleteClassAction(formData: FormData) {
   }
 
   assertSameSchool(scope, classItem.school_id);
+
+  // Check if class has active members
+  const { data: activeMembers } = await supabase
+    .from("class_members")
+    .select("id")
+    .eq("class_id", id)
+    .is("left_at", null)
+    .limit(1);
+
+  if (activeMembers && activeMembers.length > 0) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "Kelas masih memiliki siswa aktif di dalamnya. Pindahkan siswa ke kelas lain terlebih dahulu sebelum menghapus kelas.",
+    });
+  }
 
   await supabase.from("class_members").delete().eq("class_id", id);
   const { error } = await supabase.from("classes").delete().eq("id", id);

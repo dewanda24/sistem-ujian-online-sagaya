@@ -9,7 +9,10 @@ import {
 } from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { toggleClassAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteClassAction,
+  toggleClassAction,
+} from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getClasses } from "@/lib/master-data/queries";
 
@@ -83,6 +86,12 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                           {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
+                      <form action={deleteClassAction}>
+                        <input type="hidden" name="id" value={classItem.id} />
+                        <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus kelas ${classItem.name}? Tindakan ini tidak dapat dibatalkan.`}>
+                          Hapus
+                        </TableActionSubmit>
+                      </form>
                     </TableActions>
                   </td>
                 </tr>
@@ -111,6 +120,12 @@ export default async function ClassesPage({ searchParams }: PageProps) {
                     <input type="hidden" name="is_active" value={classItem.is_active ? "false" : "true"} />
                     <TableActionSubmit icon="power" confirmMessage={`${classItem.is_active ? "Nonaktifkan" : "Aktifkan"} kelas ${classItem.name}?`}>
                       {classItem.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                  <form action={deleteClassAction}>
+                    <input type="hidden" name="id" value={classItem.id} />
+                    <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus kelas ${classItem.name}? Tindakan ini tidak dapat dibatalkan.`}>
+                      Hapus
                     </TableActionSubmit>
                   </form>
                 </TableActions>

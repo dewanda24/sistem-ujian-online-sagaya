@@ -12,7 +12,10 @@ import {
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { toggleUserStatusAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteStudentAction,
+  toggleUserStatusAction,
+} from "@/lib/actions/master-data-actions";
 
 export type StudentRow = {
   id: string;
@@ -176,7 +179,16 @@ function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; 
           {row.status === "active" ? "Nonaktifkan" : "Aktifkan"}
         </TableActionSubmit>
       </form>
-      <TableActionDisabled icon="trash">Hapus</TableActionDisabled>
+      <form action={deleteStudentAction}>
+        <input type="hidden" name="id" value={row.id} />
+        <TableActionSubmit
+          icon="trash"
+          tone="danger"
+          confirmMessage={`Hapus data siswa ${row.name}? Tindakan ini tidak dapat dibatalkan.`}
+        >
+          Hapus
+        </TableActionSubmit>
+      </form>
     </TableActions>
   );
 }

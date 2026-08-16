@@ -9,7 +9,10 @@ import {
 } from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { toggleUserStatusAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteTeacherAction,
+  toggleUserStatusAction,
+} from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getTeacherAssignmentCounts, getUsersByRole } from "@/lib/master-data/queries";
 
@@ -90,6 +93,12 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                           {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
+                      <form action={deleteTeacherAction}>
+                        <input type="hidden" name="id" value={teacher.id} />
+                        <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus data guru ${name}? Tindakan ini tidak dapat dibatalkan.`}>
+                          Hapus
+                        </TableActionSubmit>
+                      </form>
                     </TableActions>
                   </td>
                 </tr>
@@ -102,9 +111,10 @@ export default async function TeachersPage({ searchParams }: PageProps) {
       <div className="grid gap-2 md:hidden">
         {rows.length ? rows.map((teacher) => {
           const profile = getProfile(teacher);
+          const name = profile?.full_name ?? teacher.username;
           return (
             <article key={teacher.id} className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
-              <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{profile?.full_name ?? teacher.username}</div>
+              <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{name}</div>
               <div className="mt-1 flex items-center gap-2 text-xs text-[#64748B]">
                 <span>{assignmentCounts.get(teacher.id) ?? 0} mata pelajaran</span>
                 <StatusBadge active={teacher.status === "active"} />
@@ -116,8 +126,14 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                     <input type="hidden" name="target" value="teachers" />
                     <input type="hidden" name="id" value={teacher.id} />
                     <input type="hidden" name="status" value={teacher.status === "active" ? "inactive" : "active"} />
-                    <TableActionSubmit icon="power" confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${profile?.full_name ?? teacher.username}?`}>
+                    <TableActionSubmit icon="power" confirmMessage={`${teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"} ${name}?`}>
                       {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                  <form action={deleteTeacherAction}>
+                    <input type="hidden" name="id" value={teacher.id} />
+                    <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus data guru ${name}? Tindakan ini tidak dapat dibatalkan.`}>
+                      Hapus
                     </TableActionSubmit>
                   </form>
                 </TableActions>

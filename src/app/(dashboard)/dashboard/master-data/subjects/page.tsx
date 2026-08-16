@@ -9,7 +9,10 @@ import {
 } from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { toggleSubjectAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteSubjectAction,
+  toggleSubjectAction,
+} from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getSubjects } from "@/lib/master-data/queries";
 
@@ -71,6 +74,12 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
                         {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
                       </TableActionSubmit>
                     </form>
+                    <form action={deleteSubjectAction}>
+                      <input type="hidden" name="id" value={subject.id} />
+                      <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus mata pelajaran ${subject.name}? Tindakan ini tidak dapat dibatalkan.`}>
+                        Hapus
+                      </TableActionSubmit>
+                    </form>
                   </TableActions>
                 </td>
               </tr>
@@ -98,6 +107,12 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
                   <input type="hidden" name="is_active" value={subject.is_active ? "false" : "true"} />
                   <TableActionSubmit icon="power" confirmMessage={`${subject.is_active ? "Nonaktifkan" : "Aktifkan"} ${subject.name}?`}>
                     {subject.is_active ? "Nonaktifkan" : "Aktifkan"}
+                  </TableActionSubmit>
+                </form>
+                <form action={deleteSubjectAction}>
+                  <input type="hidden" name="id" value={subject.id} />
+                  <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus mata pelajaran ${subject.name}? Tindakan ini tidak dapat dibatalkan.`}>
+                    Hapus
                   </TableActionSubmit>
                 </form>
               </TableActions>
