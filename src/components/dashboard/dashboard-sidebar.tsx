@@ -64,41 +64,54 @@ const icons: Record<DashboardIconName, ComponentType<{ className?: string }>> = 
   users: Users,
 };
 
-function isRouteActive(
+const rootDashboards = new Set([
+  "/dashboard",
+  "/dashboard/teacher",
+  "/dashboard/admin",
+  "/dashboard/student",
+  "/dashboard/proctor",
+  "/dashboard/principal",
+  "/dashboard/super-admin",
+]);
+
+function isLeafItemActive(
+  itemHref: string,
   pathname: string,
   currentHref: string,
-  href: string,
-  children?: DashboardMenuItem[],
   activePaths: string[] = [],
 ): boolean {
-  const hrefPath = href.split("?")[0];
-  const activePathMatch = activePaths.some((activePath) => {
-    const path = activePath.split("?")[0];
+  const cleanHref = itemHref.split("?")[0];
 
-    return activePath.includes("?")
-      ? currentHref === activePath
-      : pathname === path || pathname.startsWith(path);
-  });
-
-  if (href.includes("?")) {
-    return currentHref === href || activePathMatch;
+  // Root dashboards only match exactly
+  if (rootDashboards.has(cleanHref)) {
+    return pathname === cleanHref || currentHref === itemHref;
   }
 
-  return (
-    pathname === hrefPath ||
-    (hrefPath !== "/dashboard" && pathname.startsWith(hrefPath)) ||
-    activePathMatch ||
-    Boolean(
-      children?.some((child) =>
-        isRouteActive(
-          pathname,
-          currentHref,
-          child.href,
-          child.children,
-          child.activePaths,
-        ),
-      ),
-    )
+  if (pathname === cleanHref || currentHref === itemHref) {
+    return true;
+  }
+
+  if (pathname.startsWith(cleanHref + "/")) {
+    return true;
+  }
+
+  return activePaths.some((activePath) => {
+    const cleanActive = activePath.split("?")[0];
+    return activePath.includes("?")
+      ? currentHref === activePath
+      : pathname === cleanActive || pathname.startsWith(cleanActive + "/");
+  });
+}
+
+function hasAnyActiveChild(
+  children: DashboardMenuItem[] | undefined,
+  pathname: string,
+  currentHref: string,
+): boolean {
+  if (!children || children.length === 0) return false;
+  return children.some((child) =>
+    isLeafItemActive(child.href, pathname, currentHref, child.activePaths) ||
+    hasAnyActiveChild(child.children, pathname, currentHref)
   );
 }
 
@@ -119,13 +132,7 @@ export function DashboardSidebar({
     const initial: Record<string, boolean> = {};
     for (const item of menuItems) {
       if (item.children?.length) {
-        initial[item.href] = isRouteActive(
-          pathname,
-          currentHref,
-          item.href,
-          item.children,
-          item.activePaths,
-        );
+        initial[item.href] = hasAnyActiveChild(item.children, pathname, currentHref);
       }
     }
     return initial;
@@ -182,14 +189,14 @@ export function DashboardSidebar({
         {menuItems.map((item) => {
           const Icon = icons[item.icon];
           const hasChildren = Boolean(item.children?.length);
-          const active = isRouteActive(
+          const isDirectActive = isLeafItemActive(
+            item.href,
             pathname,
             currentHref,
-            item.href,
-            item.children,
             item.activePaths,
           );
-          const isSubmenuOpen = openSubmenus[item.href] ?? active;
+          const childActive = hasAnyActiveChild(item.children, pathname, currentHref);
+          const isSubmenuOpen = openSubmenus[item.href] ?? childActive;
 
           if (isMini) {
             // Mini icon-only mode
@@ -202,8 +209,8 @@ export function DashboardSidebar({
                   aria-label={item.label}
                   className={cn(
                     "flex size-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-95",
-                    active
-                      ? "bg-[#2563EB] text-white shadow-sm"
+                    isDirectActive || childActive
+                      ? "bg-[#2563EB] text-white shadow-xs"
                       : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]",
                   )}
                 >
@@ -228,9 +235,14 @@ export function DashboardSidebar({
                   aria-label={item.label}
                   className={cn(
                     "flex h-10 flex-1 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-150 select-none active:scale-[0.98]",
-                    active
-                      ? "bg-[#2563EB] text-white shadow-sm"
-                      : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]",
+                    // If directly active leaf: solid blue
+                    isDirectActive && !hasChildren && "bg-[#2563EB] text-white shadow-xs font-semibold",
+                    // If parent with active child: subtle clean highlight
+                    childActive && hasChildren && "bg-slate-100/80 text-[#0F172A] font-semibold border border-slate-200/60",
+                    // If direct active parent without child active
+                    isDirectActive && hasChildren && !childActive && "bg-[#2563EB] text-white shadow-xs font-semibold",
+                    // Default inactive
+                    !isDirectActive && !childActive && "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -244,7 +256,7 @@ export function DashboardSidebar({
                     aria-label={`Toggle ${item.label}`}
                     className={cn(
                       "flex size-9 items-center justify-center rounded-xl transition-all duration-150 hover:bg-[#F1F5F9] active:scale-90",
-                      active ? "text-[#2563EB]" : "text-[#64748B]",
+                      childActive ? "text-[#2563EB]" : "text-[#64748B]",
                     )}
                   >
                     <ChevronDown
@@ -259,14 +271,13 @@ export function DashboardSidebar({
 
               {/* Submenu Accordion */}
               {hasChildren && isSubmenuOpen ? (
-                <div className="ml-4 mt-1 space-y-1 border-l-2 border-[#E2E8F0] pl-3 animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-200 pl-3 animate-in fade-in-50 slide-in-from-top-1 duration-150">
                   {item.children?.map((child) => {
                     const ChildIcon = icons[child.icon];
-                    const childActive = isRouteActive(
+                    const isChildActive = isLeafItemActive(
+                      child.href,
                       pathname,
                       currentHref,
-                      child.href,
-                      child.children,
                       child.activePaths,
                     );
 
@@ -277,8 +288,8 @@ export function DashboardSidebar({
                         onClick={onNavigate}
                         className={cn(
                           "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 active:scale-[0.98]",
-                          childActive
-                            ? "bg-blue-50 text-[#2563EB] font-semibold"
+                          isChildActive
+                            ? "bg-[#2563EB] text-white shadow-xs font-semibold"
                             : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]",
                         )}
                       >

@@ -24,6 +24,7 @@ import {
   updateQuestionStatusAction,
 } from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
+import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import { QuestionStatusBadge } from "@/features/question-bank/components/question-status-badge";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,14 @@ type QuestionRow = {
     option_label: string;
     option_text: string;
     is_correct: boolean;
+    order_number: number;
+  }> | null;
+  question_attachments?: Array<{
+    id: string;
+    media_type: string;
+    url: string;
+    file_name?: string | null;
+    caption?: string | null;
     order_number: number;
   }> | null;
 };
@@ -256,7 +265,12 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                   <div className="line-clamp-1 font-medium leading-5 text-[#0F172A]">
                     {question.content || "-"}
                   </div>
-                  <div className="mt-1 flex max-w-full gap-1 overflow-hidden">
+                  <div className="mt-1 flex max-w-full flex-wrap gap-1 overflow-hidden">
+                    {question.question_attachments && question.question_attachments.length > 0 ? (
+                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200">
+                        📸 Ada Foto
+                      </span>
+                    ) : null}
                     {question.question_categories?.name ? (
                       <span className="max-w-44 truncate rounded-md bg-[#F8FAFC] px-1.5 py-0.5 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
                         {question.question_categories.name}
@@ -499,27 +513,61 @@ function PreviewModal({
         </div>
         <div className="space-y-4 text-sm">
           <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-            <QuestionMathRenderer content={question.content} className="leading-7" />
+            <QuestionMathRenderer content={question.content} className="leading-7 text-[#0F172A]" />
           </div>
+
+          {question.question_attachments && question.question_attachments.length > 0 ? (
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 space-y-2">
+              <div className="text-xs font-bold text-[#0F172A]">Foto / Media Lampiran Soal:</div>
+              <div className="grid gap-2">
+                {question.question_attachments.map((att) => (
+                  <QuestionMediaPreview
+                    key={att.id}
+                    mediaType={att.media_type}
+                    url={att.url}
+                    title={att.file_name}
+                    caption={att.caption}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {question.type === "multiple_choice" ? (
             <div className="grid gap-2">
               {options.map((option) => (
                 <div
                   key={option.option_label}
-                  className="flex gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2"
+                  className={cn(
+                    "flex gap-2.5 rounded-xl border px-3.5 py-2.5",
+                    option.is_correct
+                      ? "border-emerald-300 bg-emerald-50/50 text-emerald-950 font-medium ring-1 ring-emerald-300"
+                      : "border-[#E2E8F0] bg-white text-[#0F172A]",
+                  )}
                 >
-                  <span className="font-semibold">{option.option_label}.</span>
-                  <span className="flex-1">{option.option_text}</span>
+                  <span
+                    className={cn(
+                      "flex size-6 items-center justify-center rounded-lg text-xs font-bold shrink-0",
+                      option.is_correct
+                        ? "bg-emerald-600 text-white"
+                        : "bg-blue-100 text-blue-800",
+                    )}
+                  >
+                    {option.option_label}
+                  </span>
+                  <span className="flex-1 pt-0.5">
+                    <QuestionMathRenderer content={option.option_text} />
+                  </span>
                   {option.is_correct ? (
-                    <span className="text-xs font-medium text-[#22C55E]">
-                      Benar
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md self-center">
+                      Kunci Benar
                     </span>
                   ) : null}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="rounded-xl bg-[#F8FAFC] p-3 text-[#64748B]">
+            <div className="rounded-xl bg-[#F8FAFC] p-3 text-xs text-[#64748B]">
               Soal essay tidak memakai pilihan jawaban.
             </div>
           )}

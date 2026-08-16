@@ -83,7 +83,6 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
           onToggleSidebarCollapse={handleToggleCollapse}
           onOpenSidebar={() => setMobileOpen(true)}
         />
-        {user.is_demo_user ? <DemoModeBanner /> : null}
         <main
           className={
             isExamRoom
@@ -113,23 +112,6 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function DemoModeBanner() {
-  return (
-    <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 lg:px-8">
-      <div className="flex items-start gap-3 text-sm">
-        <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <div>
-          <p className="font-bold">Mode demo aktif</p>
-          <p className="mt-0.5 leading-6 text-xs sm:text-sm">
-            Data contoh dapat digunakan untuk eksplorasi. Aksi berisiko seperti
-            reset, arsip, dan penghapusan dibatasi agar demo tetap stabil.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

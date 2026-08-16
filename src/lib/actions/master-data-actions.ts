@@ -2115,3 +2115,208 @@ export async function saveClassMemberAction(formData: FormData) {
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil disimpan.",
   });
 }
+
+export async function deleteStudentAction(formData: FormData) {
+  const currentUser = await requirePermission("students.manage");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message: "ID siswa tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("users")
+    .select("id, school_id, auth_user_id, email, username")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!student) {
+    redirectTo("/dashboard/master-data/students", {
+      ok: false,
+      message: "Data siswa tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, student.school_id);
+
+  // Delete relations
+  await supabase.from("class_members").delete().eq("student_id", id);
+  await supabase.from("exam_participants").delete().eq("student_id", id);
+  await supabase.from("user_profiles").delete().eq("user_id", id);
+  const { error } = await supabase.from("users").delete().eq("id", id);
+
+  if (student.auth_user_id) {
+    await deleteAuthUser(student.auth_user_id);
+  }
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "students.delete",
+      entityType: "users",
+      entityId: id,
+      payload: { email: student.email, username: student.username },
+    });
+  }
+
+  revalidatePath("/dashboard/master-data/students");
+  redirectTo("/dashboard/master-data/students", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Data siswa berhasil dihapus secara permanen.",
+  });
+}
+
+export async function deleteTeacherAction(formData: FormData) {
+  const currentUser = await requirePermission("teachers.manage");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "ID guru tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: teacher } = await supabase
+    .from("users")
+    .select("id, school_id, auth_user_id, email, username")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!teacher) {
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "Data guru tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, teacher.school_id);
+
+  // Delete assignments & profile
+  await supabase.from("teacher_subjects").delete().eq("teacher_id", id);
+  await supabase.from("user_profiles").delete().eq("user_id", id);
+  const { error } = await supabase.from("users").delete().eq("id", id);
+
+  if (teacher.auth_user_id) {
+    await deleteAuthUser(teacher.auth_user_id);
+  }
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "teachers.delete",
+      entityType: "users",
+      entityId: id,
+      payload: { email: teacher.email, username: teacher.username },
+    });
+  }
+
+  revalidatePath("/dashboard/master-data/teachers");
+  redirectTo("/dashboard/master-data/teachers", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Data guru berhasil dihapus secara permanen.",
+  });
+}
+
+export async function deleteClassAction(formData: FormData) {
+  const currentUser = await requirePermission("classes.manage");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "ID kelas tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: classItem } = await supabase
+    .from("classes")
+    .select("id, school_id, name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!classItem) {
+    redirectTo("/dashboard/master-data/classes", {
+      ok: false,
+      message: "Data kelas tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, classItem.school_id);
+
+  await supabase.from("class_members").delete().eq("class_id", id);
+  const { error } = await supabase.from("classes").delete().eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "classes.delete",
+      entityType: "classes",
+      entityId: id,
+      payload: { name: classItem.name },
+    });
+  }
+
+  revalidatePath("/dashboard/master-data/classes");
+  redirectTo("/dashboard/master-data/classes", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Data kelas berhasil dihapus.",
+  });
+}
+
+export async function deleteSubjectAction(formData: FormData) {
+  const currentUser = await requirePermission("subjects.manage");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/master-data/subjects", {
+      ok: false,
+      message: "ID mata pelajaran tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: subject } = await supabase
+    .from("subjects")
+    .select("id, school_id, code, name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!subject) {
+    redirectTo("/dashboard/master-data/subjects", {
+      ok: false,
+      message: "Data mata pelajaran tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, subject.school_id);
+
+  await supabase.from("teacher_subjects").delete().eq("subject_id", id);
+  const { error } = await supabase.from("subjects").delete().eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "subjects.delete",
+      entityType: "subjects",
+      entityId: id,
+      payload: { code: subject.code, name: subject.name },
+    });
+  }
+
+  revalidatePath("/dashboard/master-data/subjects");
+  redirectTo("/dashboard/master-data/subjects", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Mata pelajaran berhasil dihapus.",
+  });
+}

@@ -6,20 +6,9 @@ import { getDashboardPath } from "@/lib/auth/role-redirect";
 
 type LoginPageProps = {
   searchParams: Promise<{
-    demo?: string | string[];
     error?: string | string[];
   }>;
 };
-
-const demoRoleValues = [
-  "admin",
-  "teacher",
-  "student",
-  "proctor",
-  "principal",
-] as const;
-
-type DemoRoleValue = (typeof demoRoleValues)[number];
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
@@ -28,25 +17,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     redirect(getDashboardPath(user.roles.name));
   }
 
-  const demoParam = Array.isArray(params.demo) ? params.demo[0] : params.demo;
   const errorParam = Array.isArray(params.error) ? params.error[0] : params.error;
-  const initialDemoRole = isDemoRoleValue(demoParam)
-    ? demoParam
-    : undefined;
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] px-4 py-8 text-[#0F172A]">
-      <LoginForm
-        demoMode={Boolean(demoParam)}
-        sessionMessage={getLoginMessage(errorParam)}
-        initialDemoRole={initialDemoRole}
-      />
+      <LoginForm sessionMessage={getLoginMessage(errorParam)} />
     </main>
   );
-}
-
-function isDemoRoleValue(value?: string): value is DemoRoleValue {
-  return demoRoleValues.includes(value as DemoRoleValue);
 }
 
 function getLoginMessage(error?: string) {

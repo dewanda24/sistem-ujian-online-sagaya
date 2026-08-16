@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { hasPermission } from "@/lib/auth/has-permission";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "question-media";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from(BUCKET).download(path);
 
   if (error || !data) {
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const extension = getExtension(file.name, file.type);
   const path = `${user.school_id}/${user.id}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${extension}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {

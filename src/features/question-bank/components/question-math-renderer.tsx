@@ -10,7 +10,7 @@ type QuestionMathRendererProps = {
 const blockDelimiterPattern = /(\$\$[\s\S]+?\$\$)/g;
 const inlineDelimiterPattern = /(\$[^$\n]+\$)/g;
 const mathCommandPattern =
-  /\\(?:frac|sqrt|sum|prod|int|lim|pi|theta|alpha|beta|gamma|delta|Delta|Omega|sin|cos|tan|log|ln|cdot|times|div|leq|geq|neq|approx|pm|infty)\b/;
+  /\\(?:frac|sqrt|sum|prod|int|iint|iiint|oint|lim|pi|theta|alpha|beta|gamma|delta|Delta|Omega|lambda|Lambda|mu|sigma|Sigma|phi|Phi|sin|cos|tan|cot|sec|csc|log|ln|cdot|times|div|leq|geq|neq|approx|pm|mp|infty|begin|end|matrix|pmatrix|bmatrix|vmatrix|cases|vec|overrightarrow|angle|triangle|circ|degree|left|right|equiv|forall|exists|in|notin|subset|subseteq|cap|cup|perp|parallel)\b/;
 
 export function QuestionMathRenderer({
   content,
