@@ -2,7 +2,6 @@
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
 
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardToaster } from "@/components/dashboard/dashboard-toaster";

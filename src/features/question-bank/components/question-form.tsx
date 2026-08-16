@@ -479,7 +479,11 @@ export function QuestionForm({
                 <span className="text-[#64748B] font-medium">Sisipkan ke:</span>
                 <select
                   value={mathTarget}
-                  onChange={(e) => setMathTarget(e.target.value as any)}
+                  onChange={(e) =>
+                    setMathTarget(
+                      e.target.value as "content" | "A" | "B" | "C" | "D" | "E",
+                    )
+                  }
                   className="rounded-lg border border-blue-300 bg-white px-2 py-1 text-xs font-bold text-[#0F172A] outline-none"
                 >
                   <option value="content">Teks Soal</option>

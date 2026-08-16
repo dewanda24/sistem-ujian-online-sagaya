@@ -14,6 +14,7 @@ import {
   type UpcomingExamCardExam,
 } from "@/features/student-dashboard/components/upcoming-exam-card";
 import { StudentDashboardSummary } from "@/features/student-dashboard/components/student-dashboard-summary";
+import { PwaInstallBanner } from "@/features/student-dashboard/components/pwa-install-banner";
 import { startExamAction } from "@/features/exam-room/actions";
 import { getStudentExamSchedules } from "@/features/exam-room/queries";
 import {
@@ -136,39 +137,59 @@ export default async function StudentDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg bg-blue-700 p-5 text-white sm:p-6">
-        <p className="text-sm font-medium text-blue-100">Halo, {studentName}</p>
-        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
-          Ringkasan ujian, jadwal, dan informasi penting untuk siswa.
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base">
-          Lihat ujian yang tersedia, jadwal terdekat, dan hasil ujian yang sudah
-          selesai.
-        </p>
+      {/* PWA 1-Click Install Banner for Mobile Students */}
+      <PwaInstallBanner />
+
+      {/* Friendly Welcome Hero Banner */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-600 p-6 text-white shadow-lg sm:p-8">
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3.5 py-1 text-xs font-bold text-blue-100 backdrop-blur-xs">
+              <span>👋 Selamat Datang di Portal CBT</span>
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-4xl">
+              Halo, {studentName}!
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-blue-100 sm:text-base">
+              Siapkan diri kamu untuk mengikuti ujian dengan tenang dan teliti. Pastikan koneksi internet stabil sebelum mulai.
+            </p>
+          </div>
+        </div>
+
+        {/* Subtle decorative background circles */}
+        <div className="pointer-events-none absolute -right-12 -top-12 size-64 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 size-64 rounded-full bg-indigo-500/20 blur-2xl" />
       </section>
 
+      {/* Quick Action Navigation Tiles */}
       <StudentDashboardSummary
         activeCount={activeSchedules.length}
         upcomingCount={upcomingSchedules.length}
         historyCount={attempts.length}
       />
 
-      <section className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {/* Active Exams Section */}
+      <section className="space-y-3.5">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-950">
-              Ujian Saya
+            <h2 className="text-xl font-extrabold text-slate-950 flex items-center gap-2">
+              <span>Ujian Saya</span>
+              {activeSchedules.length > 0 && (
+                <span className="flex size-2.5 rounded-full bg-emerald-500 animate-ping" />
+              )}
             </h2>
-            <p className="text-sm text-slate-600">
-              Ujian yang dapat dikerjakan akan tampil di sini.
+            <p className="text-xs font-medium text-slate-500">
+              Ujian yang aktif dan dapat dikerjakan saat ini.
             </p>
           </div>
-          <Link
-            href="/dashboard/student/active-exams"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-          >
-            Lihat semua
-          </Link>
+          {activeSchedules.length > 1 && (
+            <Link
+              href="/dashboard/student/active-exams"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-800 shadow-2xs transition hover:bg-slate-50"
+            >
+              Lihat Semua ({activeSchedules.length})
+            </Link>
+          )}
         </div>
 
         {activeSchedules.length > 0 ? (
@@ -186,24 +207,27 @@ export default async function StudentDashboardPage() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      {/* Upcoming & Latest Results Grid */}
+      <section className="grid gap-5 lg:grid-cols-[1.3fr_0.9fr]">
+        {/* Upcoming Schedules */}
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-slate-950">
+              <h2 className="text-base font-bold text-slate-950 sm:text-lg">
                 Jadwal Ujian Terdekat
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-xs text-slate-500">
                 Jadwal ujian berikutnya untuk kelasmu.
               </p>
             </div>
             <Link
               href="/dashboard/student/schedules"
-              className="inline-flex h-10 items-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+              className="inline-flex h-9 items-center rounded-xl bg-slate-900 px-3.5 text-xs font-bold text-white shadow-2xs transition hover:bg-slate-800"
             >
               Lihat Jadwal
             </Link>
           </div>
+
           {upcomingSchedules.length > 0 ? (
             <div className="space-y-3">
               {upcomingSchedules.map((schedule) => (
@@ -214,12 +238,13 @@ export default async function StudentDashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-              Belum ada jadwal ujian terdekat.
-            </p>
+            <div className="rounded-2xl bg-slate-50 p-6 text-center text-xs font-medium text-slate-500">
+              Belum ada jadwal ujian terdekat untuk kelasmu.
+            </div>
           )}
         </div>
 
+        {/* Latest Result */}
         <LatestResultCard attempt={latestAttempt} />
       </section>
     </div>
@@ -233,11 +258,11 @@ function LatestResultCard({
 }) {
   if (!attempt) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-lg font-bold text-slate-950">Hasil Terakhir</h2>
-        <p className="mt-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-          Belum ada hasil ujian yang dapat ditampilkan.
-        </p>
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+        <h2 className="text-base font-bold text-slate-950 sm:text-lg">Hasil Ujian Terakhir</h2>
+        <div className="mt-4 rounded-2xl bg-slate-50 p-6 text-center text-xs font-medium text-slate-500">
+          Belum ada riwayat hasil ujian yang dikumpulkan.
+        </div>
       </div>
     );
   }
@@ -250,36 +275,45 @@ function LatestResultCard({
     attempt.grading_status !== "needs_manual_grading";
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-slate-950">Hasil Terakhir</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {subject?.code ?? "-"} - {subject?.name ?? "Mata pelajaran"}
+    <div className="flex flex-col justify-between rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-950 sm:text-lg">Hasil Ujian Terakhir</h2>
+            <p className="mt-0.5 text-xs font-semibold text-slate-500">
+              {subject?.code ?? "-"} - {subject?.name ?? "Mata Pelajaran"}
+            </p>
+          </div>
+          <ExamStatusBadge status="submitted" />
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+          <p className="text-xs font-bold text-slate-700 truncate">
+            {schedule?.title ?? "Ujian"}
+          </p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-950">
+              {canShowScore ? scoreText(attempt.score, attempt.max_score) : "Terkumpul"}
+            </span>
+            {!canShowScore && (
+              <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                Menunggu Nilai
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Dikumpulkan: {attempt.submitted_at ? formatJakartaDateTime(attempt.submitted_at) : "-"}
           </p>
         </div>
-        <ExamStatusBadge status="submitted" />
-      </div>
-
-      <div className="mt-5 rounded-lg bg-slate-50 p-4">
-        <p className="text-sm font-medium text-slate-600">
-          {schedule?.title ?? "Ujian"}
-        </p>
-        <p className="mt-2 text-3xl font-bold text-slate-950">
-          {canShowScore ? scoreText(attempt.score, attempt.max_score) : "Menunggu"}
-        </p>
-        <p className="mt-2 text-sm text-slate-600">
-          Dikumpulkan:{" "}
-          {attempt.submitted_at ? formatJakartaDateTime(attempt.submitted_at) : "-"}
-        </p>
       </div>
 
       <Link
         href="/dashboard/student/history"
-        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-2xs transition hover:bg-slate-800 active:scale-98"
       >
-        Lihat Riwayat
+        Lihat Semua Riwayat Nilai
       </Link>
     </div>
   );
 }
+

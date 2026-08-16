@@ -1,8 +1,8 @@
-import { Clock, LogIn } from "lucide-react";
+import { Clock, KeyRound, LogIn, Sparkles } from "lucide-react";
 
 import { formatJakartaDateTime } from "@/lib/date-time";
-
 import { ExamStatusBadge, type StudentExamStatus } from "./exam-status-badge";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 
 export type ActiveExamCardExam = {
   id: string;
@@ -17,8 +17,6 @@ export type ActiveExamCardExam = {
   tokenRequired?: boolean | null;
 };
 
-import { SubmitButton } from "@/components/dashboard/submit-button";
-
 export function ActiveExamCard({
   exam,
   action,
@@ -27,65 +25,82 @@ export function ActiveExamCard({
   action: (formData: FormData) => void | Promise<void>;
 }) {
   const canStart = exam.status === "not_started" || exam.status === "in_progress";
-  const actionLabel = exam.attemptId ? "Lanjutkan Ujian" : "Mulai Ujian";
+  const actionLabel = exam.attemptId ? "Lanjutkan Ujian Sekarang" : "Mulai Ujian Sekarang";
 
   return (
-    <section className="rounded-xl border border-blue-200 bg-white p-5 shadow-xs sm:p-6">
+    <section className="relative overflow-hidden rounded-3xl border-2 border-blue-500/30 bg-gradient-to-br from-white via-blue-50/20 to-indigo-50/30 p-5 shadow-md sm:p-7">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-3">
-          <ExamStatusBadge status={exam.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ExamStatusBadge status={exam.status} />
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-0.5 text-xs font-extrabold text-blue-700">
+              <Sparkles className="size-3" />
+              {exam.subjectCode}
+            </span>
+          </div>
+
           <div>
-            <h2 className="text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">
+            <h2 className="text-xl font-extrabold leading-tight text-slate-950 sm:text-2xl">
               {exam.title}
             </h2>
-            <p className="mt-2 text-base font-medium text-slate-700">
-              {exam.subjectCode} - {exam.subjectName}
+            <p className="mt-1 text-sm font-semibold text-slate-600">
+              Mata Pelajaran: <span className="text-slate-900">{exam.subjectName}</span>
             </p>
           </div>
         </div>
-        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 lg:min-w-72">
+
+        {/* Schedule & Duration badge */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 text-xs font-medium text-slate-700 shadow-2xs backdrop-blur-xs lg:min-w-72">
           <div className="flex items-start gap-3">
-            <Clock className="mt-0.5 size-5 shrink-0 text-blue-700" />
+            <Clock className="mt-0.5 size-5 shrink-0 text-blue-600" />
             <div className="space-y-1">
-              <p className="font-semibold text-slate-950">Waktu ujian</p>
-              <p>Mulai: {formatJakartaDateTime(exam.startAt)}</p>
-              <p>Selesai: {formatJakartaDateTime(exam.endAt)}</p>
-              {exam.durationMinutes ? <p>Durasi: {exam.durationMinutes} menit</p> : null}
+              <p className="font-bold text-slate-950 text-sm">Waktu Pelaksanaan</p>
+              <p>Mulai: <span className="font-semibold">{formatJakartaDateTime(exam.startAt)}</span></p>
+              <p>Selesai: <span className="font-semibold">{formatJakartaDateTime(exam.endAt)}</span></p>
+              {exam.durationMinutes ? (
+                <p className="text-blue-700 font-bold">Durasi: {exam.durationMinutes} Menit</p>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Start / Continue Form */}
       <form action={action} className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <input type="hidden" name="schedule_id" value={exam.id} />
         {exam.tokenRequired && !exam.attemptId ? (
-          <input
-            name="access_token"
-            placeholder="Token ujian"
-            className="h-12 rounded-xl border border-slate-300 px-4 text-base uppercase font-semibold tracking-wider outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-48"
-            autoComplete="off"
-            required
-          />
+          <div className="relative flex-1 sm:max-w-xs">
+            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <input
+              name="access_token"
+              placeholder="MASUKKAN TOKEN UJIAN"
+              className="h-12 w-full rounded-2xl border border-slate-300 bg-white pl-11 pr-4 text-sm uppercase font-extrabold tracking-wider outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              autoComplete="off"
+              required
+            />
+          </div>
         ) : null}
+
         {exam.attemptId ? (
           <a
             href={`/dashboard/exam-room/${exam.attemptId}`}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-base font-semibold text-white shadow-sm transition-all duration-150 active:scale-[0.98] hover:bg-blue-800 sm:min-w-48"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 text-sm font-bold text-white shadow-md transition-all duration-150 hover:from-blue-700 hover:to-indigo-700 active:scale-98 sm:min-w-48"
           >
             <LogIn className="size-5" />
-            {actionLabel}
+            <span>{actionLabel}</span>
           </a>
         ) : (
           <SubmitButton
-            loadingText="Membuka Ujian..."
+            loadingText="Membuka Ruang Ujian..."
             disabled={!canStart}
-            className="h-12 rounded-xl bg-blue-700 px-6 text-base font-semibold text-white shadow-sm hover:bg-blue-800 sm:min-w-48"
+            className="h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 active:scale-98 sm:min-w-48"
           >
             <LogIn className="size-5" />
-            {actionLabel}
+            <span>{actionLabel}</span>
           </SubmitButton>
         )}
       </form>
     </section>
   );
 }
+
