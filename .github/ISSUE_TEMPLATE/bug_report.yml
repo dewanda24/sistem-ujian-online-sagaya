@@ -1,0 +1,47 @@
+name: 🐛 Bug Report
+description: Laporkan bug atau kendala yang ditemukan pada sistem CBT
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih telah melaporkan bug. Harap isi informasi di bawah agar mudah direproduksi dan diperbaiki.
+  - type: textarea
+    id: description
+    attributes:
+      label: Deskripsi Masalah
+      description: Jelaskan apa yang terjadi secara rinci.
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role Pengguna yang Terkena
+      options:
+        - Super Admin
+        - Admin Sekolah
+        - Guru (Teacher)
+        - Pengawas (Proctor)
+        - Siswa (Student)
+        - Kepala Sekolah (Principal)
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Langkah Reproduksi Masalah
+      description: 1. Buka halaman '...'\n2. Klik pada '...'\n3. Lihat error
+      placeholder: |
+        1. Login sebagai Admin Sekolah
+        2. Buka menu Master Data > Siswa
+        3. Klik Tambah Siswa
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Perilaku yang Diharapkan
+      description: Apa yang seharusnya terjadi?
+    validations:
+      required: true

@@ -1,0 +1,28 @@
+name: ✨ Feature Request
+description: Usulkan ide atau fitur baru untuk Sistem Ujian Online Sagaya
+title: "[FEAT]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Punya ide untuk membuat sistem ujian lebih baik? Tuliskan usulan Anda di sini!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Kebutuhan / Masalah yang Ingin Diselesaikan
+      description: Apakah fitur ini menyelesaikan kendala operasional tertentu?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Usulan Solusi / Fitur
+      description: Jelaskan bagaimana fitur ini bekerja menurut Anda.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Konteks Tambahan
+      description: Tangkapan layar, referensi CBT lain, atau mockup jika ada.
