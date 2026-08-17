@@ -227,12 +227,21 @@ async function signInAndResolveDashboard(
 
     const nowFormatted = formatJakartaDateTime(new Date().toISOString());
 
+    const roleLabelMap: Record<string, string> = {
+      super_admin: "Super Admin",
+      admin: "Administrator",
+      teacher: "Guru / Pendidik",
+      student: "Siswa",
+      proctor: "Proktor CBT",
+      principal: "Kepala Sekolah",
+    };
+
     const userSession: UserSessionInfo = {
-      name: profile?.full_name || appUser.username,
-      username: appUser.username,
+      name: profile?.full_name || appUser.username || appUser.email || "Pengguna",
+      username: appUser.username || appUser.email.split("@")[0],
       email: appUser.email,
       role: roleData.name,
-      roleLabel: roleData.label || roleData.name,
+      roleLabel: roleData.label || roleLabelMap[roleData.name] || roleData.name,
       className: className || (roleData.name === "student" ? "Kelas Terdaftar" : undefined),
       schoolName: school?.name || "SMP 1 Sagaya",
       lastLoginFormatted: nowFormatted,
