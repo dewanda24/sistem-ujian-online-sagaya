@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardToaster } from "@/components/dashboard/dashboard-toaster";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
+import { StudentBottomNav } from "@/components/dashboard/student-bottom-nav";
 import { getDashboardMenu } from "@/constants/dashboard-menu";
 import { SessionGuard } from "@/features/auth/components/session-guard";
 import type { CurrentUser } from "@/types/auth";
@@ -86,11 +87,16 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
           className={
             isExamRoom
               ? "min-w-0 flex-1 px-3 py-3 lg:px-6 lg:py-4"
-              : "min-w-0 flex-1 px-4 py-6 lg:px-8"
+              : user.roles?.name === "student"
+                ? "min-w-0 flex-1 px-4 pt-4 pb-24 lg:px-8 lg:py-6"
+                : "min-w-0 flex-1 px-4 py-6 lg:px-8"
           }
         >
           {children}
         </main>
+        {user.roles?.name === "student" && !isExamRoom ? (
+          <StudentBottomNav />
+        ) : null}
         <DashboardToaster />
       </div>
 

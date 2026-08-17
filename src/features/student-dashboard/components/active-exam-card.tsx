@@ -1,7 +1,8 @@
-import { Clock, KeyRound, LogIn, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Hourglass, KeyRound, LogIn, XCircle } from "lucide-react";
 
-import { formatJakartaDateTime } from "@/lib/date-time";
-import { ExamStatusBadge, type StudentExamStatus } from "./exam-status-badge";
+import { formatJakartaDate, formatJakartaTime } from "@/lib/date-time";
+import { ExamCountdownTimer } from "./exam-countdown-timer";
 import { SubmitButton } from "@/components/dashboard/submit-button";
 
 export type ActiveExamCardExam = {
@@ -12,9 +13,14 @@ export type ActiveExamCardExam = {
   startAt: string;
   endAt: string;
   durationMinutes?: number | null;
-  status: StudentExamStatus;
+  status: "not_started" | "in_progress" | "submitted" | "late" | "cancelled" | "graded";
   attemptId?: string | null;
   tokenRequired?: boolean | null;
+  schoolOrClassName?: string | null;
+  score?: number | null;
+  maxScore?: number | null;
+  gradingStatus?: string | null;
+  showResult?: boolean | null;
 };
 
 export function ActiveExamCard({
@@ -22,85 +28,252 @@ export function ActiveExamCard({
   action,
 }: {
   exam: ActiveExamCardExam;
-  action: (formData: FormData) => void | Promise<void>;
+  action?: (formData: FormData) => void | Promise<void>;
 }) {
-  const canStart = exam.status === "not_started" || exam.status === "in_progress";
-  const actionLabel = exam.attemptId ? "Lanjutkan Ujian Sekarang" : "Mulai Ujian Sekarang";
+  const isOngoing = exam.status === "in_progress" || exam.status === "not_started";
+  const isSubmitted = exam.status === "submitted" || exam.status === "late";
+  const isCancelled = exam.status === "cancelled";
+  const canShowScore =
+    exam.showResult &&
+    exam.score !== undefined &&
+    exam.score !== null &&
+    exam.gradingStatus !== "needs_manual_grading";
 
-  return (
-    <section className="relative overflow-hidden rounded-3xl border-2 border-blue-500/30 bg-gradient-to-br from-white via-blue-50/20 to-indigo-50/30 p-5 shadow-md sm:p-7">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <ExamStatusBadge status={exam.status} />
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-0.5 text-xs font-extrabold text-blue-700">
-              <Sparkles className="size-3" />
-              {exam.subjectCode}
+  const actionLabel = exam.attemptId ? "Lanjutkan Ujian" : "Mulai Ujian";
+
+  // Format schedule text e.g. "16 Agustus 2026 • 08.00 - 10.00"
+  const formattedSchedule = `${formatJakartaDate(exam.startAt)} • ${formatJakartaTime(exam.startAt)} - ${formatJakartaTime(exam.endAt)}`;
+
+  // ----------------------------------------------------
+  // STATE A: Sedang Berlangsung / Aktif (Vibrant Blue Card)
+  // ----------------------------------------------------
+  if (isOngoing) {
+    return (
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1D4ED8] via-[#2563EB] to-[#1E40AF] p-5 sm:p-7 text-white shadow-xl">
+        {/* Decorative ambient glows */}
+        <div className="pointer-events-none absolute -right-10 -top-10 size-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 size-48 rounded-full bg-indigo-900/40 blur-2xl" />
+
+        <div className="relative z-10 space-y-5">
+          {/* Header Row: Subject & Status Badge */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white truncate">
+                  {exam.subjectName || exam.title}
+                </h2>
+                {exam.subjectCode && (
+                  <span className="hidden sm:inline-flex rounded-lg bg-white/15 px-2 py-0.5 text-xs font-bold text-blue-100 backdrop-blur-xs">
+                    {exam.subjectCode}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-medium text-blue-100">
+                {exam.schoolOrClassName || exam.title}
+              </p>
+              <p className="text-xs text-blue-200/90 font-medium">
+                {formattedSchedule}
+              </p>
+            </div>
+
+            {/* Status Badge */}
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-200 border border-emerald-400/30 backdrop-blur-xs">
+              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Sedang Berlangsung</span>
             </span>
           </div>
 
-          <div>
-            <h2 className="text-xl font-extrabold leading-tight text-slate-950 sm:text-2xl">
-              {exam.title}
-            </h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">
-              Mata Pelajaran: <span className="text-slate-900">{exam.subjectName}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Schedule & Duration badge */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 text-xs font-medium text-slate-700 shadow-2xs backdrop-blur-xs lg:min-w-72">
-          <div className="flex items-start gap-3">
-            <Clock className="mt-0.5 size-5 shrink-0 text-blue-600" />
-            <div className="space-y-1">
-              <p className="font-bold text-slate-950 text-sm">Waktu Pelaksanaan</p>
-              <p>Mulai: <span className="font-semibold">{formatJakartaDateTime(exam.startAt)}</span></p>
-              <p>Selesai: <span className="font-semibold">{formatJakartaDateTime(exam.endAt)}</span></p>
-              {exam.durationMinutes ? (
-                <p className="text-blue-700 font-bold">Durasi: {exam.durationMinutes} Menit</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Start / Continue Form */}
-      <form action={action} className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input type="hidden" name="schedule_id" value={exam.id} />
-        {exam.tokenRequired && !exam.attemptId ? (
-          <div className="relative flex-1 sm:max-w-xs">
-            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input
-              name="access_token"
-              placeholder="MASUKKAN TOKEN UJIAN"
-              className="h-12 w-full rounded-2xl border border-slate-300 bg-white pl-11 pr-4 text-sm uppercase font-extrabold tracking-wider outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              autoComplete="off"
-              required
+          {/* Countdown Timer & Progress bar */}
+          <div className="rounded-2xl bg-black/20 p-3.5 sm:p-4 backdrop-blur-md border border-white/10">
+            <ExamCountdownTimer
+              startAt={exam.startAt}
+              endAt={exam.endAt}
+              durationMinutes={exam.durationMinutes}
             />
           </div>
-        ) : null}
 
-        {exam.attemptId ? (
-          <a
-            href={`/dashboard/exam-room/${exam.attemptId}`}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 text-sm font-bold text-white shadow-md transition-all duration-150 hover:from-blue-700 hover:to-indigo-700 active:scale-98 sm:min-w-48"
-          >
-            <LogIn className="size-5" />
-            <span>{actionLabel}</span>
-          </a>
-        ) : (
-          <SubmitButton
-            loadingText="Membuka Ruang Ujian..."
-            disabled={!canStart}
-            className="h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 text-sm font-bold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 active:scale-98 sm:min-w-48"
-          >
-            <LogIn className="size-5" />
-            <span>{actionLabel}</span>
-          </SubmitButton>
-        )}
-      </form>
-    </section>
-  );
+          {/* Action Area / Form */}
+          {action ? (
+            <form action={action} className="flex flex-col sm:flex-row gap-3 pt-1">
+              <input type="hidden" name="schedule_id" value={exam.id} />
+              {exam.tokenRequired && !exam.attemptId ? (
+                <div className="relative flex-1 sm:max-w-xs">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-blue-200" />
+                  <input
+                    name="access_token"
+                    placeholder="MASUKKAN TOKEN"
+                    className="h-12 w-full rounded-2xl border border-white/30 bg-white/10 pl-10 pr-4 text-sm font-bold uppercase tracking-wider text-white placeholder:text-blue-200/70 outline-none backdrop-blur-xs transition focus:border-white focus:bg-white/20 focus:ring-2 focus:ring-white/30"
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+              ) : null}
+
+              {exam.attemptId ? (
+                <Link
+                  href={`/dashboard/exam-room/${exam.attemptId}`}
+                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-blue-700 shadow-md transition-all duration-150 hover:bg-blue-50 active:scale-98"
+                >
+                  <span>{actionLabel}</span>
+                  <ArrowRight className="size-4 stroke-[3]" />
+                </Link>
+              ) : (
+                <SubmitButton
+                  loadingText="Membuka Ruang Ujian..."
+                  className="h-12 flex-1 rounded-2xl bg-white px-6 text-sm font-black text-blue-700 shadow-md transition-all duration-150 hover:bg-blue-50 active:scale-98"
+                >
+                  <LogIn className="size-4" />
+                  <span>{actionLabel}</span>
+                  <ArrowRight className="size-4 stroke-[3]" />
+                </SubmitButton>
+              )}
+            </form>
+          ) : (
+            <div className="pt-1">
+              <Link
+                href={exam.attemptId ? `/dashboard/exam-room/${exam.attemptId}` : "/dashboard/student/active-exams"}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-blue-700 shadow-md transition-all duration-150 hover:bg-blue-50 active:scale-98"
+              >
+                <span>{actionLabel}</span>
+                <ArrowRight className="size-4 stroke-[3]" />
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  // ----------------------------------------------------
+  // STATE C: Ujian Selesai - Menunggu Koreksi (Amber Card)
+  // ----------------------------------------------------
+  if (isSubmitted && !canShowScore) {
+    return (
+      <section className="relative overflow-hidden rounded-3xl border border-amber-200/90 bg-gradient-to-br from-amber-50 via-amber-100/30 to-amber-50/60 p-5 sm:p-7 shadow-xs">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-amber-700">
+                Ujian Terakhir
+              </p>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 truncate">
+                {exam.subjectName || exam.title}
+              </h2>
+              <p className="text-xs sm:text-sm font-medium text-slate-600">
+                Telah Dikumpulkan: {formattedSchedule}
+              </p>
+            </div>
+
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <Hourglass className="size-6 animate-pulse" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-100/80 px-3 py-1.5 text-xs font-bold text-amber-800 border border-amber-300/60">
+              <span className="size-2 rounded-full bg-amber-500" />
+              <span>Menunggu Koreksi</span>
+            </span>
+
+            <Link
+              href="/dashboard/student/history"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-xs font-bold text-slate-800 border border-slate-200 shadow-2xs transition hover:bg-slate-50"
+            >
+              Lihat Detail
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ----------------------------------------------------
+  // STATE D & E: Nilai Tersedia / Selesai (Emerald Card)
+  // ----------------------------------------------------
+  if (isSubmitted && canShowScore) {
+    return (
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-emerald-100/20 to-teal-50/40 p-5 sm:p-7 shadow-xs">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                Ujian Terakhir
+              </p>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 truncate">
+                {exam.subjectName || exam.title}
+              </h2>
+              <p className="text-xs sm:text-sm font-medium text-slate-600">
+                {formattedSchedule}
+              </p>
+            </div>
+
+            {/* Big Score Tag */}
+            <div className="text-right">
+              <div className="flex items-baseline justify-end gap-1">
+                <span className="text-3xl sm:text-4xl font-black text-emerald-600">
+                  {Number(exam.score ?? 0)}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-slate-400">
+                  /{Number(exam.maxScore ?? 100)}
+                </span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                <CheckCircle2 className="size-3" />
+                <span>Selesai Dikoreksi</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/dashboard/student/history"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-98"
+            >
+              <span>Lihat Hasil</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ----------------------------------------------------
+  // STATE F: Dibatalkan (Rose Card)
+  // ----------------------------------------------------
+  if (isCancelled) {
+    return (
+      <section className="relative overflow-hidden rounded-3xl border border-rose-200 bg-rose-50/80 p-5 sm:p-7 shadow-xs">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 truncate">
+                {exam.subjectName || exam.title}
+              </h2>
+              <p className="text-xs sm:text-sm font-medium text-slate-600">
+                {formattedSchedule}
+              </p>
+            </div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+              <XCircle className="size-6" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700">
+              <span>Dibatalkan oleh sekolah</span>
+            </span>
+            <Link
+              href="/dashboard/student/schedules"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-xs font-bold text-slate-800 border border-slate-200 shadow-2xs transition hover:bg-slate-50"
+            >
+              Lihat Detail
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return null;
 }
-

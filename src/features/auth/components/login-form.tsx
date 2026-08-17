@@ -1,8 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -27,9 +25,11 @@ import {
 import { SagayaLogo } from "@/components/common/sagaya-logo";
 import { SplashScreen } from "@/features/auth/components/splash-screen";
 import { WelcomeSessionScreen } from "@/features/auth/components/welcome-session-screen";
+import { createClient } from "@/lib/supabase/client";
 import {
-  loginAction,
-  type LoginActionState,
+  fetchUserSessionDataAction,
+  resolveUserIdentifierAction,
+  type UserSessionInfo,
 } from "@/features/auth/actions/login-action";
 
 type LoginFormProps = {
@@ -37,36 +37,102 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ sessionMessage }: LoginFormProps) {
-  const router = useRouter();
-  const [state, formAction] = useActionState<LoginActionState, FormData>(
-    loginAction,
-    {},
-  );
-  const [showSplash, setShowSplash] = useState(true);
+  // Splash Screen only shows on initial fresh app load, NEVER when sessionMessage/logout exists
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (sessionMessage) return false;
+    return true;
+  });
+
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<string | null>(null);
 
-  const handleProceedToDashboard = () => {
-    if (state.redirectTo) {
-      router.replace(state.redirectTo);
-      router.refresh();
+  // Welcome session state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userSession, setUserSession] = useState<UserSessionInfo | undefined>(undefined);
+  const [redirectTo, setRedirectTo] = useState<string>("/dashboard");
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setErrorType(null);
+
+    try {
+      const trimmedIdentifier = identifier.trim();
+      const trimmedPassword = password.trim();
+
+      if (!trimmedIdentifier || !trimmedPassword) {
+        setErrorMessage("Silakan isi username/email dan kata sandi.");
+        setErrorType("validation");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 1. Resolve identifier (username -> email)
+      const resolved = await resolveUserIdentifierAction(trimmedIdentifier);
+
+      if (!resolved.exists || !resolved.email) {
+        setErrorType("user-not-found");
+        setErrorMessage("Akun tidak ditemukan. Periksa kembali username/email Anda.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Sign in via client-side Supabase client
+      const supabase = createClient();
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: resolved.email,
+        password: trimmedPassword,
+      });
+
+      if (authError || !authData.user) {
+        setErrorType("wrong-password");
+        setErrorMessage("Kata sandi yang Anda masukkan salah.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 3. Fetch user session details (role, school, profile, class)
+      const sessionResult = await fetchUserSessionDataAction(authData.user.id);
+
+      if (!sessionResult.ok || !sessionResult.userSession) {
+        await supabase.auth.signOut();
+        setErrorType(sessionResult.error || "no-role");
+        setErrorMessage(
+          sessionResult.message || "Akun belum memiliki akses. Hubungi operator sekolah.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Set session details & trigger Welcome Session Screen
+      setUserSession(sessionResult.userSession);
+      setRedirectTo(sessionResult.redirectTo || "/dashboard");
+      setIsSubmitting(false);
+      setIsLoggedIn(true);
+    } catch (error) {
+      console.error("Login submission error:", error);
+      setErrorType("network");
+      setErrorMessage("Koneksi bermasalah. Periksa koneksi internet Anda lalu coba lagi.");
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    startTransition(() => {
-      window.alert(
-        "Fitur Masuk dengan Google telah diintegrasikan dengan Akun Belajar.id / Google Workspace Sekolah Anda.",
-      );
-    });
+  const handleProceedToDashboard = () => {
+    window.location.href = redirectTo;
   };
 
-  const isWrongPassword = state.error === "wrong-password";
-  const isUserNotFound = state.error === "user-not-found";
-  const hasErrorMessage = Boolean(state.message);
-  const isLoginSuccessful = Boolean(state.redirectTo);
+  const isWrongPassword = errorType === "wrong-password";
+  const isUserNotFound = errorType === "user-not-found";
 
   return (
     <>
@@ -219,14 +285,14 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
           {/* RIGHT SIDE: Interactive Login Form OR Welcome Screen (POIN 3) */}
           {/* ========================================================= */}
           <div className="mx-auto w-full max-w-md">
-            {isLoginSuccessful ? (
+            {isLoggedIn && userSession ? (
               /* TRANSISI SETELAH AUTENTIKASI BERHASIL (POIN 3) */
               <WelcomeSessionScreen
-                session={state.userSession}
+                session={userSession}
                 onProceed={handleProceedToDashboard}
               />
             ) : (
-              /* FORM LOGIN AKTIF */
+              /* FORM LOGIN PRODUKSI */
               <div className="w-full rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-xl sm:p-8">
                 {/* Sagaya Brand Emblem & Heading */}
                 <div className="mb-6 text-center">
@@ -237,7 +303,7 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                     Masuk ke Akun Anda
                   </h2>
                   <p className="mt-1 text-xs text-[#64748B]">
-                    Gunakan akun yang diberikan oleh sekolah.
+                    Gunakan akun yang diberikan oleh pihak sekolah.
                   </p>
                 </div>
 
@@ -250,7 +316,7 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                 )}
 
                 {/* Main Interactive Form */}
-                <form action={formAction} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Username atau Email */}
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-[#0F172A]">
@@ -261,9 +327,12 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                       <input
                         name="identifier"
                         type="text"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
                         autoComplete="username"
                         autoFocus
                         required
+                        disabled={isSubmitting}
                         placeholder="Username atau Email"
                         className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3 text-sm outline-none transition focus:ring-3 ${
                           isUserNotFound
@@ -284,8 +353,11 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                       <input
                         name="password"
                         type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
                         required
+                        disabled={isSubmitting}
                         placeholder="Kata Sandi"
                         className={`h-11 w-full rounded-xl border bg-white pl-10 pr-11 text-sm outline-none transition focus:ring-3 ${
                           isWrongPassword
@@ -296,6 +368,7 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
+                        disabled={isSubmitting}
                         aria-label={
                           showPassword
                             ? "Sembunyikan kata sandi"
@@ -313,7 +386,7 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                   </div>
 
                   {/* Specific Inline Error Messages */}
-                  {hasErrorMessage && (
+                  {errorMessage && (
                     <div
                       className={`flex items-start gap-2 rounded-xl p-3 text-xs font-medium ${
                         isWrongPassword
@@ -323,7 +396,7 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
                       role="alert"
                     >
                       <AlertCircle className="size-4 shrink-0 mt-0.5 text-current" />
-                      <span>{state.message}</span>
+                      <span>{errorMessage}</span>
                     </div>
                   )}
 
@@ -350,29 +423,22 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
 
                   {/* Primary Submit Button */}
                   <div className="pt-2">
-                    <SubmitButton isPending={isPending} />
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all duration-150 active:scale-98 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          <span>Memverifikasi akun...</span>
+                        </>
+                      ) : (
+                        <span>Masuk ke Sistem</span>
+                      )}
+                    </button>
                   </div>
                 </form>
-
-                {/* Divider */}
-                <div className="relative my-5 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#E2E8F0]" />
-                  </div>
-                  <span className="relative bg-white px-3 text-xs font-medium text-[#94A3B8]">
-                    atau
-                  </span>
-                </div>
-
-                {/* Secondary Google Login Button */}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-[#CBD5E1] bg-white px-4 text-xs font-bold text-[#0F172A] shadow-2xs transition hover:bg-slate-50 active:scale-98"
-                >
-                  <GoogleIcon />
-                  <span>Masuk dengan Google</span>
-                </button>
 
                 {/* Help Card Footer */}
                 <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-center">
@@ -468,50 +534,5 @@ export function LoginForm({ sessionMessage }: LoginFormProps) {
         )}
       </div>
     </>
-  );
-}
-
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  const { pending } = useFormStatus();
-  const loading = pending || isPending;
-
-  return (
-    <button
-      type="submit"
-      disabled={loading}
-      className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all duration-150 active:scale-98 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-    >
-      {loading ? (
-        <>
-          <Loader2 className="size-4 animate-spin" />
-          <span>Memverifikasi akun...</span>
-        </>
-      ) : (
-        <span>Masuk</span>
-      )}
-    </button>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-        fill="#EA4335"
-      />
-    </svg>
   );
 }

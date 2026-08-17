@@ -71,10 +71,14 @@ export function DashboardTopbar({
           </button>
           <button
             type="button"
-            className="hidden size-9 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] sm:inline-flex"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("sagaya-open-notifications"));
+            }}
+            className="relative flex size-9 items-center justify-center rounded-xl border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] active:scale-95 transition"
             aria-label="Notifikasi"
           >
             <Bell className="size-4" />
+            <span className="absolute top-1.5 right-1.5 flex size-2 rounded-full bg-rose-500 ring-2 ring-white" />
           </button>
           <div className="hidden sm:block">
             <RoleBadge user={user} />

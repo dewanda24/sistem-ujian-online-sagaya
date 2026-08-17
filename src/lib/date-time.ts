@@ -75,3 +75,21 @@ export function formatJakartaDateTime(value: string) {
     timeZone: JAKARTA_TIME_ZONE,
   }).format(new Date(value));
 }
+
+export function formatJakartaDate(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: JAKARTA_TIME_ZONE,
+  }).format(new Date(value));
+}
+
+export function formatJakartaTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: JAKARTA_TIME_ZONE,
+  }).format(new Date(value));
+}
