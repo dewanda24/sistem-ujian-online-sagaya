@@ -7,6 +7,7 @@ import {
   getDemoEmailByEnvKey,
   isDemoModeEnabled,
 } from "@/lib/auth/demo-mode";
+import { formatJakartaDateTime } from "@/lib/date-time";
 import { loginSchema } from "@/validations/auth";
 
 const demoRoles = [
@@ -27,10 +28,31 @@ const demoAccountEnvByRole: Record<DemoRole, DemoEmailEnvKey> = {
   principal: "DEMO_PRINCIPAL_EMAIL",
 };
 
+export type UserSessionInfo = {
+  name: string;
+  username: string;
+  email: string;
+  role: string;
+  roleLabel: string;
+  className?: string;
+  schoolName?: string;
+  lastLoginFormatted: string;
+  status: string;
+};
+
 export type LoginActionState = {
-  error?: "invalid" | "inactive" | "no-user" | "no-role" | "validation";
+  error?:
+    | "invalid"
+    | "inactive"
+    | "no-user"
+    | "no-role"
+    | "validation"
+    | "wrong-password"
+    | "user-not-found"
+    | "network";
   message?: string;
   redirectTo?: string;
+  userSession?: UserSessionInfo;
 };
 
 export async function loginAction(
@@ -91,99 +113,179 @@ async function signInAndResolveDashboard(
   identifier: string,
   password: string,
 ): Promise<LoginActionState> {
-  const supabase = await createClient();
-  const email = await resolveLoginEmail(identifier);
+  try {
+    const supabase = await createClient();
+    const resolved = await resolveLoginEmailWithUserCheck(identifier);
 
-  if (!email) {
+    if (!resolved.exists || !resolved.email) {
+      return {
+        error: "user-not-found",
+        message: "Akun tidak ditemukan. Periksa kembali username/email Anda.",
+      };
+    }
+
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email: resolved.email,
+        password,
+      });
+
+    if (authError || !authData.user) {
+      return {
+        error: "wrong-password",
+        message: "Kata sandi yang Anda masukkan salah.",
+      };
+    }
+
+    const { data: appUser, error: appUserError } = await supabase
+      .from("users")
+      .select(
+        `
+        id,
+        username,
+        email,
+        role_id,
+        school_id,
+        status,
+        schools (
+          name
+        ),
+        user_profiles (
+          full_name,
+          avatar_url
+        )
+      `,
+      )
+      .eq("auth_user_id", authData.user.id)
+      .single();
+
+    if (appUserError || !appUser) {
+      await supabase.auth.signOut();
+
+      return {
+        error: "no-user",
+        message: "Akun belum siap digunakan. Silakan hubungi operator sekolah.",
+      };
+    }
+
+    if (appUser.status !== "active") {
+      await supabase.auth.signOut();
+
+      return {
+        error: "inactive",
+        message: "Akun Anda sedang tidak aktif. Silakan hubungi operator sekolah.",
+      };
+    }
+
+    if (!appUser.role_id) {
+      await supabase.auth.signOut();
+
+      return {
+        error: "no-role",
+        message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
+      };
+    }
+
+    const { data: roleData, error: roleError } = await supabase
+      .from("roles")
+      .select("name, label")
+      .eq("id", appUser.role_id)
+      .single();
+
+    if (roleError || !roleData?.name) {
+      await supabase.auth.signOut();
+
+      return {
+        error: "no-role",
+        message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
+      };
+    }
+
+    // Attempt to fetch student class if role is student
+    let className: string | undefined = undefined;
+    if (roleData.name === "student") {
+      const { data: memberData } = await supabase
+        .from("class_members")
+        .select("classes(name)")
+        .eq("student_id", appUser.id)
+        .is("left_at", null)
+        .maybeSingle();
+
+      const classRel = Array.isArray(memberData?.classes)
+        ? memberData?.classes[0]
+        : memberData?.classes;
+      className = classRel?.name ?? undefined;
+    }
+
+    const profile = Array.isArray(appUser.user_profiles)
+      ? appUser.user_profiles[0]
+      : appUser.user_profiles;
+
+    const school = Array.isArray(appUser.schools)
+      ? appUser.schools[0]
+      : appUser.schools;
+
+    const nowFormatted = formatJakartaDateTime(new Date().toISOString());
+
+    const userSession: UserSessionInfo = {
+      name: profile?.full_name || appUser.username,
+      username: appUser.username,
+      email: appUser.email,
+      role: roleData.name,
+      roleLabel: roleData.label || roleData.name,
+      className: className || (roleData.name === "student" ? "Kelas Terdaftar" : undefined),
+      schoolName: school?.name || "SMP 1 Sagaya",
+      lastLoginFormatted: nowFormatted,
+      status: appUser.status === "active" ? "Aktif" : "Non-Aktif",
+    };
+
     return {
-      error: "invalid",
-      message: "Username atau kata sandi yang Anda masukkan tidak sesuai.",
+      redirectTo: getDashboardPath(roleData.name),
+      userSession,
+    };
+  } catch (error) {
+    console.error("Login action network/system error:", error);
+    return {
+      error: "network",
+      message: "Koneksi bermasalah. Periksa koneksi internet Anda lalu coba lagi.",
     };
   }
-
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-  if (authError || !authData.user) {
-    return {
-      error: "invalid",
-      message: "Username atau kata sandi yang Anda masukkan tidak sesuai.",
-    };
-  }
-
-  const { data: appUser, error: appUserError } = await supabase
-    .from("users")
-    .select("id, role_id, status")
-    .eq("auth_user_id", authData.user.id)
-    .single();
-
-  if (appUserError || !appUser) {
-    await supabase.auth.signOut();
-
-    return {
-      error: "no-user",
-      message: "Akun belum siap digunakan. Silakan hubungi operator sekolah.",
-    };
-  }
-
-  if (appUser.status !== "active") {
-    await supabase.auth.signOut();
-
-    return {
-      error: "inactive",
-      message: "Akun Anda sedang tidak aktif. Silakan hubungi operator sekolah.",
-    };
-  }
-
-  if (!appUser.role_id) {
-    await supabase.auth.signOut();
-
-    return {
-      error: "no-role",
-      message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
-    };
-  }
-
-  const { data: roleData, error: roleError } = await supabase
-    .from("roles")
-    .select("name")
-    .eq("id", appUser.role_id)
-    .single();
-
-  if (roleError || !roleData?.name) {
-    await supabase.auth.signOut();
-
-    return {
-      error: "no-role",
-      message: "Akun belum memiliki akses. Silakan hubungi operator sekolah.",
-    };
-  }
-
-  return {
-    redirectTo: getDashboardPath(roleData.name),
-  };
 }
 
-async function resolveLoginEmail(identifier: string) {
+async function resolveLoginEmailWithUserCheck(
+  identifier: string,
+): Promise<{ exists: boolean; email: string | null }> {
   const value = identifier.trim();
+  const supabase = await createClient();
 
   if (value.includes("@")) {
-    return value;
+    const { data } = await supabase
+      .from("users")
+      .select("email")
+      .eq("email", value)
+      .maybeSingle();
+
+    if (data?.email) {
+      return { exists: true, email: data.email };
+    }
+    // If not found in custom users table, still return email to attempt supabase auth directly
+    return { exists: true, email: value };
   }
 
-  const supabase = await createClient();
   const { data } = await supabase
     .from("users")
     .select("email")
     .eq("username", value)
     .maybeSingle();
 
-  return data?.email ?? null;
+  if (data?.email) {
+    return { exists: true, email: data.email };
+  }
+
+  return { exists: false, email: null };
 }
 
 function isDemoRole(value: FormDataEntryValue | null): value is DemoRole {
   return typeof value === "string" && demoRoles.includes(value as DemoRole);
 }
+

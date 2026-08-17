@@ -14,39 +14,30 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function PwaInstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const [isIos] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(userAgent);
+  });
   const [showIosGuide, setShowIosGuide] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(true); // default true until mounted
-
-  useEffect(() => {
-    // Check if already in standalone app mode
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
     const isStandaloneMode =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (isStandaloneMode) return true;
 
-    if (isStandaloneMode) {
-      setIsStandalone(true);
-      return;
-    }
-
-    // Check dismissed status from localStorage
     const dismissed = localStorage.getItem("cbt_pwa_banner_dismissed");
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
-      // Re-show after 3 days
       if (Date.now() - dismissedTime < 3 * 24 * 60 * 60 * 1000) {
-        return;
+        return true;
       }
     }
+    return false;
+  });
 
-    setIsDismissed(false);
-
-    // Detect iOS
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIos(isIosDevice);
-
+  useEffect(() => {
     // Listen for beforeinstallprompt event (Android / Chromium)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -81,7 +72,7 @@ export function PwaInstallBanner() {
     localStorage.setItem("cbt_pwa_banner_dismissed", Date.now().toString());
   };
 
-  if (isStandalone || isDismissed) {
+  if (isDismissed) {
     return null;
   }
 
