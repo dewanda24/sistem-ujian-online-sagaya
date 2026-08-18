@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -38,11 +38,17 @@ type LoginFormProps = {
 
 export function LoginForm({ sessionMessage }: LoginFormProps) {
   // Splash Screen only shows on initial fresh app load, NEVER when sessionMessage/logout exists
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (sessionMessage) return false;
-    return true;
-  });
+  const [showSplash, setShowSplash] = useState(false);
+
+  useEffect(() => {
+    if (!sessionMessage) {
+      const hasShown = sessionStorage.getItem("sagaya_splash_shown");
+      if (!hasShown) {
+        setShowSplash(true);
+        sessionStorage.setItem("sagaya_splash_shown", "1");
+      }
+    }
+  }, [sessionMessage]);
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");

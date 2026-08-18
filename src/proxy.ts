@@ -45,6 +45,7 @@ export async function proxy(request: NextRequest) {
   );
 
   const isAuthPage = pathname === "/login";
+  const isServerAction = request.headers.has("next-action");
 
   if (!user && isProtectedRoute) {
     return redirectWithSessionCookies(
@@ -84,6 +85,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     isDemoUser &&
+    !isServerAction &&
     isMutationRequest(request) &&
     !isDemoMutationAllowed(pathname)
   ) {
@@ -93,7 +95,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (isAuthPage) {
+  if (isAuthPage && !isServerAction && request.method === "GET") {
     return redirectWithSessionCookies(
       request,
       response,
@@ -118,6 +120,8 @@ function isMutationRequest(request: NextRequest) {
 
 function isDemoMutationAllowed(pathname: string) {
   return (
+    pathname === "/login" ||
+    pathname.startsWith("/login") ||
     pathname.startsWith("/dashboard/student/active-exams") ||
     pathname.startsWith("/dashboard/exam-room") ||
     pathname.startsWith("/api/exam-answers") ||

@@ -7,19 +7,18 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Clock3,
-  Info,
   LayoutGrid,
-  Maximize2,
-  Save,
   Send,
-  Wifi,
-  WifiOff,
-  X,
+  Trash2,
 } from "lucide-react";
 
-import { StatusPill } from "@/components/dashboard/status-pill";
 import { submitAttemptAction } from "@/features/exam-room/actions";
+import { ExamHeaderBar } from "@/features/exam-room/components/exam-header-bar";
+import { ExamOptionsMenuDialog } from "@/features/exam-room/components/exam-options-menu-dialog";
+import { ExamQuestionPaletteModal } from "@/features/exam-room/components/exam-question-palette-modal";
+import { ExamInfoDetailDialog } from "@/features/exam-room/components/exam-info-detail-dialog";
+import { ExamConnectionDialog } from "@/features/exam-room/components/exam-connection-dialog";
+import { ExamQuickInfoSection } from "@/features/exam-room/components/exam-quick-info-section";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import { formatJakartaDateTime } from "@/lib/date-time";
@@ -97,6 +96,7 @@ type ExamRoomWorkspaceProps = {
     lock_reason?: string | null;
     exam_schedules?: {
       title?: string | null;
+      start_at?: string | null;
       end_at?: string | null;
       exam_packages?: {
         title?: string | null;
@@ -149,59 +149,57 @@ export function ExamRoomWorkspace({
       ]),
     ),
   );
+  const [saveStatus, setSaveStatus] = useState<Record<string, SaveState>>({});
+  const [, setSaveMessage] = useState<string>("Semua jawaban otomatis tersimpan.");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(() =>
+    getRemainingSeconds(attempt.exam_schedules?.end_at, new Date(serverNow).getTime()),
+  );
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [sessionConflict, setSessionConflict] = useState(false);
+  const [submitLocked, setSubmitLocked] = useState(false);
+  const [violationCount, setViolationCount] = useState(0);
+  const [warning, setWarning] = useState<{
+    count: number;
+    title: string;
+    message: string;
+  } | null>(null);
+
+  // Dialog & Modal States
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const [isPaletteModalOpen, setIsPaletteModalOpen] = useState(false);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+  const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
+  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
+
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(() =>
     readFlaggedQuestions(attempt.id),
   );
   const [fontSize, setFontSize] = useState<FontSizeOption>(() =>
     readFontSizePreference(),
   );
-  const [saveStatus, setSaveStatus] = useState<
-    Record<string, SaveState>
-  >({});
-  const [saveMessage, setSaveMessage] = useState("");
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
+  const [examSessionId] = useState(() =>
+    getOrCreateExamSessionId(attempt.id),
   );
-  const [examSessionId] = useState(() => getOrCreateExamSessionId(attempt.id));
-  const [sessionConflict, setSessionConflict] = useState(false);
-  const [submitLocked, setSubmitLocked] = useState(false);
-  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
-  const [warning, setWarning] = useState<{
-    count: number;
-    title: string;
-    message: string;
-  } | null>(null);
-  const [violationCount, setViolationCount] = useState(0);
-  const [remainingSeconds, setRemainingSeconds] = useState(() =>
-    getRemainingSeconds(attempt.exam_schedules?.end_at, new Date(serverNow).getTime()),
-  );
+
+  const answersRef = useRef(answers);
+  const saveStatusRef = useRef(saveStatus);
   const debounceTimers = useRef<Record<string, number>>({});
   const retryTimers = useRef<Record<string, number>>({});
   const saveVersions = useRef<Record<string, number>>({});
   const dirtyAnswerIdsRef = useRef<Set<string>>(new Set());
-  const saveAnswerRef = useRef<
-    | ((
-        questionId: string,
-        nextAnswer: AnswerState,
-        attemptNumber?: number,
-        version?: number,
-      ) => Promise<boolean>)
-    | null
-  >(null);
-  const answersRef = useRef<Record<string, AnswerState>>({});
-  const saveStatusRef = useRef<Record<string, SaveState>>({});
-  const submitFormRef = useRef<HTMLFormElement>(null);
-  const submitConfirmedRef = useRef(false);
   const submitFlushInProgressRef = useRef(false);
   const examRoomRef = useRef<HTMLDivElement>(null);
+  const submitFormRef = useRef<HTMLFormElement>(null);
+  const submitConfirmedRef = useRef(false);
   const autoSubmittingRef = useRef(false);
   const timeExpiredSubmitRef = useRef(false);
   const violationCountRef = useRef(violationCount);
   const lastViolationAtRef = useRef(0);
   const restoredDraftRef = useRef(false);
+
   const isLocked = Boolean(attempt.locked_at);
   const isReadOnly = attempt.status !== "in_progress" || isLocked || sessionConflict;
   const schedule = attempt.exam_schedules;
@@ -250,7 +248,6 @@ export function ExamRoomWorkspace({
     !isReadOnly && !submitLocked && pendingSaveCount === 0 && failedSaveCount === 0;
   const saveSummary = getSaveSummary(pendingSaveCount, failedSaveCount);
   const saveStatusText = getSaveStatusText(pendingSaveCount, failedSaveCount);
-  const connectionText = isOnline ? "Online" : "Offline";
 
   const sendExamEvent = useCallback(
     (eventType: ExamEventType, metadata?: Record<string, unknown>) => {
@@ -293,7 +290,6 @@ export function ExamRoomWorkspace({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const storedCount = getStoredViolationCount(attempt.id);
-
       violationCountRef.current = storedCount;
       setViolationCount(storedCount);
     }, 0);
@@ -309,7 +305,7 @@ export function ExamRoomWorkspace({
     };
     const onOffline = () => {
       setIsOnline(false);
-      setSaveMessage("Browser offline. Jawaban akan perlu disimpan ulang.");
+      setSaveMessage("Browser offline. Jawaban disimpan lokal.");
       sendExamEvent("offline");
     };
 
@@ -387,7 +383,7 @@ export function ExamRoomWorkspace({
       count: violationCountRef.current,
       title: "Waktu ujian habis",
       message:
-        "Batas waktu ujian telah berakhir. Jawaban akan dikumpulkan otomatis.",
+        "Batas waktu ujian telah berakhir. Lembar jawaban akan dikumpulkan otomatis.",
     });
     window.setTimeout(() => submitFormRef.current?.requestSubmit(), 800);
   }, [isReadOnly, remainingSeconds, schedule?.end_at]);
@@ -429,7 +425,7 @@ export function ExamRoomWorkspace({
           count: nextCount,
           title: "Ujian dikumpulkan otomatis",
           message:
-            `Sistem mendeteksi ${maxAntiCheatViolations} pelanggaran. Jawaban akan dikumpulkan otomatis.`,
+            `Sistem mendeteksi ${maxAntiCheatViolations} pelanggaran. Jawaban dikumpulkan otomatis.`,
         });
         autoSubmittingRef.current = true;
         setSubmitLocked(true);
@@ -439,7 +435,7 @@ export function ExamRoomWorkspace({
 
       setWarning({
         count: nextCount,
-        title: nextCount === 1 ? "Peringatan ujian" : "Peringatan keras",
+        title: nextCount === 1 ? "Peringatan Ujian" : "Peringatan Keras",
         message,
       });
     };
@@ -447,7 +443,7 @@ export function ExamRoomWorkspace({
     const onBlur = () =>
       registerViolation(
         "tab_blur",
-        "Peringatan ujian",
+        "Peringatan Ujian",
         "Jendela ujian kehilangan fokus. Tetap berada di halaman ujian sampai selesai.",
       );
     const onFocus = () => sendExamEvent("tab_focus");
@@ -455,7 +451,7 @@ export function ExamRoomWorkspace({
       if (document.hidden) {
         registerViolation(
           "visibility_hidden",
-          "Peringatan ujian",
+          "Peringatan Ujian",
           "Perpindahan tab atau minimize browser terdeteksi.",
         );
         return;
@@ -468,7 +464,7 @@ export function ExamRoomWorkspace({
         registerViolation(
           "fullscreen_exit",
           "Keluar layar penuh terdeteksi",
-          "Aktifkan kembali layar penuh dan lanjutkan ujian dengan tertib.",
+          "Lanjutkan ujian dengan tertib di halaman ini.",
         );
       }
     };
@@ -583,16 +579,11 @@ export function ExamRoomWorkspace({
       if (!navigator.onLine) {
         setIsOnline(false);
         setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
-        setSaveMessage("Browser offline. Jawaban belum tersimpan.");
+        setSaveMessage("Browser offline. Jawaban tersimpan di memori lokal.");
         return false;
       }
 
       setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
-      setSaveMessage(
-        attemptNumber > 0
-          ? `Mencoba simpan ulang jawaban (${attemptNumber + 1}/3)...`
-          : "Menyimpan jawaban...",
-      );
 
       const response = await fetch("/api/exam-answers", {
         method: "POST",
@@ -601,130 +592,127 @@ export function ExamRoomWorkspace({
           attempt_id: attempt.id,
           question_id: questionId,
           session_id: examSessionId,
-          selected_option_id: nextAnswer.selected_option_id ?? "",
+          selected_option_id: nextAnswer.selected_option_id ?? null,
           essay_answer: nextAnswer.essay_answer ?? "",
         }),
       }).catch(() => null);
 
-      if (saveVersions.current[questionId] !== version) {
+      if (version < (saveVersions.current[questionId] ?? version)) {
+        return false;
+      }
+
+      if (response?.status === 409) {
+        setSessionConflict(true);
+        setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
+        setSaveMessage("Pengerjaan aktif di perangkat lain.");
         return false;
       }
 
       if (!response?.ok) {
-        const body = response ? await response.json().catch(() => null) : null;
-
-        if (attemptNumber < 2 && navigator.onLine) {
-          setSaveMessage(body?.message ?? "Gagal menyimpan. Mencoba ulang...");
+        if (attemptNumber < 2) {
+          setSaveMessage(`Menyimpan ulang jawaban (${attemptNumber + 2}/3)...`);
           retryTimers.current[questionId] = window.setTimeout(() => {
-            void saveAnswerRef.current?.(
-              questionId,
-              nextAnswer,
-              attemptNumber + 1,
-              version,
-            );
-          }, 1200 * (attemptNumber + 1));
+            void saveAnswer(questionId, nextAnswer, attemptNumber + 1, version);
+          }, 2000 * (attemptNumber + 1));
           return false;
         }
 
         setSaveStatus((current) => ({ ...current, [questionId]: "error" }));
-        setSaveMessage(body?.message ?? "Jawaban gagal disimpan.");
+        setSaveMessage("Gagal menyimpan jawaban. Periksa koneksi.");
         return false;
       }
 
       setSaveStatus((current) => ({ ...current, [questionId]: "saved" }));
-      setLastSavedAt(new Date().toISOString());
+      setLastSavedAt(new Date().toLocaleTimeString("id-ID"));
       dirtyAnswerIdsRef.current.delete(questionId);
       clearAnswerDraft(attempt.id, questionId);
-      setSaveMessage("Jawaban tersimpan.");
       return true;
     },
     [attempt.id, examSessionId],
   );
 
-  useEffect(() => {
-    saveAnswerRef.current = saveAnswer;
+  const flushPendingAnswersBeforeSubmit = useCallback(async () => {
+    const dirtyIds = Array.from(dirtyAnswerIdsRef.current);
+    if (dirtyIds.length === 0) {
+      return true;
+    }
+
+    const results = await Promise.all(
+      dirtyIds.map((questionId) => {
+        const answer = answersRef.current[questionId];
+        if (!answer) return Promise.resolve(true);
+        return saveAnswer(questionId, answer);
+      }),
+    );
+
+    return results.every(Boolean);
   }, [saveAnswer]);
 
-  const updateAnswer = (questionId: string, nextAnswer: AnswerState) => {
-    dirtyAnswerIdsRef.current.add(questionId);
-    persistAnswerDraft(attempt.id, questionId, nextAnswer);
-    setAnswers((current) => ({
-      ...current,
-      [questionId]: {
-        ...current[questionId],
-        ...nextAnswer,
-      },
-    }));
-  };
+  const scheduleSave = useCallback(
+    (questionId: string, nextAnswer: AnswerState) => {
+      if (isReadOnly) {
+        return;
+      }
+
+      dirtyAnswerIdsRef.current.add(questionId);
+      persistAnswerDraft(attempt.id, questionId, nextAnswer);
+      window.clearTimeout(debounceTimers.current[questionId]);
+      window.clearTimeout(retryTimers.current[questionId]);
+      setSaveStatus((current) => ({ ...current, [questionId]: "saving" }));
+
+      debounceTimers.current[questionId] = window.setTimeout(() => {
+        void saveAnswer(questionId, nextAnswer);
+      }, 700);
+    },
+    [attempt.id, isReadOnly, saveAnswer],
+  );
 
   const handleOptionChange = (questionId: string, optionId: string) => {
-    const nextAnswer = {
+    if (isReadOnly) return;
+    const nextAnswer: AnswerState = {
+      ...answers[questionId],
       selected_option_id: optionId,
+    };
+    setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
+    scheduleSave(questionId, nextAnswer);
+  };
+
+  const handleClearAnswer = (questionId: string) => {
+    if (isReadOnly) return;
+    const nextAnswer: AnswerState = {
+      selected_option_id: null,
       essay_answer: "",
     };
-
-    updateAnswer(questionId, nextAnswer);
-    void saveAnswer(questionId, nextAnswer);
+    setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
+    scheduleSave(questionId, nextAnswer);
   };
 
   const handleEssayChange = (questionId: string, value: string) => {
-    const nextAnswer = {
-      selected_option_id: null,
+    if (isReadOnly) return;
+    const nextAnswer: AnswerState = {
+      ...answers[questionId],
       essay_answer: value,
     };
-
-    updateAnswer(questionId, nextAnswer);
-    window.clearTimeout(debounceTimers.current[questionId]);
-    debounceTimers.current[questionId] = window.setTimeout(() => {
-      void saveAnswer(questionId, nextAnswer);
-    }, 700);
-  };
-
-  const requestFullscreen = () => {
-    void (examRoomRef.current ?? document.documentElement).requestFullscreen?.();
+    setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
+    scheduleSave(questionId, nextAnswer);
   };
 
   const retryFailedAnswer = (questionId: string) => {
     const answer = answers[questionId];
-
-    if (!answer) {
-      setSaveMessage("Belum ada jawaban untuk disimpan ulang.");
-      return;
+    if (answer) {
+      void saveAnswer(questionId, answer);
     }
-
-    void saveAnswer(questionId, answer);
   };
 
-  const flushPendingAnswersBeforeSubmit = async () => {
-    const questionIds = Array.from(dirtyAnswerIdsRef.current);
+  const retrySyncAllFailed = () => {
+    const failedIds = Object.entries(saveStatus)
+      .filter(([, st]) => st === "error")
+      .map(([id]) => id);
 
-    if (questionIds.length === 0) {
-      return true;
-    }
-
-    questionIds.forEach((questionId) => {
-      window.clearTimeout(debounceTimers.current[questionId]);
+    failedIds.forEach((id) => {
+      const ans = answers[id];
+      if (ans) void saveAnswer(id, ans);
     });
-
-    setSaveMessage(
-      `Menyimpan ${questionIds.length} jawaban terakhir sebelum submit...`,
-    );
-
-    const results = await Promise.all(
-      questionIds.map((questionId) => {
-        const answer = answersRef.current[questionId];
-
-        return answer ? saveAnswer(questionId, answer) : Promise.resolve(true);
-      }),
-    );
-
-    const ok = results.every(Boolean);
-
-    if (!ok) {
-      setSaveMessage("Jawaban terakhir belum berhasil tersimpan. Coba lagi sebelum submit.");
-    }
-
-    return ok;
   };
 
   useEffect(() => {
@@ -733,38 +721,26 @@ export function ExamRoomWorkspace({
     }
 
     restoredDraftRef.current = true;
-    const draftAnswers = readAnswerDrafts(attempt.id);
-    const questionIds = new Set(questions.map(({ question }) => question.id));
-    const draftEntries = Object.entries(draftAnswers).filter(([questionId]) =>
-      questionIds.has(questionId),
-    );
-
-    if (draftEntries.length === 0) {
-      return;
-    }
-
     const timer = window.setTimeout(() => {
+      const drafts = readAnswerDrafts(attempt.id);
+      const validQuestionIds = new Set(questions.map(({ question }) => question.id));
+      const draftEntries = Object.entries(drafts).filter(([id]) =>
+        validQuestionIds.has(id),
+      );
+
+      if (draftEntries.length === 0) {
+        return;
+      }
+
       setAnswers((current) => ({
         ...current,
         ...Object.fromEntries(
           draftEntries.map(([questionId, answer]) => [
             questionId,
-            {
-              ...current[questionId],
-              ...answer,
-            },
+            { ...current[questionId], ...answer },
           ]),
         ),
       }));
-      setSaveStatus((current) => ({
-        ...current,
-        ...Object.fromEntries(
-          draftEntries.map(([questionId]) => [questionId, "error" as SaveState]),
-        ),
-      }));
-      setSaveMessage(
-        `Cadangan offline dipulihkan. Menyimpan ulang ${draftEntries.length} jawaban...`,
-      );
 
       if (navigator.onLine) {
         draftEntries.forEach(([questionId, answer]) => {
@@ -776,49 +752,21 @@ export function ExamRoomWorkspace({
     return () => window.clearTimeout(timer);
   }, [attempt.id, isReadOnly, questions, saveAnswer]);
 
-  useEffect(() => {
-    if (!isOnline || isReadOnly) {
-      return;
-    }
-
-    const failedQuestionIds = Object.entries(saveStatusRef.current)
-      .filter(([, status]) => status === "error")
-      .map(([questionId]) => questionId);
-
-    if (failedQuestionIds.length === 0) {
-      return;
-    }
-
-    setSaveMessage(
-      `Koneksi kembali. Menyimpan ulang ${failedQuestionIds.length} jawaban tertunda...`,
-    );
-
-    failedQuestionIds.forEach((questionId) => {
-      const answer = answersRef.current[questionId];
-
-      if (answer) {
-        void saveAnswer(questionId, answer);
-      }
-    });
-  }, [isOnline, isReadOnly, saveAnswer]);
-
   const closeWarningAndRefocus = () => {
     setWarning(null);
-
-    if (!document.fullscreenElement) {
-      requestFullscreen();
-    }
   };
 
   if (!currentQuestion) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+      <div className="mx-auto max-w-md my-12 rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
         Belum ada soal pada paket ujian ini.
       </div>
     );
   }
 
   const isCurrentFlagged = flaggedQuestions.has(currentQuestion.id);
+  const currentAnswer = answers[currentQuestion.id];
+  const hasCurrentAnswer = isAnswered(currentAnswer);
 
   const fontSizeClasses = {
     sm: "text-xs md:text-sm leading-relaxed",
@@ -827,404 +775,267 @@ export function ExamRoomWorkspace({
     xl: "text-lg md:text-xl leading-relaxed",
   };
 
-  const timerTone =
-    remainingSeconds <= 300
-      ? "danger"
-      : remainingSeconds <= 600
-        ? "warning"
-        : "normal";
-
   return (
     <div
       ref={examRoomRef}
-      className="space-y-3 bg-[#F8FAFC] pb-24 select-none [:fullscreen]:min-h-screen [:fullscreen]:overflow-y-auto [:fullscreen]:bg-[#F8FAFC] [:fullscreen]:p-4 md:space-y-4 md:pb-6"
+      className="min-h-screen bg-[#F8FAFC] pb-24 select-none md:pb-8"
     >
-      {/* Top Distraction-Free Exam Header */}
-      <header className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-md md:px-5 md:py-3.5">
-        <div className="flex items-center justify-between gap-2">
-          {/* Timer & Subject Info */}
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            {/* Color-Coded Adaptive Timer */}
-            <div
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all shadow-xs sm:px-3.5 sm:py-2 sm:text-sm",
-                timerTone === "danger" &&
-                  "bg-red-600 text-white animate-pulse shadow-red-200 ring-2 ring-red-300",
-                timerTone === "warning" &&
-                  "bg-amber-500 text-white shadow-amber-100 ring-1 ring-amber-300",
-                timerTone === "normal" &&
-                  "bg-slate-900 text-white",
-              )}
-              title="Sisa Waktu Ujian"
-            >
-              <Clock3 className="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
-              <span className="tabular-nums tracking-wide">
-                {formatRemainingTime(remainingSeconds)}
-              </span>
-            </div>
-
-            {/* Quick Status Chips */}
-            <div className="hidden items-center gap-1.5 sm:flex">
-              {/* Online/Offline Status */}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold",
-                  isOnline
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-red-200 bg-red-50 text-red-700 animate-bounce",
-                )}
-              >
-                {isOnline ? (
-                  <Wifi className="size-3" />
-                ) : (
-                  <WifiOff className="size-3" />
-                )}
-                <span>{connectionText}</span>
-              </span>
-
-              {/* Auto Save Status */}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium",
-                  saveSummary === "error"
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : saveSummary === "saving"
-                      ? "border-amber-200 bg-amber-50 text-amber-700"
-                      : "border-slate-200 bg-slate-50 text-slate-600",
-                )}
-              >
-                {saveSummary === "error" ? (
-                  <X className="size-3 text-red-600" />
-                ) : saveSummary === "saving" ? (
-                  <Save className="size-3 text-amber-600 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="size-3 text-emerald-600" />
-                )}
-                <span className="hidden md:inline">{saveStatusText}</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Right Controls: Font Scaler, Info & Fullscreen */}
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {/* Font Size Scaler (A- / A / A+) */}
-            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5 text-xs font-bold text-slate-700 shadow-2xs">
-              <button
-                type="button"
-                onClick={() =>
-                  handleFontSizeChange(
-                    fontSize === "xl" ? "lg" : fontSize === "lg" ? "base" : "sm",
-                  )
-                }
-                title="Perkecil Ukuran Teks"
-                className="flex size-7 items-center justify-center rounded-lg hover:bg-white active:scale-90 transition-all disabled:opacity-30"
-                disabled={fontSize === "sm"}
-              >
-                <span className="text-[11px]">A-</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFontSizeChange("base")}
-                title="Ukuran Teks Normal"
-                className={cn(
-                  "flex h-7 px-1.5 items-center justify-center rounded-lg text-[11px] transition-all",
-                  fontSize === "base" && "bg-white text-blue-600 shadow-2xs font-extrabold",
-                )}
-              >
-                A
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleFontSizeChange(
-                    fontSize === "sm" ? "base" : fontSize === "base" ? "lg" : "xl",
-                  )
-                }
-                title="Perbesar Ukuran Teks"
-                className="flex size-7 items-center justify-center rounded-lg hover:bg-white active:scale-90 transition-all disabled:opacity-30"
-                disabled={fontSize === "xl"}
-              >
-                <span className="text-[12px]">A+</span>
-              </button>
-            </div>
-
-            {/* Exam Info Detail Trigger */}
-            <button
-              type="button"
-              onClick={() => setIsDetailOpen(true)}
-              className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-all active:scale-90 hover:bg-slate-50 hover:text-slate-900"
-              aria-label="Buka detail ujian"
-              title="Detail Ujian"
-            >
-              <Info className="size-4" aria-hidden="true" />
-            </button>
-
-            {/* Fullscreen Toggle */}
-            {!isReadOnly && (
-              <button
-                type="button"
-                onClick={requestFullscreen}
-                className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-all active:scale-90 hover:bg-slate-50 hover:text-slate-900"
-                aria-label="Masuk layar penuh"
-                title="Layar Penuh"
-              >
-                <Maximize2 className="size-4" aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Detail Dialog */}
-      <ExamDetailDialog
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        items={[
-          {
-            label: "Status",
-            value: <StatusPill value={attempt.status} />,
-          },
-          {
-            label: "Sisa Waktu",
-            value: (
-              <span
-                className={cn(
-                  "font-bold",
-                  remainingSeconds <= 300 && "text-red-600",
-                )}
-              >
-                {formatRemainingTime(remainingSeconds)}
-              </span>
-            ),
-          },
-          {
-            label: "Koneksi",
-            value: connectionText,
-          },
-          {
-            label: "Penyimpanan",
-            value: saveStatusText,
-          },
-          ...(lastSavedAt
-            ? [
-                {
-                  label: "Terakhir Tersimpan",
-                  value: formatDateTime(lastSavedAt),
-                },
-              ]
-            : []),
-          {
-            label: "Waktu Mulai",
-            value: formatDateTime(attempt.started_at),
-          },
-          {
-            label: "Batas Waktu",
-            value: formatDateTime(schedule?.end_at),
-          },
-          {
-            label: "Pelanggaran Anti-Cheat",
-            value: `${violationCount}/${maxAntiCheatViolations}`,
-          },
-          {
-            label: "Progres Terjawab",
-            value: `${answeredCount} dari ${questions.length} soal`,
-          },
-          {
-            label: "Ditandai Ragu-Ragu",
-            value: `${flaggedCount} soal`,
-          },
-        ]}
+      {/* 7.7 STATUS UJIAN (SELALU TERLIHAT) Header Bar */}
+      <ExamHeaderBar
+        examTitle={schedule?.title ?? "Ruang Ujian"}
+        subjectName={examPackage?.subjects?.name ?? examPackage?.title ?? "Mata Pelajaran"}
+        totalQuestions={questions.length}
+        answeredCount={answeredCount}
+        currentQuestionNumber={activeIndex + 1}
+        remainingSeconds={remainingSeconds}
+        isOnline={isOnline}
+        saveSummary={saveSummary}
+        saveStatusText={saveStatusText}
+        onOpenMenu={() => setIsOptionsMenuOpen(true)}
+        onOpenPalette={() => setIsPaletteModalOpen(true)}
       />
 
-      {isLocked ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800 shadow-xs">
-          🔒 Pengerjaan dikunci oleh pengawas.{" "}
-          {attempt.lock_reason ?? "Tunggu instruksi sebelum melanjutkan."}
-        </div>
-      ) : null}
+      {/* Main Workspace Container */}
+      <main className="mx-auto max-w-7xl px-3 py-3 sm:px-5 sm:py-5 space-y-4">
+        {/* Security & Lock Alerts if any */}
+        {isLocked && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs sm:text-sm font-medium text-red-800 shadow-2xs">
+            🔒 Pengerjaan dikunci oleh pengawas. {attempt.lock_reason ?? "Tunggu instruksi sebelum melanjutkan."}
+          </div>
+        )}
 
-      {sessionConflict ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800 shadow-xs">
-          ⚠️ Pengerjaan sedang aktif di perangkat atau tab lain. Tutup sesi lain atau tunggu sekitar 2 menit sebelum melanjutkan di perangkat ini.
-        </div>
-      ) : null}
+        {sessionConflict && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs sm:text-sm font-medium text-red-800 shadow-2xs">
+            ⚠️ Sesi ujian aktif di tab atau perangkat lain. Tutup sesi lain sebelum melanjutkan.
+          </div>
+        )}
 
-      {/* Main Workspace Layout */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Question Panel */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:p-6">
-          {/* Question Header */}
-          <div className="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-3.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-extrabold text-white shadow-2xs">
-                {activeIndex + 1}
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Soal {activeIndex + 1} dari {questions.length}
-                </p>
-                <h2 className="text-sm font-bold text-slate-900">
-                  {examPackage?.subjects?.name ?? "Mata Pelajaran"}
-                </h2>
+        {/* 2-Column Responsive Workspace Grid */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          {/* LEFT: 7.2 SOAL AKTIF (MENJAWAB) & 7.6 NAVIGASI SOAL */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-7 flex flex-col justify-between">
+            <div>
+              {/* Question Header & Meta Bar */}
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow-2xs">
+                      {activeIndex + 1}
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Soal {activeIndex + 1} dari {questions.length}
+                      </p>
+                      <h1 className="text-sm sm:text-base font-bold text-slate-900">
+                        {examPackage?.subjects?.name ?? "Mata Pelajaran"}
+                      </h1>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right controls: Badges, Ragu-ragu & Font Scaler */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                    {currentQuestion.type === "essay" ? "Esai" : "Pilihan Ganda"}
+                  </span>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                    {Number(currentQuestion.point ?? 0)} Poin
+                  </span>
+
+                  {/* Font Size Scaler */}
+                  <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5 text-xs font-bold text-slate-700 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleFontSizeChange(
+                          fontSize === "xl" ? "lg" : fontSize === "lg" ? "base" : "sm",
+                        )
+                      }
+                      title="Perkecil Ukuran Teks"
+                      className="flex size-7 items-center justify-center rounded-lg hover:bg-white active:scale-90 transition-all disabled:opacity-30"
+                      disabled={fontSize === "sm"}
+                    >
+                      <span className="text-[11px]">A-</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFontSizeChange("base")}
+                      title="Ukuran Normal"
+                      className={cn(
+                        "flex h-7 px-1.5 items-center justify-center rounded-lg text-[11px] transition-all",
+                        fontSize === "base" && "bg-white text-blue-600 shadow-2xs font-extrabold",
+                      )}
+                    >
+                      A
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleFontSizeChange(
+                          fontSize === "sm" ? "base" : fontSize === "base" ? "lg" : "xl",
+                        )
+                      }
+                      title="Perbesar Ukuran Teks"
+                      className="flex size-7 items-center justify-center rounded-lg hover:bg-white active:scale-90 transition-all disabled:opacity-30"
+                      disabled={fontSize === "xl"}
+                    >
+                      <span className="text-[12px]">A+</span>
+                    </button>
+                  </div>
+
+                  {/* Ragu-Ragu Button */}
+                  <button
+                    type="button"
+                    onClick={() => toggleFlagQuestion(currentQuestion.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all active:scale-95",
+                      isCurrentFlagged
+                        ? "border-amber-400 bg-amber-100 text-amber-900 shadow-2xs ring-1 ring-amber-400"
+                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800",
+                    )}
+                  >
+                    <Bookmark className={cn("size-3.5", isCurrentFlagged && "fill-amber-500 text-amber-600")} />
+                    <span>{isCurrentFlagged ? "Ragu-Ragu" : "Tandai Ragu"}</span>
+                  </button>
+
+                  {/* Clear answer button (Hapus Jawaban) */}
+                  {hasCurrentAnswer && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleClearAnswer(currentQuestion.id)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 active:scale-95 transition-all"
+                      title="Hapus Jawaban Pilihan Ini"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span className="hidden sm:inline">Hapus</span>
+                    </button>
+                  )}
+
+                  {saveStatus[currentQuestion.id] === "error" && (
+                    <button
+                      type="button"
+                      onClick={() => retryFailedAnswer(currentQuestion.id)}
+                      className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100 active:scale-95"
+                    >
+                      Coba Simpan Lagi
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Question Body */}
+              <div className={cn("space-y-4 py-5", fontSizeClasses[fontSize])}>
+                <QuestionStimulus stimulus={firstRelation(currentQuestion.question_stimuli)} />
+                <QuestionContent content={currentQuestion.content} />
+                <QuestionAttachments attachments={currentQuestion.question_attachments} />
+              </div>
+
+              {/* 7.2 Options List (A, B, C, D, E) or Essay Input */}
+              <div className="mt-2 space-y-3">
+                {currentQuestion.type === "multiple_choice" ? (
+                  (currentQuestion.question_options ?? [])
+                    .slice()
+                    .sort((a, b) => a.order_number - b.order_number)
+                    .map((option) => {
+                      const checked =
+                        answers[currentQuestion.id]?.selected_option_id === option.id;
+
+                      return (
+                        <label
+                          key={option.id}
+                          className={cn(
+                            "flex cursor-pointer items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4.5 font-medium transition-all duration-150 select-none active:scale-[0.99] min-h-[56px]",
+                            checked
+                              ? "border-[#2563EB] bg-[#EFF6FF] text-slate-950 shadow-xs ring-2 ring-blue-500/30"
+                              : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50/70",
+                            isReadOnly && "cursor-not-allowed opacity-70",
+                          )}
+                        >
+                          {/* Option Letter Badge (A, B, C, D, E) */}
+                          <div
+                            className={cn(
+                              "flex size-8 shrink-0 items-center justify-center rounded-xl font-black text-sm transition-colors",
+                              checked
+                                ? "bg-[#2563EB] text-white shadow-xs"
+                                : "bg-slate-100 text-slate-700",
+                            )}
+                          >
+                            {option.option_label}
+                          </div>
+
+                          <input
+                            type="radio"
+                            name={`question-${currentQuestion.id}`}
+                            value={option.id}
+                            checked={checked}
+                            disabled={isReadOnly}
+                            onChange={() =>
+                              handleOptionChange(currentQuestion.id, option.id)
+                            }
+                            className="sr-only"
+                          />
+
+                          <div
+                            className={cn(
+                              "flex-1 pt-0.5 break-words font-medium text-slate-900",
+                              fontSizeClasses[fontSize],
+                            )}
+                          >
+                            <QuestionMathRenderer content={option.option_text} />
+                          </div>
+                        </label>
+                      );
+                    })
+                ) : (
+                  <textarea
+                    value={answers[currentQuestion.id]?.essay_answer ?? ""}
+                    disabled={isReadOnly}
+                    onChange={(event) =>
+                      handleEssayChange(currentQuestion.id, event.target.value)
+                    }
+                    placeholder="Tulis jawaban esai kamu di sini dengan jelas..."
+                    className={cn(
+                      "min-h-48 w-full rounded-2xl border border-slate-200 bg-white p-4 leading-relaxed outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70",
+                      fontSizeClasses[fontSize],
+                    )}
+                  />
+                )}
               </div>
             </div>
 
-            {/* Badges & Ragu-Ragu Toggle (Desktop / Tablet view) */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="rounded-lg bg-slate-100 px-2 py-1 font-semibold text-slate-700">
-                {currentQuestion.type === "essay" ? "Esai" : "Pilihan Ganda"}
-              </span>
-              <span className="rounded-lg bg-slate-100 px-2 py-1 font-semibold text-slate-700">
-                {Number(currentQuestion.point ?? 0)} Poin
-              </span>
-
-              {/* Ragu-Ragu button in header */}
-              <button
-                type="button"
-                onClick={() => toggleFlagQuestion(currentQuestion.id)}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all active:scale-95",
-                  isCurrentFlagged
-                    ? "border-amber-400 bg-amber-100 text-amber-900 shadow-2xs ring-1 ring-amber-400"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800",
-                )}
-              >
-                <Bookmark className={cn("size-3.5", isCurrentFlagged && "fill-amber-500 text-amber-600")} />
-                <span>{isCurrentFlagged ? "Ragu-Ragu" : "Tandai Ragu"}</span>
-              </button>
-
-              {saveStatus[currentQuestion.id] === "error" ? (
-                <button
-                  type="button"
-                  onClick={() => retryFailedAnswer(currentQuestion.id)}
-                  className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100 active:scale-95"
-                >
-                  Coba Simpan Lagi
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Question Body */}
-          <div className={cn("space-y-4", fontSizeClasses[fontSize])}>
-            <QuestionStimulus stimulus={firstRelation(currentQuestion.question_stimuli)} />
-            <QuestionContent content={currentQuestion.content} />
-            <QuestionAttachments attachments={currentQuestion.question_attachments} />
-          </div>
-
-          {/* Options / Essay Input */}
-          <div className="mt-5 space-y-3 md:mt-7">
-            {currentQuestion.type === "multiple_choice" ? (
-              (currentQuestion.question_options ?? [])
-                .slice()
-                .sort((a, b) => a.order_number - b.order_number)
-                .map((option) => {
-                  const checked =
-                    answers[currentQuestion.id]?.selected_option_id === option.id;
-
-                  return (
-                    <label
-                      key={option.id}
-                      className={cn(
-                        "flex cursor-pointer items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4.5 font-medium transition-all duration-150 select-none active:scale-[0.99] min-h-[54px]",
-                        checked
-                          ? "border-blue-600 bg-blue-50/90 text-slate-950 shadow-xs ring-2 ring-blue-500/30"
-                          : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50/70",
-                        isReadOnly && "cursor-not-allowed opacity-70",
-                      )}
-                    >
-                      {/* Option Letter Badge (A, B, C, D, E) */}
-                      <div
-                        className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-xl font-extrabold text-sm transition-colors",
-                          checked
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : "bg-slate-100 text-slate-700",
-                        )}
-                      >
-                        {option.option_label}
-                      </div>
-
-                      <input
-                        type="radio"
-                        name={`question-${currentQuestion.id}`}
-                        value={option.id}
-                        checked={checked}
-                        disabled={isReadOnly}
-                        onChange={() =>
-                          handleOptionChange(currentQuestion.id, option.id)
-                        }
-                        className="sr-only"
-                      />
-
-                      <div
-                        className={cn(
-                          "flex-1 pt-0.5 break-words font-medium",
-                          fontSizeClasses[fontSize],
-                        )}
-                      >
-                        <QuestionMathRenderer content={option.option_text} />
-                      </div>
-                    </label>
-                  );
-                })
-            ) : (
-              <textarea
-                value={answers[currentQuestion.id]?.essay_answer ?? ""}
-                disabled={isReadOnly}
-                onChange={(event) =>
-                  handleEssayChange(currentQuestion.id, event.target.value)
-                }
-                placeholder="Tulis jawaban esai kamu di sini dengan jelas..."
-                className={cn(
-                  "min-h-48 w-full rounded-2xl border border-slate-200 bg-white p-4 leading-relaxed outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70",
-                  fontSizeClasses[fontSize],
-                )}
-              />
-            )}
-          </div>
-
-          {/* Desktop Navigation Footer */}
-          <div className="mt-7 hidden border-t border-slate-100 pt-4 md:flex md:items-center md:justify-between">
-            <p className="text-xs text-slate-500">
-              {saveMessage === "Jawaban tersimpan."
-                ? "Semua jawaban otomatis tersimpan."
-                : saveMessage}
-            </p>
-            <div className="flex gap-2.5">
+            {/* 7.6 DAFTAR SOAL (TENGAH LAYAR) In-Page Navigation Bar */}
+            <div className="mt-8 border-t border-slate-100 pt-5 flex items-center justify-between gap-3">
+              {/* Prev Button */}
               <button
                 type="button"
                 disabled={activeIndex === 0}
                 onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-800 shadow-2xs transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 text-xs sm:text-sm font-bold text-slate-800 shadow-2xs hover:bg-slate-50 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="size-4" />
                 <span>Sebelumnya</span>
               </button>
 
+              {/* Center Status / Palette Trigger */}
               <button
                 type="button"
-                onClick={() => toggleFlagQuestion(currentQuestion.id)}
-                className={cn(
-                  "inline-flex h-11 items-center gap-1.5 rounded-xl border px-4 text-sm font-bold transition active:scale-95",
-                  isCurrentFlagged
-                    ? "border-amber-400 bg-amber-100 text-amber-900 ring-1 ring-amber-400"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50",
-                )}
+                onClick={() => setIsPaletteModalOpen(true)}
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-4 text-xs sm:text-sm font-extrabold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition-all"
               >
-                <Bookmark className={cn("size-4", isCurrentFlagged && "fill-amber-500 text-amber-600")} />
-                <span>{isCurrentFlagged ? "Ragu-Ragu" : "Ragu-Ragu"}</span>
+                <LayoutGrid className="size-4" />
+                <span>SOAL {activeIndex + 1} / {questions.length}</span>
               </button>
 
+              {/* Next / Selesai Button */}
               {activeIndex === questions.length - 1 ? (
                 <button
                   type="button"
                   onClick={() => setIsSubmitConfirmOpen(true)}
                   disabled={!canSubmitManually}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 text-sm font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700 active:scale-95 disabled:opacity-50"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 text-xs sm:text-sm font-extrabold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all disabled:opacity-50"
                 >
                   <CheckCircle2 className="size-4" />
-                  <span>Selesai Ujian</span>
+                  <span>Selesai</span>
                 </button>
               ) : (
                 <button
@@ -1234,186 +1045,185 @@ export function ExamRoomWorkspace({
                       Math.min(questions.length - 1, index + 1),
                     )
                   }
-                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
                 >
-                  <span>Berikutnya</span>
+                  <span>Selanjutnya</span>
                   <ChevronRight className="size-4" />
                 </button>
               )}
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Desktop Sidebar: Question Palette */}
-        <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs lg:sticky lg:top-20 lg:self-start">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-950">Daftar Soal</h3>
-              <p className="text-xs text-slate-500">
-                Pilih nomor untuk berpindah soal.
-              </p>
+          {/* RIGHT: DESKTOP QUESTION PALETTE SIDEBAR (7.6) */}
+          <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24 lg:self-start hidden lg:block">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-950">Daftar Soal</h2>
+                <p className="text-xs text-slate-500">Pilih nomor untuk berpindah.</p>
+              </div>
+              <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-black text-blue-700">
+                {answeredCount}/{questions.length}
+              </span>
             </div>
-            <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-extrabold text-blue-700">
-              {answeredCount}/{questions.length}
-            </span>
-          </div>
 
-          {/* Grid Numbers */}
-          <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 lg:grid-cols-5">
-            {questions.map(({ question }, index) => {
-              const active = index === activeIndex;
-              const answered = isAnswered(answers[question.id]);
-              const flagged = flaggedQuestions.has(question.id);
+            {/* Grid Numbers */}
+            <div className="grid grid-cols-5 gap-2 max-h-[340px] overflow-y-auto pr-1">
+              {questions.map(({ question }, index) => {
+                const active = index === activeIndex;
+                const answered = isAnswered(answers[question.id]);
+                const flagged = flaggedQuestions.has(question.id);
 
-              return (
-                <button
-                  key={question.id}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={cn(
-                    "relative flex aspect-square items-center justify-center rounded-xl border text-xs font-bold transition-all duration-150 active:scale-90",
-                    active &&
-                      "border-blue-600 bg-blue-600 text-white shadow-xs ring-2 ring-blue-300",
-                    !active &&
-                      flagged &&
-                      "border-amber-400 bg-amber-400 text-amber-950 font-black shadow-2xs",
-                    !active &&
-                      !flagged &&
-                      answered &&
-                      "border-emerald-500 bg-emerald-500 text-white font-bold shadow-2xs",
-                    !active &&
-                      !flagged &&
-                      !answered &&
-                      "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                  )}
-                  aria-label={`Buka soal ${index + 1}`}
-                >
-                  <span>{index + 1}</span>
-                  {flagged && !active && (
-                    <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-800 text-[9px] text-white">
-                      ?
-                    </span>
-                  )}
-                  {answered && !flagged && !active && (
-                    <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-emerald-700 text-[8px] text-white">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Status Legend */}
-          <div className="grid gap-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
-            <div className="flex items-center gap-2 font-medium">
-              <span className="size-3.5 rounded-md bg-blue-600" />
-              <span>Sedang Dibuka ({activeIndex + 1})</span>
+                return (
+                  <button
+                    key={`sidebar-palette-${question.id}`}
+                    type="button"
+                    onClick={() => setActiveIndex(index)}
+                    className={cn(
+                      "relative flex aspect-square items-center justify-center rounded-xl border text-xs font-bold transition-all duration-150 active:scale-90",
+                      active &&
+                        "border-blue-600 bg-blue-600 text-white shadow-xs ring-2 ring-blue-300",
+                      !active &&
+                        flagged &&
+                        "border-amber-400 bg-amber-400 text-amber-950 font-black shadow-2xs",
+                      !active &&
+                        !flagged &&
+                        answered &&
+                        "border-emerald-500 bg-emerald-500 text-white font-bold shadow-2xs",
+                      !active &&
+                        !flagged &&
+                        !answered &&
+                        "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    )}
+                    aria-label={`Buka soal ${index + 1}`}
+                  >
+                    <span>{index + 1}</span>
+                    {flagged && !active && (
+                      <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-900 text-[8px] text-white">
+                        ?
+                      </span>
+                    )}
+                    {answered && !flagged && !active && (
+                      <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-emerald-700 text-[8px] text-white">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-2 font-medium">
-              <span className="size-3.5 rounded-md bg-emerald-500" />
-              <span>Sudah Dijawab ({answeredCount})</span>
-            </div>
-            <div className="flex items-center gap-2 font-medium">
-              <span className="size-3.5 rounded-md bg-amber-400" />
-              <span>Ragu-Ragu ({flaggedCount})</span>
-            </div>
-            <div className="flex items-center gap-2 font-medium">
-              <span className="size-3.5 rounded-md border border-slate-300 bg-white" />
-              <span>Belum Dijawab ({unansweredCount})</span>
-            </div>
-          </div>
 
-          {/* Submit Action Form */}
-          <form
-            ref={submitFormRef}
-            action={submitAttemptAction}
-            onSubmit={(event) => {
-              if (dirtyAnswerIdsRef.current.size > 0) {
-                event.preventDefault();
+            {/* 4-Color Status Legend (7.6) */}
+            <div className="grid gap-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
+              <div className="flex items-center gap-2 font-medium">
+                <span className="size-3.5 rounded-full bg-blue-600" />
+                <span>Sedang Dibuka ({activeIndex + 1})</span>
+              </div>
+              <div className="flex items-center gap-2 font-medium">
+                <span className="size-3.5 rounded-full bg-emerald-500" />
+                <span>Sudah Dijawab ({answeredCount})</span>
+              </div>
+              <div className="flex items-center gap-2 font-medium">
+                <span className="size-3.5 rounded-full bg-amber-400" />
+                <span>Ragu-Ragu ({flaggedCount})</span>
+              </div>
+              <div className="flex items-center gap-2 font-medium">
+                <span className="size-3.5 rounded-full border border-slate-300 bg-white" />
+                <span>Belum Dijawab ({unansweredCount})</span>
+              </div>
+            </div>
 
-                if (submitFlushInProgressRef.current) {
+            {/* Submit Action Form */}
+            <form
+              ref={submitFormRef}
+              action={submitAttemptAction}
+              onSubmit={(event) => {
+                if (dirtyAnswerIdsRef.current.size > 0) {
+                  event.preventDefault();
+                  if (submitFlushInProgressRef.current) return;
+                  submitFlushInProgressRef.current = true;
+                  const wasAutoSubmitting = autoSubmittingRef.current;
+                  const wasConfirmed = submitConfirmedRef.current;
+
+                  void flushPendingAnswersBeforeSubmit().then((ok) => {
+                    submitFlushInProgressRef.current = false;
+                    if (!ok) {
+                      autoSubmittingRef.current = false;
+                      submitConfirmedRef.current = false;
+                      setSubmitLocked(false);
+                      return;
+                    }
+                    autoSubmittingRef.current = wasAutoSubmitting;
+                    submitConfirmedRef.current = wasConfirmed;
+                    submitFormRef.current?.requestSubmit();
+                  });
                   return;
                 }
 
-                submitFlushInProgressRef.current = true;
-                const wasAutoSubmitting = autoSubmittingRef.current;
-                const wasConfirmed = submitConfirmedRef.current;
+                if (submitLocked && !autoSubmittingRef.current) {
+                  event.preventDefault();
+                  return;
+                }
 
-                void flushPendingAnswersBeforeSubmit().then((ok) => {
-                  submitFlushInProgressRef.current = false;
+                if (
+                  !autoSubmittingRef.current &&
+                  (pendingSaveCount > 0 || failedSaveCount > 0)
+                ) {
+                  event.preventDefault();
+                  sendExamEvent("failed_submit", {
+                    reason: pendingSaveCount > 0 ? "pending_save" : "failed_save",
+                    pending_save_count: pendingSaveCount,
+                    failed_save_count: failedSaveCount,
+                  });
+                  setSaveMessage(
+                    pendingSaveCount > 0
+                      ? "Tunggu proses simpan selesai sebelum submit."
+                      : "Ada jawaban gagal tersimpan. Coba simpan lagi.",
+                  );
+                  return;
+                }
 
-                  if (!ok) {
-                    autoSubmittingRef.current = false;
-                    submitConfirmedRef.current = false;
-                    setSubmitLocked(false);
-                    return;
-                  }
+                if (!autoSubmittingRef.current && !submitConfirmedRef.current) {
+                  event.preventDefault();
+                  setIsSubmitConfirmOpen(true);
+                  return;
+                }
 
-                  autoSubmittingRef.current = wasAutoSubmitting;
-                  submitConfirmedRef.current = wasConfirmed;
-                  submitFormRef.current?.requestSubmit();
-                });
-                return;
-              }
-
-              if (submitLocked && !autoSubmittingRef.current) {
-                event.preventDefault();
-                return;
-              }
-
-              if (
-                !autoSubmittingRef.current &&
-                (pendingSaveCount > 0 || failedSaveCount > 0)
-              ) {
-                event.preventDefault();
-                sendExamEvent("failed_submit", {
-                  reason: pendingSaveCount > 0 ? "pending_save" : "failed_save",
-                  pending_save_count: pendingSaveCount,
-                  failed_save_count: failedSaveCount,
-                });
-                setSaveMessage(
-                  pendingSaveCount > 0
-                    ? "Tunggu proses simpan selesai sebelum submit."
-                    : "Ada jawaban gagal tersimpan. Coba simpan lagi sebelum dikumpulkan.",
-                );
-                return;
-              }
-
-              if (!autoSubmittingRef.current && !submitConfirmedRef.current) {
-                event.preventDefault();
-                setIsSubmitConfirmOpen(true);
-                return;
-              }
-
-              submitConfirmedRef.current = false;
-              setSubmitLocked(true);
-            }}
-          >
-            <input type="hidden" name="attempt_id" value={attempt.id} />
-            <input type="hidden" name="session_id" value={examSessionId} />
-            <button
-              type="button"
-              onClick={() => setIsSubmitConfirmOpen(true)}
-              disabled={!canSubmitManually}
-              className="mt-2 flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 font-bold text-sm text-white shadow-sm transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-98 disabled:cursor-not-allowed disabled:opacity-50"
+                submitConfirmedRef.current = false;
+                setSubmitLocked(true);
+              }}
             >
-              <Send className="size-4" />
-              <span>
-                {submitLocked
-                  ? "Mengumpulkan..."
-                  : pendingSaveCount > 0
+              <input type="hidden" name="attempt_id" value={attempt.id} />
+              <input type="hidden" name="session_id" value={examSessionId} />
+              <button
+                type="button"
+                onClick={() => setIsSubmitConfirmOpen(true)}
+                disabled={!canSubmitManually}
+                className="mt-2 flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 font-bold text-sm text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 active:scale-98 transition-all disabled:opacity-50"
+              >
+                <Send className="size-4" />
+                <span>
+                  {submitLocked
+                    ? "Mengumpulkan..."
+                    : pendingSaveCount > 0
                     ? "Menunggu Simpan..."
                     : failedSaveCount > 0
-                      ? "Simpan Ulang Dulu"
-                      : "Kumpulkan Ujian"}
-              </span>
-            </button>
-          </form>
-        </aside>
-      </div>
+                    ? "Simpan Ulang Dulu"
+                    : "Kumpulkan Ujian"}
+                </span>
+              </button>
+            </form>
+          </aside>
+        </div>
 
-      {/* Ergonomic Mobile Floating Bottom Bar */}
+        {/* 7.8, 7.9, 7.10 Informasi Cepat & Tips Sukses */}
+        <ExamQuickInfoSection
+          remainingSeconds={remainingSeconds}
+          isOnline={isOnline}
+          onOpenSubmitConfirm={() => setIsSubmitConfirmOpen(true)}
+        />
+      </main>
+
+      {/* MOBILE FLOATING BOTTOM BAR */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_25px_rgba(15,23,42,0.12)] backdrop-blur-md select-none md:hidden">
         <div className="mx-auto flex max-w-md items-center justify-between gap-1.5">
           {/* Prev button */}
@@ -1421,13 +1231,13 @@ export function ExamRoomWorkspace({
             type="button"
             disabled={activeIndex === 0}
             onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-            className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 shadow-2xs transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 shadow-2xs transition-all active:scale-90 disabled:opacity-30"
             aria-label="Soal sebelumnya"
           >
             <ChevronLeft className="size-5" />
           </button>
 
-          {/* Ragu-Ragu toggle button */}
+          {/* Ragu-Ragu toggle */}
           <button
             type="button"
             onClick={() => toggleFlagQuestion(currentQuestion.id)}
@@ -1446,7 +1256,7 @@ export function ExamRoomWorkspace({
           {/* Question drawer trigger */}
           <button
             type="button"
-            onClick={() => setIsMobilePaletteOpen(true)}
+            onClick={() => setIsPaletteModalOpen(true)}
             className="flex flex-1 items-center justify-center gap-1.5 h-11 rounded-xl border border-blue-200 bg-blue-50/90 px-2 text-xs font-extrabold text-blue-700 shadow-2xs transition-all active:scale-95"
           >
             <LayoutGrid className="size-4 shrink-0" />
@@ -1479,123 +1289,55 @@ export function ExamRoomWorkspace({
         </div>
       </div>
 
-      {/* Mobile Question Palette Bottom Sheet Drawer */}
-      {isMobilePaletteOpen ? (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 md:hidden">
-          <button
-            type="button"
-            aria-label="Tutup daftar nomor soal"
-            className="absolute inset-0"
-            onClick={() => setIsMobilePaletteOpen(false)}
-          />
-          <div className="relative z-10 max-h-[85vh] flex flex-col w-full rounded-t-3xl border-t border-slate-200 bg-white p-4 pb-6 shadow-2xl animate-in slide-in-from-bottom duration-200">
-            {/* Drawer Handle */}
-            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+      {/* 7.4 MENU OPSI DIALOG */}
+      <ExamOptionsMenuDialog
+        isOpen={isOptionsMenuOpen}
+        onClose={() => setIsOptionsMenuOpen(false)}
+        isCurrentFlagged={isCurrentFlagged}
+        hasAnswer={hasCurrentAnswer}
+        isReadOnly={isReadOnly}
+        onToggleFlag={() => toggleFlagQuestion(currentQuestion.id)}
+        onClearAnswer={() => handleClearAnswer(currentQuestion.id)}
+        onOpenInfo={() => setIsInfoDialogOpen(true)}
+        onOpenConnection={() => setIsConnectionDialogOpen(true)}
+        onOpenSubmit={() => setIsSubmitConfirmOpen(true)}
+      />
 
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-950">Kisi-Kisi Nomor Soal</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Terjawab: <strong className="text-emerald-600">{answeredCount}</strong> | Ragu: <strong className="text-amber-600">{flaggedCount}</strong> | Belum: <strong className="text-slate-600">{unansweredCount}</strong>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMobilePaletteOpen(false)}
-                className="flex size-8 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 active:scale-90"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      {/* 7.3 DAFTAR SOAL MODAL */}
+      <ExamQuestionPaletteModal
+        isOpen={isPaletteModalOpen}
+        onClose={() => setIsPaletteModalOpen(false)}
+        questions={questions}
+        activeIndex={activeIndex}
+        onSelectIndex={(index) => setActiveIndex(index)}
+        isAnswered={(id) => isAnswered(answers[id])}
+        isFlagged={(id) => flaggedQuestions.has(id)}
+      />
 
-            {/* Status Legend */}
-            <div className="flex flex-wrap items-center gap-3 py-2.5 text-[11px] text-slate-600 border-b border-slate-100">
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="size-3 rounded-md bg-blue-600" /> Aktif
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="size-3 rounded-md bg-emerald-500" /> Terjawab
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="size-3 rounded-md bg-amber-400" /> Ragu-Ragu
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="size-3 rounded-md border border-slate-300 bg-white" /> Belum
-              </span>
-            </div>
+      {/* 7.5 INFORMASI SOAL DETAIL DIALOG */}
+      <ExamInfoDetailDialog
+        isOpen={isInfoDialogOpen}
+        onClose={() => setIsInfoDialogOpen(false)}
+        subjectName={examPackage?.subjects?.name ?? "Mata Pelajaran"}
+        examType={schedule?.title ?? "Sumatif Tengah Semester"}
+        totalQuestions={questions.length}
+        durationMinutes={examPackage?.duration_minutes ?? 120}
+        startAt={schedule?.start_at ? formatJakartaDateTime(schedule.start_at) : null}
+        endAt={schedule?.end_at ? formatJakartaDateTime(schedule.end_at) : null}
+      />
 
-            {/* Grid numbers */}
-            <div className="flex-1 overflow-y-auto py-4">
-              <div className="grid grid-cols-5 gap-2.5">
-                {questions.map(({ question }, index) => {
-                  const active = index === activeIndex;
-                  const answered = isAnswered(answers[question.id]);
-                  const flagged = flaggedQuestions.has(question.id);
+      {/* PERIKSA KONEKSI DIALOG */}
+      <ExamConnectionDialog
+        isOpen={isConnectionDialogOpen}
+        onClose={() => setIsConnectionDialogOpen(false)}
+        isOnline={isOnline}
+        pendingSaveCount={pendingSaveCount}
+        failedSaveCount={failedSaveCount}
+        lastSavedAt={lastSavedAt}
+        onRetrySyncAll={retrySyncAllFailed}
+      />
 
-                  return (
-                    <button
-                      key={`palette-${question.id}`}
-                      type="button"
-                      onClick={() => {
-                        setActiveIndex(index);
-                        setIsMobilePaletteOpen(false);
-                      }}
-                      className={cn(
-                        "relative flex h-12 items-center justify-center rounded-2xl border text-sm font-bold transition-all duration-150 select-none active:scale-90",
-                        active &&
-                          "border-blue-600 bg-blue-600 text-white shadow-xs ring-2 ring-blue-300",
-                        !active &&
-                          flagged &&
-                          "border-amber-400 bg-amber-400 text-amber-950 font-black shadow-2xs",
-                        !active &&
-                          !flagged &&
-                          answered &&
-                          "border-emerald-500 bg-emerald-500 text-white font-bold shadow-2xs",
-                        !active &&
-                          !flagged &&
-                          !answered &&
-                          "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                      )}
-                    >
-                      <span>{index + 1}</span>
-                      {flagged && !active && (
-                        <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-800 text-[10px] text-white">
-                          ?
-                        </span>
-                      )}
-                      {answered && !flagged && !active && (
-                        <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-emerald-700 text-[9px] text-white">
-                          ✓
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Submit button from drawer */}
-            <div className="border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobilePaletteOpen(false);
-                  if (canSubmitManually) {
-                    setIsSubmitConfirmOpen(true);
-                  }
-                }}
-                disabled={!canSubmitManually}
-                className="flex w-full h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 font-bold text-sm text-white shadow-sm transition-all active:scale-98 disabled:opacity-50"
-              >
-                <Send className="size-4" />
-                <span>Kumpulkan Ujian Sekarang</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Smart Submit Confirmation Modal */}
+      {/* SUBMIT CONFIRMATION MODAL */}
       <SubmitSummaryDialog
         isOpen={isSubmitConfirmOpen}
         totalQuestions={questions.length}
@@ -1611,10 +1353,10 @@ export function ExamRoomWorkspace({
         }}
       />
 
-      {/* Anti Cheat Warning Modal */}
-      {warning ? (
+      {/* ANTI-CHEAT WARNING MODAL */}
+      {warning && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-2.5 text-red-600">
               <AlertTriangle className="size-6 shrink-0" />
               <p className="text-xs font-bold uppercase tracking-wider">
@@ -1629,7 +1371,7 @@ export function ExamRoomWorkspace({
               type="button"
               disabled={warning.count >= maxAntiCheatViolations}
               onClick={closeWarningAndRefocus}
-              className="mt-6 w-full h-11 rounded-xl bg-blue-600 font-bold text-sm text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 w-full h-11 rounded-xl bg-blue-600 font-bold text-sm text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
             >
               {warning.count >= maxAntiCheatViolations
                 ? "Mengumpulkan Ujian..."
@@ -1637,15 +1379,10 @@ export function ExamRoomWorkspace({
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
-
-type DetailItem = {
-  label: string;
-  value: React.ReactNode;
-};
 
 function SubmitSummaryDialog({
   isOpen,
@@ -1681,7 +1418,7 @@ function SubmitSummaryDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="w-[calc(100vw-2rem)] max-w-lg rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/60"
+      className="w-[calc(100vw-2rem)] max-w-lg rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-xs animate-in fade-in zoom-in-95 duration-150"
       onCancel={onCancel}
     >
       <div className="p-6">
@@ -1692,13 +1429,6 @@ function SubmitSummaryDialog({
               Kumpulkan Lembar Ujian?
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex size-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-90"
-          >
-            <X className="size-4" />
-          </button>
         </div>
 
         {/* Summary Stat Cards */}
@@ -1739,7 +1469,7 @@ function SubmitSummaryDialog({
               <p className="font-bold">Periksa Kembali Jawabanmu!</p>
               <p className="leading-relaxed text-amber-800">
                 Masih ada <strong>{unansweredCount} soal belum dijawab</strong> dan{" "}
-                <strong>{flaggedCount} soal bertanda ragu-ragu</strong>. Jawaban yang sudah dipilih tetap akan dinilai.
+                <strong>{flaggedCount} soal bertanda ragu-ragu</strong>.
               </p>
             </div>
           </div>
@@ -1751,7 +1481,7 @@ function SubmitSummaryDialog({
         )}
 
         <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-          Setelah ujian dikumpulkan, lembar jawaban akan dikunci dan kamu tidak bisa mengubah jawaban lagi.
+          Setelah dikumpulkan, jawaban akan dikunci dan dinilai oleh sistem.
         </p>
 
         {/* Action Buttons */}
@@ -1759,7 +1489,7 @@ function SubmitSummaryDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 active:scale-95"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
           >
             Periksa Lagi
           </button>
@@ -1767,72 +1497,12 @@ function SubmitSummaryDialog({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 text-sm font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700 active:scale-95 disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 text-sm font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all disabled:opacity-50"
           >
             <Send className="size-4" />
             <span>{isLoading ? "Mengumpulkan..." : "Ya, Kumpulkan Ujian"}</span>
           </button>
         </div>
-      </div>
-    </dialog>
-  );
-}
-
-function ExamDetailDialog({
-  isOpen,
-  items,
-  onClose,
-}: {
-  isOpen: boolean;
-  items: DetailItem[];
-  onClose: () => void;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
-
-  return (
-    <dialog
-      ref={dialogRef}
-      className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/60"
-      onCancel={onClose}
-    >
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h2 className="text-base font-bold text-slate-950">Detail Ujian</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex size-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 active:scale-90"
-          aria-label="Tutup detail ujian"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-      <dl className="grid gap-3.5 px-5 py-4 text-sm">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between gap-4 border-b border-slate-50 pb-2.5 last:border-0 last:pb-0"
-          >
-            <dt className="text-slate-500 text-xs font-medium">{item.label}</dt>
-            <dd className="text-right font-bold text-slate-900">{item.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <div className="border-t border-slate-100 px-5 py-3.5">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full h-11 rounded-xl bg-slate-900 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-95"
-        >
-          Tutup
-        </button>
       </div>
     </dialog>
   );
@@ -1854,9 +1524,9 @@ function QuestionStimulus({
 
   return (
     <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 p-4">
-      {stimulus.title ? (
+      {stimulus.title && (
         <div className="text-sm font-bold text-blue-950">{stimulus.title}</div>
-      ) : null}
+      )}
       <QuestionMathRenderer
         content={stimulus.content}
         className="mt-2 text-sm leading-relaxed text-slate-700"
@@ -1966,34 +1636,12 @@ function isVideoUrl(value: string) {
   return /^https?:\/\/\S+\.(mp4|webm|ogg)(\?\S*)?$/i.test(value);
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  return formatJakartaDateTime(value);
-}
-
 function getRemainingSeconds(value?: string | null, nowMs = Date.now()) {
   if (!value) {
     return 0;
   }
 
   return Math.max(0, Math.floor((new Date(value).getTime() - nowMs) / 1000));
-}
-
-function formatRemainingTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const paddedMinutes = String(minutes).padStart(2, "0");
-  const paddedSeconds = String(seconds).padStart(2, "0");
-
-  if (hours > 0) {
-    return `${hours}:${paddedMinutes}:${paddedSeconds}`;
-  }
-
-  return `${paddedMinutes}:${paddedSeconds}`;
 }
 
 function getSaveSummary(pendingSaveCount: number, failedSaveCount: number) {
@@ -2130,11 +1778,9 @@ function readAnswerDrafts(attemptId: string): Record<string, AnswerState> {
 
   try {
     const parsed = JSON.parse(storedDrafts) as Record<string, AnswerState>;
-
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {};
     }
-
     return parsed;
   } catch {
     return {};
@@ -2173,7 +1819,6 @@ function clearAnswerDraft(attemptId: string, questionId: string) {
 
   try {
     const drafts = readAnswerDrafts(attemptId);
-
     delete drafts[questionId];
 
     if (Object.keys(drafts).length === 0) {

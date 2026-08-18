@@ -43,16 +43,8 @@ export default async function ExamRoomPage({ params, searchParams }: PageProps) 
   );
 
   return (
-    <div className="space-y-3 md:space-y-6">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <ActionToast status={query.notice} message={query.message} />
-      <div className="hidden md:block">
-        <DashboardPageHeader
-          title={schedule?.title ?? "Ruang Ujian"}
-          description={`${examPackage?.title ?? "Paket ujian"} | ${
-            examPackage?.subjects?.code ?? "Mapel"
-          } | ${examPackage?.duration_minutes ?? "-"} menit`}
-        />
-      </div>
       <ExamRoomWorkspace
         attempt={attempt}
         questions={questions}

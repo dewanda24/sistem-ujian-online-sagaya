@@ -13,29 +13,36 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PwaInstallBanner() {
+  const [mounted, setMounted] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIos] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod/.test(userAgent);
-  });
+  const [isIos, setIsIos] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
+  const [isDismissed, setIsDismissed] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    setIsIos(/iphone|ipad|ipod/.test(userAgent));
+
     const isStandaloneMode =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    if (isStandaloneMode) return true;
+    if (isStandaloneMode) {
+      setIsDismissed(true);
+      return;
+    }
 
     const dismissed = localStorage.getItem("cbt_pwa_banner_dismissed");
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
       if (Date.now() - dismissedTime < 3 * 24 * 60 * 60 * 1000) {
-        return true;
+        setIsDismissed(true);
+        return;
       }
     }
-    return false;
-  });
+
+    setIsDismissed(false);
+  }, []);
 
   useEffect(() => {
     // Listen for beforeinstallprompt event (Android / Chromium)
@@ -72,7 +79,7 @@ export function PwaInstallBanner() {
     localStorage.setItem("cbt_pwa_banner_dismissed", Date.now().toString());
   };
 
-  if (isDismissed) {
+  if (!mounted || isDismissed) {
     return null;
   }
 

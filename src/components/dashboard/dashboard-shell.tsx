@@ -68,6 +68,18 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
     }
   };
 
+  if (isExamRoom) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <SessionGuard />
+        <main className="min-h-screen p-0">
+          {children}
+        </main>
+        <DashboardToaster />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[#F8FAFC]">
       <SessionGuard />

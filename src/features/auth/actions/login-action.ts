@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardPath } from "@/lib/auth/role-redirect";
 import {
   type DemoEmailEnvKey,
@@ -70,7 +71,13 @@ export async function fetchUserSessionDataAction(authUserId: string): Promise<{
   redirectTo?: string;
 }> {
   try {
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = createAdminClient();
+    } catch {
+      supabase = await createClient();
+    }
+
     const { data: appUser, error: appUserError } = await supabase
       .from("users")
       .select(
@@ -301,34 +308,48 @@ async function signInAndResolveDashboard(
 async function resolveLoginEmailWithUserCheck(
   identifier: string,
 ): Promise<{ exists: boolean; email: string | null }> {
-  const value = identifier.trim();
-  const supabase = await createClient();
+  try {
+    const value = identifier.trim();
+    let supabase;
+    try {
+      supabase = createAdminClient();
+    } catch {
+      supabase = await createClient();
+    }
 
-  if (value.includes("@")) {
+    if (value.includes("@")) {
+      const { data } = await supabase
+        .from("users")
+        .select("email")
+        .eq("email", value)
+        .maybeSingle();
+
+      if (data?.email) {
+        return { exists: true, email: data.email };
+      }
+      // If not found in custom users table, still return email to attempt supabase auth directly
+      return { exists: true, email: value };
+    }
+
     const { data } = await supabase
       .from("users")
       .select("email")
-      .eq("email", value)
+      .eq("username", value)
       .maybeSingle();
 
     if (data?.email) {
       return { exists: true, email: data.email };
     }
-    // If not found in custom users table, still return email to attempt supabase auth directly
-    return { exists: true, email: value };
+
+    return { exists: false, email: null };
+  } catch (error) {
+    console.error("resolveLoginEmailWithUserCheck error:", error);
+    // If identifier looks like an email, let them proceed to password auth
+    if (identifier.includes("@")) {
+      return { exists: true, email: identifier.trim() };
+    }
+    return { exists: false, email: null };
   }
-
-  const { data } = await supabase
-    .from("users")
-    .select("email")
-    .eq("username", value)
-    .maybeSingle();
-
-  if (data?.email) {
-    return { exists: true, email: data.email };
-  }
-
-  return { exists: false, email: null };
 }
 
 function isDemoRole(value: FormDataEntryValue | null): value is DemoRole {
