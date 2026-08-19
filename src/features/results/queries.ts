@@ -41,7 +41,7 @@ export async function getResultDetail(attemptId: string) {
   let attemptQuery = supabase
     .from("exam_attempts")
     .select(
-      "*, users(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, school_id, start_at, end_at, exam_packages(id, title, total_points, show_result, subjects(id, code, name)))",
+      "*, users!exam_attempts_student_id_fkey(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, school_id, start_at, end_at, exam_packages(id, title, total_points, show_result, subjects(id, code, name)))",
     )
     .eq("id", attemptId);
 
@@ -51,10 +51,7 @@ export async function getResultDetail(attemptId: string) {
 
   const { data: attempt, error } = await attemptQuery.single();
 
-  if (error) {
-    return { _isError: true, message: `DB Error: ${error.message} (Hint: ${error.hint || "none"})` };
-  }
-  if (!attempt) {
+  if (error || !attempt) {
     return null;
   }
 
@@ -113,7 +110,7 @@ export async function getTeacherResultRecap(filters?: {
   let query = supabase
     .from("exam_attempts")
     .select(
-      "*, users(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, exam_packages(id, title, subjects(id, code, name)))",
+      "*, users!exam_attempts_student_id_fkey(id, username, email, user_profiles(full_name, nis, nisn)), exam_schedules(id, title, exam_packages(id, title, subjects(id, code, name)))",
     )
     .in("status", ["submitted", "expired"])
     .order("submitted_at", { ascending: false });
