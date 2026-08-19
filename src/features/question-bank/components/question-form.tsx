@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
   Eye,
@@ -258,6 +258,31 @@ export function QuestionForm({
     sysEq2: "x - y = 1",
   });
 
+  // Auto-load draft for new questions
+  useEffect(() => {
+    if (editable?.id) return;
+    const saved = localStorage.getItem("sagaya_question_draft");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.type) setType(parsed.type);
+        if (parsed.content) setContent(parsed.content);
+        if (parsed.explanation) setExplanation(parsed.explanation);
+        if (parsed.options) setOptions(parsed.options);
+        if (parsed.correct) setCorrect(parsed.correct);
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+  }, [editable?.id]);
+
+  // Auto-save draft for new questions
+  useEffect(() => {
+    if (editable?.id) return;
+    const draft = { type, content, explanation, options, correct };
+    localStorage.setItem("sagaya_question_draft", JSON.stringify(draft));
+  }, [type, content, explanation, options, correct, editable?.id]);
+
   const filteredCategories = useMemo(
     () =>
       categories.filter(
@@ -392,6 +417,8 @@ export function QuestionForm({
       onSubmit={(event) => {
         if (!validate()) {
           event.preventDefault();
+        } else {
+          localStorage.removeItem("sagaya_question_draft");
         }
       }}
     >

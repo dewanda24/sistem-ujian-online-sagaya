@@ -51,6 +51,14 @@ export default async function ActiveExamsPage({ searchParams }: PageProps) {
   await requirePermission("active_exams.view");
   const params = await searchParams;
   const schedules = await getStudentExamSchedules({ activeOnly: true });
+  
+  // Fetch all schedules to find upcoming ones if no active exams
+  let upcomingCount = 0;
+  if (schedules.length === 0) {
+    const allSchedules = await getStudentExamSchedules();
+    const now = new Date().toISOString();
+    upcomingCount = allSchedules.filter(s => s.start_at && s.start_at > now).length;
+  }
 
   return (
     <div className="space-y-6">
@@ -90,9 +98,8 @@ export default async function ActiveExamsPage({ searchParams }: PageProps) {
           })}
         </div>
       ) : (
-        <EmptyExamState />
+        <EmptyExamState upcomingCount={upcomingCount} />
       )}
-
     </div>
   );
 }

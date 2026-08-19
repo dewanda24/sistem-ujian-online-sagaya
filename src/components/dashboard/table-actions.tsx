@@ -5,6 +5,7 @@ import {
   Archive,
   CalendarPlus,
   Clipboard,
+  Copy,
   Download,
   Eye,
   FileText,
@@ -70,8 +71,8 @@ export function TableActions({
 }: TableActionsProps) {
   return (
     <details className={cn("group relative inline-block text-left", className)}>
-      <summary className="inline-flex h-8 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-2.5 text-xs font-medium text-[#0F172A] shadow-xs transition-all duration-150 select-none hover:bg-[#F8FAFC] hover:border-slate-300 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20">
-        <MoreHorizontal className="size-3.5 text-[#64748B]" aria-hidden="true" />
+      <summary className="inline-flex h-10 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#1E293B] shadow-sm transition-all duration-150 select-none hover:bg-[#F8FAFC] active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20">
+        <MoreHorizontal className="size-4 text-[#64748B]" aria-hidden="true" />
         <span>{label}</span>
       </summary>
       <div
@@ -83,7 +84,7 @@ export function TableActions({
           }
         }}
         className={cn(
-          "absolute z-40 mt-2 grid min-w-48 gap-1 rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-xs shadow-lg animate-in fade-in-50 zoom-in-95 duration-100",
+          "absolute z-40 mt-2 grid min-w-48 gap-0.5 rounded-2xl border border-[#E2E8F0] bg-white p-1.5 text-xs shadow-lg animate-in fade-in-50 zoom-in-95 duration-100",
           align === "end" ? "right-0" : "left-0",
         )}
       >
@@ -209,4 +210,5 @@ const tableActionIcons = {
   undo: Undo2,
   unlock: Unlock,
   "user-check": UserCheck,
+  copy: Copy,
 } satisfies Record<string, LucideIcon>;

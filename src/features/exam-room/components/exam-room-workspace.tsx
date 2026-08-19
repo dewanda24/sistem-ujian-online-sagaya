@@ -8,8 +8,10 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  RefreshCw,
   Send,
   Trash2,
+  WifiOff,
 } from "lucide-react";
 
 import { submitAttemptAction } from "@/features/exam-room/actions";
@@ -769,10 +771,10 @@ export function ExamRoomWorkspace({
   const hasCurrentAnswer = isAnswered(currentAnswer);
 
   const fontSizeClasses = {
-    sm: "text-xs md:text-sm leading-relaxed",
-    base: "text-sm md:text-base leading-relaxed",
-    lg: "text-base md:text-lg leading-relaxed",
-    xl: "text-lg md:text-xl leading-relaxed",
+    sm: "text-[14px] md:text-sm leading-relaxed",
+    base: "text-[16px] md:text-base leading-[1.7]",
+    lg: "text-[18px] md:text-lg leading-[1.7]",
+    xl: "text-[20px] md:text-xl leading-[1.7]",
   };
 
   return (
@@ -1224,42 +1226,55 @@ export function ExamRoomWorkspace({
       </main>
 
       {/* MOBILE FLOATING BOTTOM BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_25px_rgba(15,23,42,0.12)] backdrop-blur-md select-none md:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-between gap-1.5">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_25px_rgba(15,23,42,0.12)] select-none md:hidden flex flex-col gap-2.5">
+        
+        {/* Row 1: Save Status Indicator (Small) */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium">
+            {saveSummary === "saving" ? (
+              <>
+                <RefreshCw className="size-3 animate-spin text-blue-500" />
+                <span className="text-blue-600">Menyimpan...</span>
+              </>
+            ) : saveSummary === "error" ? (
+              <>
+                <AlertTriangle className="size-3 text-red-500" />
+                <span className="text-red-600 font-bold">Gagal Simpan</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="size-3 text-emerald-500" />
+                <span className="text-emerald-600">Tersimpan</span>
+              </>
+            )}
+          </div>
+          {!isOnline && (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-red-500 animate-pulse">
+              <WifiOff className="size-3" /> Offline
+            </span>
+          )}
+        </div>
+
+        {/* Row 2: Navigation & Actions (Big targets) */}
+        <div className="flex items-center justify-between gap-2">
           {/* Prev button */}
           <button
             type="button"
             disabled={activeIndex === 0}
             onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-            className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 shadow-2xs transition-all active:scale-90 disabled:opacity-30"
+            className="inline-flex h-[48px] w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-30 disabled:scale-100"
             aria-label="Soal sebelumnya"
           >
-            <ChevronLeft className="size-5" />
-          </button>
-
-          {/* Ragu-Ragu toggle */}
-          <button
-            type="button"
-            onClick={() => toggleFlagQuestion(currentQuestion.id)}
-            className={cn(
-              "inline-flex h-11 items-center justify-center gap-1 rounded-xl border px-3 text-xs font-bold transition-all active:scale-90",
-              isCurrentFlagged
-                ? "border-amber-400 bg-amber-400 text-amber-950 font-black shadow-xs ring-1 ring-amber-400"
-                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-amber-300",
-            )}
-            aria-label="Tandai Ragu-ragu"
-          >
-            <Bookmark className={cn("size-4", isCurrentFlagged && "fill-amber-950 text-amber-950")} />
-            <span>{isCurrentFlagged ? "Ragu" : "Ragu"}</span>
+            <ChevronLeft className="size-6" />
           </button>
 
           {/* Question drawer trigger */}
           <button
             type="button"
             onClick={() => setIsPaletteModalOpen(true)}
-            className="flex flex-1 items-center justify-center gap-1.5 h-11 rounded-xl border border-blue-200 bg-blue-50/90 px-2 text-xs font-extrabold text-blue-700 shadow-2xs transition-all active:scale-95"
+            className="flex flex-1 items-center justify-center gap-2 h-[48px] rounded-2xl border-2 border-[#2563EB]/20 bg-blue-50 px-2 text-[14px] font-black text-[#2563EB] shadow-sm transition-all active:scale-95"
           >
-            <LayoutGrid className="size-4 shrink-0" />
+            <LayoutGrid className="size-5 shrink-0" />
             <span>{activeIndex + 1} / {questions.length}</span>
           </button>
 
@@ -1269,9 +1284,9 @@ export function ExamRoomWorkspace({
               type="button"
               onClick={() => setIsSubmitConfirmOpen(true)}
               disabled={!canSubmitManually}
-              className="inline-flex h-11 px-3 items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-xs font-extrabold text-white shadow-xs transition-all active:scale-90 disabled:opacity-50"
+              className="inline-flex h-[48px] px-4 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[14px] font-extrabold text-white shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
-              <CheckCircle2 className="size-4" />
+              <CheckCircle2 className="size-5" />
               <span>Selesai</span>
             </button>
           ) : (
@@ -1280,10 +1295,10 @@ export function ExamRoomWorkspace({
               onClick={() =>
                 setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
               }
-              className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white shadow-xs transition-all active:scale-90"
+              className="inline-flex h-[48px] w-14 shrink-0 items-center justify-center rounded-2xl bg-[#2563EB] text-white shadow-md transition-all active:scale-95"
               aria-label="Soal berikutnya"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-6" />
             </button>
           )}
         </div>

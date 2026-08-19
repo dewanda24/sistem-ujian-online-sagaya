@@ -1,7 +1,5 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { AlertCircle, Inbox, Loader2 } from "lucide-react";
-
-import { UI_LABELS } from "@/constants/ui-labels";
 
 interface EmptyStateProps {
   title: string;
@@ -21,18 +19,16 @@ export function EmptyState({
   const Icon = icon === "error" ? AlertCircle : icon === "loading" ? Loader2 : Inbox;
 
   return (
-    <div className="rounded-xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center sm:p-8">
-      <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-[#64748B]">
-        <Icon className={`size-5 ${icon === "loading" ? "animate-spin" : ""}`} />
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-[#F1F5F9] text-[#64748B] mb-4">
+        <Icon className={`size-8 ${icon === "loading" ? "animate-spin" : ""}`} />
       </div>
-      <h3 className="text-sm font-semibold text-[#0F172A]">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#64748B]">
-        {description}
-      </p>
+      <p className="text-[17px] font-semibold text-[#1E293B] mb-2">{title}</p>
+      <p className="text-[14px] leading-relaxed text-[#64748B] max-w-xs">{description}</p>
       {actionHref && actionLabel ? (
         <Link
           href={actionHref}
-          className="mt-4 inline-flex rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-6 md-btn-filled text-[14px]"
         >
           {actionLabel}
         </Link>
@@ -42,10 +38,10 @@ export function EmptyState({
 }
 
 export function ErrorState({
-  title = UI_LABELS.messages.unexpectedError,
-  description = UI_LABELS.messages.loadFailed,
+  title = "Terjadi Kesalahan",
+  description = "Gagal memuat data. Coba lagi.",
   actionHref = ".",
-  actionLabel = UI_LABELS.actions.retry,
+  actionLabel = "Coba Lagi",
 }: Partial<Pick<EmptyStateProps, "title" | "description" | "actionHref" | "actionLabel">>) {
   return (
     <EmptyState
@@ -59,8 +55,8 @@ export function ErrorState({
 }
 
 export function LoadingState({
-  title = UI_LABELS.messages.loadingData,
-  description = UI_LABELS.messages.loadingDescription,
+  title = "Memuat data...",
+  description = "Harap tunggu sebentar.",
 }: Partial<Pick<EmptyStateProps, "title" | "description">>) {
   return <EmptyState title={title} description={description} icon="loading" />;
 }

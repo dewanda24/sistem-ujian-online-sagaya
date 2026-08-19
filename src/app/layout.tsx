@@ -16,7 +16,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#2563eb",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#2563EB" },
+    { media: "(prefers-color-scheme: dark)", color: "#1D4ED8" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -48,9 +51,13 @@ export default function RootLayout({
     <html lang="id" className={poppins.variable}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-touch-fullscreen" content="yes" />
+        {/* Disable phone number detection on Android */}
+        <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased select-none">{children}</body>
     </html>
   );
 }

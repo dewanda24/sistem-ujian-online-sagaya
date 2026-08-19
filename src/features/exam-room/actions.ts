@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -60,7 +60,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      parsed.error.issues[0]?.message ?? "Jadwal ujian tidak valid.",
+      `Gagal Memulai Ujian||${parsed.error.issues[0]?.message ?? "Jadwal ujian tidak valid."}`,
     );
   }
 
@@ -71,7 +71,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Siswa belum memiliki kelas aktif.",
+      "Akses Ditolak||Siswa belum terdaftar di kelas manapun. Silakan hubungi admin sekolah.",
     );
   }
 
@@ -87,7 +87,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Jadwal ujian tidak tersedia untuk kelas siswa.",
+      "Bukan Peserta Ujian||Jadwal ujian ini tidak ditujukan untuk kelas Anda.",
     );
   }
 
@@ -106,7 +106,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Ujian belum aktif atau sudah selesai.",
+      "Ujian Belum Aktif||Jadwal ujian sudah terlewat atau belum dibuka oleh pengawas. Silakan hubungi pengawas ujian.",
     );
   }
 
@@ -118,7 +118,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Token ujian tidak valid.",
+      "Token Ujian Salah||Token yang Anda masukkan tidak valid. Silakan minta token yang benar kepada pengawas.",
     );
   }
 
@@ -148,7 +148,7 @@ export async function startExamAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Gagal menyiapkan peserta ujian.",
+      "Gangguan Sistem||Gagal mendaftarkan peserta ke dalam ujian. Silakan coba beberapa saat lagi.",
     );
   }
 
@@ -159,7 +159,7 @@ export async function startExamAction(formData: FormData) {
     : null;
 
   if (existingAttempt?.id) {
-    redirect(`/dashboard/exam-room/${existingAttempt.id}`);
+    redirect(`/dashboard/exam-room/${existingAttempt.id}/briefing`);
   }
 
   const { data: attempt, error: attemptError } = await supabase
@@ -183,13 +183,13 @@ export async function startExamAction(formData: FormData) {
       .maybeSingle();
 
     if (activeAttempt?.id) {
-      redirect(`/dashboard/exam-room/${activeAttempt.id}`);
+      redirect(`/dashboard/exam-room/${activeAttempt.id}/briefing`);
     }
 
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      attemptError?.message ?? "Gagal memulai ujian.",
+      `Gagal Membuka Ujian||${attemptError?.message ?? "Terjadi kesalahan sistem saat mencoba memulai ujian."}`,
     );
   }
 
@@ -202,7 +202,7 @@ export async function startExamAction(formData: FormData) {
     .eq("id", participant.id);
 
   revalidatePath("/dashboard/student/active-exams");
-  redirect(`/dashboard/exam-room/${attempt.id}`);
+  redirect(`/dashboard/exam-room/${attempt.id}/briefing`);
 }
 
 export async function saveAnswerAction(formData: FormData) {
@@ -219,7 +219,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${formString(formData, "attempt_id")}`,
       false,
-      parsed.error.issues[0]?.message ?? "Jawaban tidak valid.",
+      `Gagal Menyimpan||${parsed.error.issues[0]?.message ?? "Data jawaban tidak valid."}`,
     );
   }
 
@@ -236,7 +236,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Pengerjaan tidak aktif.",
+      "Sesi Ujian Selesai||Pengerjaan ujian tidak aktif atau sudah selesai dikumpulkan.",
     );
   }
 
@@ -244,7 +244,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Pengerjaan sedang dikunci oleh pengawas.",
+      "Ujian Dikunci||Pengerjaan ujian Anda sedang dikunci oleh pengawas karena alasan tertentu.",
     );
   }
 
@@ -252,7 +252,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Pengerjaan sedang aktif di perangkat atau tab lain.",
+      "Akses Ganda Terdeteksi||Ujian ini sedang dikerjakan di perangkat atau browser lain. Harap tutup sesi yang lain.",
     );
   }
 
@@ -261,7 +261,7 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Waktu ujian sudah berakhir. Pengerjaan dikunci.",
+      "Waktu Habis||Durasi ujian telah berakhir. Pengerjaan secara otomatis dikunci.",
     );
   }
 
@@ -297,7 +297,7 @@ export async function saveAnswerAction(formData: FormData) {
   redirectWithNotice(
     `/dashboard/exam-room/${parsed.data.attempt_id}`,
     !error,
-    error ? error.message : "Jawaban tersimpan.",
+    error ? `Gagal Menyimpan||${error.message}` : "Tersimpan||Jawaban berhasil disimpan.",
   );
 }
 
@@ -312,7 +312,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      parsed.error.issues[0]?.message ?? "Pengerjaan ujian tidak valid.",
+      `Gagal Mengumpulkan||${parsed.error.issues[0]?.message ?? "Pengerjaan ujian tidak valid."}`,
     );
   }
 
@@ -331,7 +331,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/active-exams",
       false,
-      "Pengerjaan tidak ditemukan atau sudah dikumpulkan.",
+      "Data Tidak Ditemukan||Pengerjaan tidak ditemukan atau ujian sudah dikumpulkan sebelumnya.",
     );
   }
 
@@ -343,7 +343,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Pengerjaan sedang aktif di perangkat atau tab lain.",
+      "Akses Ganda Terdeteksi||Ujian ini sedang aktif di tab atau perangkat lain. Tutup sesi lain sebelum mengumpulkan.",
     );
   }
 
@@ -351,7 +351,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Pengerjaan sedang dikunci oleh pengawas.",
+      "Ujian Dikunci||Tidak dapat mengumpulkan karena ujian sedang dikunci oleh pengawas.",
     );
   }
 
@@ -360,7 +360,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/history",
       false,
-      "Waktu ujian sudah berakhir. Pengerjaan ditandai waktu habis.",
+      "Waktu Habis||Durasi ujian telah berakhir. Jawaban Anda otomatis dikumpulkan.",
     );
   }
 
@@ -384,7 +384,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      scoring.message,
+      `Gagal Memproses Nilai||${scoring.message}`,
     );
   }
 
@@ -423,7 +423,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      submitError.message,
+      `Gagal Mengumpulkan||${submitError.message}`,
     );
   }
 
@@ -431,7 +431,7 @@ export async function submitAttemptAction(formData: FormData) {
     redirectWithNotice(
       "/dashboard/student/history",
       true,
-      "Ujian sudah dikumpulkan.",
+      "Selesai||Ujian sudah berhasil dikumpulkan.",
     );
   }
 
@@ -448,7 +448,7 @@ export async function submitAttemptAction(formData: FormData) {
   redirectWithNotice(
     "/dashboard/student/history",
     true,
-    "Ujian berhasil dikumpulkan.",
+    "Ujian Selesai||Jawaban Anda berhasil dikumpulkan dan tersimpan aman di sistem.",
   );
 }
 

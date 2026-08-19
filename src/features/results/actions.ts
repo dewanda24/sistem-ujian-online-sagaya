@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+﻿import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { firstRelation } from "@/features/results/queries";
@@ -22,17 +20,22 @@ function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
 }
 
-function redirectToResult(attemptId: string, ok: boolean, message: string): never {
+function redirectToResult(attemptId: string, ok: boolean, message: string, returnTo?: string): never {
   const params = new URLSearchParams({
     notice: ok ? "success" : "error",
     message,
   });
+
+  if (returnTo) {
+    redirect(`${returnTo}&${params.toString()}`);
+  }
 
   redirect(`/dashboard/exam-results/${attemptId}?${params.toString()}`);
 }
 
 export async function gradeEssayAnswerAction(formData: FormData) {
   const user = await requirePermission("grading.manage");
+  const returnTo = formString(formData, "return_to");
   const parsed = gradeEssayAnswerSchema.safeParse({
     attempt_id: formString(formData, "attempt_id"),
     answer_id: formString(formData, "answer_id"),
@@ -45,13 +48,14 @@ export async function gradeEssayAnswerAction(formData: FormData) {
       formString(formData, "attempt_id"),
       false,
       parsed.error.issues[0]?.message ?? "Skor essay tidak valid.",
+      returnTo
     );
   }
 
   const canGrade = await canManageAttempt(parsed.data.attempt_id, user);
 
   if (!canGrade) {
-    redirectToResult(parsed.data.attempt_id, false, "Akses grading ditolak.");
+    redirectToResult(parsed.data.attempt_id, false, "Akses grading ditolak.", returnTo);
   }
 
   const supabase = await createClient();
@@ -70,7 +74,7 @@ export async function gradeEssayAnswerAction(formData: FormData) {
     .eq("exam_attempt_id", parsed.data.attempt_id);
 
   if (error) {
-    redirectToResult(parsed.data.attempt_id, false, error.message);
+    redirectToResult(parsed.data.attempt_id, false, error.message, returnTo);
   }
 
   await calculateAndPersistAttemptScore(parsed.data.attempt_id);
@@ -87,11 +91,15 @@ export async function gradeEssayAnswerAction(formData: FormData) {
   });
   revalidatePath(`/dashboard/exam-results/${parsed.data.attempt_id}`);
   revalidatePath("/dashboard/teacher/grading");
-  redirectToResult(parsed.data.attempt_id, true, "Skor essay tersimpan.");
+  if (returnTo?.includes("/dashboard/teacher/grading/rapid")) {
+    revalidatePath("/dashboard/teacher/grading/rapid");
+  }
+  redirectToResult(parsed.data.attempt_id, true, "Skor essay tersimpan.", returnTo);
 }
 
 export async function finalizeAttemptAction(formData: FormData) {
   const user = await requirePermission("exam_results.finalize");
+  const returnTo = formString(formData, "return_to");
   const parsed = finalizeAttemptSchema.safeParse({
     attempt_id: formString(formData, "attempt_id"),
   });
@@ -101,13 +109,14 @@ export async function finalizeAttemptAction(formData: FormData) {
       formString(formData, "attempt_id"),
       false,
       parsed.error.issues[0]?.message ?? "Pengerjaan ujian tidak valid.",
+      returnTo
     );
   }
 
   const canFinalize = await canManageAttempt(parsed.data.attempt_id, user);
 
   if (!canFinalize) {
-    redirectToResult(parsed.data.attempt_id, false, "Akses finalize ditolak.");
+    redirectToResult(parsed.data.attempt_id, false, "Akses finalize ditolak.", returnTo);
   }
 
   const result = await calculateAndPersistAttemptScore(parsed.data.attempt_id, {
@@ -115,7 +124,7 @@ export async function finalizeAttemptAction(formData: FormData) {
   });
 
   if (!result.ok) {
-    redirectToResult(parsed.data.attempt_id, false, result.message);
+    redirectToResult(parsed.data.attempt_id, false, result.message, returnTo);
   }
 
   revalidatePath(`/dashboard/exam-results/${parsed.data.attempt_id}`);
@@ -132,7 +141,7 @@ export async function finalizeAttemptAction(formData: FormData) {
       grading_status: result.gradingStatus,
     },
   });
-  redirectToResult(parsed.data.attempt_id, true, "Nilai ujian difinalisasi.");
+  redirectToResult(parsed.data.attempt_id, true, "Nilai ujian difinalisasi.", returnTo);
 }
 
 async function canManageAttempt(

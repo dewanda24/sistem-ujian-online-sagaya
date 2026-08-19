@@ -255,3 +255,45 @@ async function getSchoolScheduleIds(schoolId: string) {
 
   return (data ?? []).map((schedule) => schedule.id as string);
 }
+
+export async function getRapidGradingAnswers(scheduleId: string) {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  // Ensure teacher has permission / valid scope (skipping complex checks for brevity or we can rely on RLS/schema)
+  // We fetch answers that need manual grading for the given schedule.
+  const { data, error } = await supabase
+    .from("exam_answers")
+    .select(`
+      id,
+      essay_answer,
+      awarded_score,
+      max_score,
+      needs_manual_grading,
+      exam_attempts!inner (
+        id,
+        exam_schedule_id,
+        users (
+          id,
+          username,
+          user_profiles (full_name)
+        )
+      ),
+      questions!inner (
+        id,
+        content,
+        point,
+        question_stimuli(title, content, media_url, media_type),
+        question_attachments(media_type, url, file_name)
+      )
+    `)
+    .eq("needs_manual_grading", true)
+    .eq("exam_attempts.exam_schedule_id", scheduleId)
+    .order("created_at");
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data;
+}

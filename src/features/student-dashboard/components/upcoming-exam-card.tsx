@@ -1,6 +1,4 @@
-import { CalendarDays } from "lucide-react";
-
-import { formatJakartaDate, formatJakartaTime } from "@/lib/date-time";
+﻿import { formatJakartaDate, formatJakartaTime } from "@/lib/date-time";
 import { ExamStatusBadge, type StudentExamStatus } from "./exam-status-badge";
 
 export type UpcomingExamCardExam = {
@@ -13,30 +11,28 @@ export type UpcomingExamCardExam = {
   status: StudentExamStatus;
 };
 
+/** Android Material 3 List Item style for upcoming exam */
 export function UpcomingExamCard({ exam }: { exam: UpcomingExamCardExam }) {
-  const formattedSchedule = `${formatJakartaDate(exam.startAt)} • ${formatJakartaTime(exam.startAt)} - ${formatJakartaTime(exam.endAt)}`;
+  const date = formatJakartaDate(exam.startAt);
+  const time = `${formatJakartaTime(exam.startAt)} – ${formatJakartaTime(exam.endAt)}`;
 
   return (
-    <div className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-2xs transition-all duration-150 hover:border-blue-200 hover:shadow-xs">
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Rounded Icon Container */}
-        <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100 group-hover:scale-105 transition-transform">
-          <CalendarDays className="size-5" />
-        </div>
+    <div className="md-list-item">
+      {/* Leading color dot */}
+      <span className="size-2.5 rounded-full bg-[#2563EB] shrink-0" />
 
-        {/* Info */}
-        <div className="min-w-0">
-          <h4 className="text-sm font-bold text-slate-900 truncate">
-            {exam.subjectName || exam.title}
-          </h4>
-          <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-            {formattedSchedule}
-          </p>
-        </div>
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-semibold text-[#1E293B] truncate leading-snug">
+          {exam.subjectName || exam.title}
+        </p>
+        <p className="text-[13px] text-[#64748B] truncate mt-0.5">
+          {date} • {time}
+        </p>
       </div>
 
-      {/* Status Badge */}
-      <div className="shrink-0 hidden sm:block">
+      {/* Trailing chip */}
+      <div className="shrink-0">
         <ExamStatusBadge status={exam.status} />
       </div>
     </div>

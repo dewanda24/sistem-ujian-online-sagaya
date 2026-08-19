@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays } from "lucide-react";
 
 import { StudentWelcomeBanner } from "./student-welcome-banner";
-import { StudentQuickActions } from "./student-quick-actions";
 import { ActiveExamCard, type ActiveExamCardExam } from "./active-exam-card";
 import { EmptyExamState } from "./empty-exam-state";
 import { UpcomingExamCard, type UpcomingExamCardExam } from "./upcoming-exam-card";
@@ -43,53 +42,40 @@ export function StudentDashboardClient({
   );
 
   useEffect(() => {
-    const handleOpen = () => {
-      setNotificationOpen(true);
-    };
-
+    const handleOpen = () => setNotificationOpen(true);
     window.addEventListener("sagaya-open-notifications", handleOpen);
-    return () => {
-      window.removeEventListener("sagaya-open-notifications", handleOpen);
-    };
+    return () => window.removeEventListener("sagaya-open-notifications", handleOpen);
   }, []);
 
-  const handleMarkAllRead = () => {
-    setUnreadCount(0);
-  };
+  const handleMarkAllRead = () => setUnreadCount(0);
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
-      {/* PWA 1-Click Install Banner for mobile */}
+    <div className="space-y-6 max-w-2xl mx-auto">
+      {/* PWA Install Banner (bottom priority — only shows when triggered) */}
       <PwaInstallBanner />
 
-      {/* Sapaan Ramah Siswa (Banner) */}
-      <StudentWelcomeBanner
-        studentName={studentName}
-        statusType={statusType}
-      />
+      {/* Welcome strip */}
+      <StudentWelcomeBanner studentName={studentName} statusType={statusType} />
 
-      {/* Adaptive Hero Card (Ujian Aktif / Status Ujian) */}
+      {/* ── Hero: Ujian Aktif ── */}
       <section className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
-              {activeExam?.status === "in_progress" || activeExam?.status === "not_started"
-                ? "Ujian Aktif"
-                : "Aktivitas Ujian"}
-            </h2>
-            {activeExamCount > 0 && (
+        {activeExamCount > 1 && (
+          <div className="flex items-center justify-between px-1 mb-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[13px] font-semibold text-[#1E293B] uppercase tracking-wider">
+                Ujian Aktif
+              </h2>
               <span className="flex size-2 rounded-full bg-emerald-500 animate-ping" />
-            )}
-          </div>
-          {activeExamCount > 1 && (
+            </div>
             <Link
               href="/dashboard/student/active-exams"
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 transition"
+              className="text-[13px] font-semibold text-[#2563EB] flex items-center gap-1"
             >
               Lihat Semua ({activeExamCount})
+              <ArrowRight className="size-3.5" />
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
         {activeExam ? (
           <ActiveExamCard exam={activeExam} action={startExamAction} />
@@ -98,63 +84,50 @@ export function StudentDashboardClient({
         )}
       </section>
 
-      {/* Quick Actions (4 Menu Cepat) */}
-      <StudentQuickActions
-        activeCount={activeExamCount}
-        upcomingCount={upcomingExams.length}
-        historyCount={latestAttempts.length}
-        unreadNotificationCount={unreadCount}
-        onOpenNotifications={() => setNotificationOpen(true)}
-      />
+      {/* ── Jadwal Mendatang ── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Jadwal Mendatang</h3>
+          <Link
+            href="/dashboard/student/schedules"
+            className="flex items-center gap-1 text-[13px] font-semibold text-[#2563EB]"
+          >
+            Semua <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
 
-      {/* 2-Column Grid for Upcoming Schedules & Latest Results */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Jadwal Mendatang */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-              Jadwal Mendatang
-            </h3>
-            <Link
-              href="/dashboard/student/schedules"
-              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
-            >
-              <span>Lihat Semua</span>
-              <ArrowRight className="size-3.5" />
-            </Link>
+        {upcomingExams.length > 0 ? (
+          <div className="md-card-elevated divide-y divide-[#F1F5F9] overflow-hidden">
+            {upcomingExams.map((exam) => (
+              <UpcomingExamCard key={exam.id} exam={exam} />
+            ))}
           </div>
-
-          {upcomingExams.length > 0 ? (
-            <div className="space-y-2.5">
-              {upcomingExams.map((exam) => (
-                <UpcomingExamCard key={exam.id} exam={exam} />
-              ))}
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white p-8 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-[#F1F5F9] text-[#94A3B8] mb-3">
+              <CalendarDays className="size-6" />
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-6 text-center shadow-2xs">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-2">
-                <CalendarDays className="size-5" />
-              </div>
-              <p className="text-xs font-bold text-slate-700">
-                Belum ada jadwal ujian mendatang
-              </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Jadwal ujian kelasmu akan otomatis muncul di sini.
-              </p>
-            </div>
-          )}
-        </section>
+            <p className="text-[14px] font-semibold text-[#1E293B]">Belum ada jadwal ujian</p>
+            <p className="text-[13px] text-[#64748B] mt-1">Jadwal ujianmu akan muncul di sini.</p>
+          </div>
+        )}
+      </section>
 
-        {/* Hasil Terbaru */}
-        <section>
-          <StudentLatestResultsList
-            attempts={latestAttempts}
-            maxDisplay={3}
-          />
-        </section>
-      </div>
+      {/* ── Hasil Terbaru ── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Hasil Terbaru</h3>
+          <Link
+            href="/dashboard/student/history"
+            className="flex items-center gap-1 text-[13px] font-semibold text-[#2563EB]"
+          >
+            Semua <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+        <StudentLatestResultsList attempts={latestAttempts} maxDisplay={3} />
+      </section>
 
-      {/* Notifikasi & Pengingat Drawer (Preview 3.6) */}
+      {/* Notification Drawer */}
       <StudentNotificationDrawer
         isOpen={notificationOpen}
         onClose={() => setNotificationOpen(false)}

@@ -278,7 +278,13 @@ function ParticipantRow({
   const issue = getPrimaryIssue(participant);
 
   return (
-    <tr className="h-16 hover:bg-[#F8FAFC]">
+    <tr
+      className={cn(
+        "h-16 hover:bg-[#F8FAFC]",
+        issue?.severity === "danger" && "bg-red-50/70 hover:bg-red-50/90",
+        issue?.severity === "warning" && "bg-amber-50/70 hover:bg-amber-50/90"
+      )}
+    >
       <td className="min-w-0 px-3 py-2">
         <div className="line-clamp-1 font-medium text-[#0F172A]">
           {info.name}
@@ -325,7 +331,13 @@ function ParticipantCard({
   const issue = getPrimaryIssue(participant);
 
   return (
-    <article className="max-h-[124px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
+    <article
+      className={cn(
+        "max-h-[124px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm",
+        issue?.severity === "danger" && "bg-red-50/70 border-red-200",
+        issue?.severity === "warning" && "bg-amber-50/70 border-amber-200"
+      )}
+    >
       <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">
         {info.name}
       </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays } from "lucide-react";
 
-export function EmptyExamState() {
+export function EmptyExamState({ upcomingCount = 0 }: { upcomingCount?: number }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 text-center shadow-xs">
       {/* Subtle modern vector illustration */}
@@ -74,23 +74,40 @@ export function EmptyExamState() {
         </svg>
       </div>
 
-      <h2 className="text-base sm:text-lg font-bold text-slate-900">
+      <h2 className="text-[18px] sm:text-[20px] font-bold text-[#1E293B]">
         Belum ada ujian aktif
       </h2>
-      <p className="mt-1 max-w-sm text-xs sm:text-sm text-slate-500">
-        Saat ini tidak ada ujian yang sedang berlangsung. Silakan cek jadwal untuk melihat ujian yang akan datang.
+      <p className="mt-2 max-w-sm text-[14px] text-[#64748B] leading-relaxed">
+        Saat ini tidak ada ujian yang sedang berlangsung. Waktunya bernapas lega atau bersiap untuk ujian berikutnya!
       </p>
 
-      <div className="mt-5">
-        <Link
-          href="/dashboard/student/schedules"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-5 text-xs font-bold text-blue-700 shadow-2xs transition hover:bg-blue-100/70 active:scale-98"
-        >
-          <CalendarDays className="size-4" />
-          <span>Lihat Jadwal Mendatang</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
+      {upcomingCount > 0 ? (
+        <div className="mt-6 flex flex-col items-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 border border-amber-200">
+            <CalendarDays className="size-4 text-amber-600" />
+            <span className="text-[13px] font-semibold text-amber-700">
+              Ada {upcomingCount} ujian menanti di jadwal
+            </span>
+          </div>
+          <Link
+            href="/dashboard/student/schedules"
+            className="flex h-[48px] items-center justify-center gap-2 rounded-full bg-[#2563EB] px-6 text-[15px] font-bold text-white shadow-md transition active:scale-[0.98]"
+          >
+            <span>Lihat Jadwal Saya</span>
+            <ArrowRight className="size-4 stroke-[2.5]" />
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <Link
+            href="/dashboard/student/schedules"
+            className="flex h-[48px] items-center justify-center gap-2 rounded-full border-[1.5px] border-[#CBD5E1] bg-white px-6 text-[15px] font-bold text-[#64748B] transition active:scale-[0.98]"
+          >
+            <CalendarDays className="size-4" />
+            <span>Lihat Kalender Ujian</span>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

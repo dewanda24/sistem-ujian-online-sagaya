@@ -168,15 +168,15 @@ export function DashboardSidebar({
           className={cn("flex items-center gap-3 min-w-0 group", isMini && "justify-center")}
           title="Sistem Ujian Online Sagaya"
         >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 font-bold text-white shadow-xs transition-transform group-hover:scale-105">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] font-bold text-white shadow-sm transition-transform group-hover:scale-105">
             S
           </div>
           {!isMini && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold tracking-tight text-[#0F172A]">
+              <p className="truncate text-[16px] font-bold tracking-tight text-[#1E293B]">
                 Sagaya CBT
               </p>
-              <p className="truncate text-xs font-medium text-[#64748B]">
+              <p className="truncate text-[13px] font-medium text-[#64748B]">
                 Sistem Ujian Online
               </p>
             </div>

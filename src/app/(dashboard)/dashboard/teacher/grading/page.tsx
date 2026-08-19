@@ -1,7 +1,9 @@
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+﻿import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { DataTable } from "@/components/master-data/data-table";
+import { Zap } from "lucide-react";
+import Link from "next/link";
 import {
   firstRelation,
   getTeacherGradingFilters,
@@ -57,10 +59,21 @@ export default async function GradingPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader
-        title="Koreksi Essay"
-        description="Jawaban essay yang perlu diperiksa sebelum nilai siswa menjadi final."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <DashboardPageHeader
+          title="Koreksi Essay"
+          description="Jawaban essay yang perlu diperiksa sebelum nilai siswa menjadi final."
+        />
+        {params.schedule_id && (
+          <Link
+            href={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            <Zap className="size-4" />
+            Mode Koreksi Cepat
+          </Link>
+        )}
+      </div>
       <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_220px_220px_220px_auto]">
         <input
           name="q"
@@ -106,6 +119,12 @@ export default async function GradingPage({ searchParams }: PageProps) {
           Filter
         </button>
       </form>
+      {/* ... alert if no schedule_id is selected for Rapid Grading */}
+      {!params.schedule_id && attempts.some(a => a.grading_status === "needs_manual_grading") && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center justify-between">
+          <span>Pilih <strong>satu ujian spesifik</strong> di dropdown filter untuk menggunakan <strong>Mode Koreksi Cepat</strong>.</span>
+        </div>
+      )}
       <DataTable
         columns={["Siswa", "Ujian", "Mapel", "Skor", "Benar", "Status", "Aksi"]}
         isEmpty={attempts.length === 0}

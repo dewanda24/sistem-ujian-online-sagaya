@@ -388,10 +388,16 @@ function QuestionActions({
         {UI_LABELS.actions.preview}
       </TableActionButton>
       <TableActionLink
-        href={`/dashboard/question-bank/questions/create?edit=${question.id}`}
+        href={`?action=edit&id=${question.id}`}
         icon="pencil"
       >
         {UI_LABELS.actions.update}
+      </TableActionLink>
+      <TableActionLink
+        href={`?action=duplicate&id=${question.id}`}
+        icon="copy"
+      >
+        Duplikat
       </TableActionLink>
       <form action={updateQuestionStatusAction}>
         <input type="hidden" name="id" value={question.id} />
