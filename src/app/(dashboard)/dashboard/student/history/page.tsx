@@ -6,7 +6,7 @@ import {
   getStudentSubmittedAttempts,
 } from "@/features/results/queries";
 import { HistoryExamCard } from "@/features/student-dashboard/components/history-exam-card";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { requireRole } from "@/lib/auth/require-role";
 
 type PageProps = {
   searchParams: Promise<{
@@ -16,7 +16,7 @@ type PageProps = {
 };
 
 export default async function ExamHistoryPage({ searchParams }: PageProps) {
-  await requirePermission("exam_results.view");
+  await requireRole("student");
   const [params, attempts] = await Promise.all([
     searchParams,
     getStudentSubmittedAttempts(),

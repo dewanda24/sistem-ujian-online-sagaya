@@ -172,6 +172,7 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
         <div className="lg:hidden">
           <TopAppBar
             title={pageTitle}
+            showMenu={role !== "student"}
             onMenuClick={() => setMobileDrawerOpen(true)}
             actions={topBarActions}
           />

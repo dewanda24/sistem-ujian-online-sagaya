@@ -219,25 +219,6 @@ export default async function StudentDashboardPage() {
     });
   }
 
-  // System & School Announcements
-  notifications.push({
-    id: "announcement-system",
-    category: "system",
-    title: "Sistem CBT Siap Digunakan",
-    message: "Selamat datang di Portal Ujian Digital SAGAYA. Pastikan koneksi internet stabil saat mengerjakan ujian.",
-    timestamp: "Sistem",
-    isRead: true,
-  });
-
-  notifications.push({
-    id: "announcement-school",
-    category: "announcement",
-    title: "Pengumuman Baru",
-    message: "Tata tertib pelaksanaan ujian online semester telah diperbarui. Harap patuhi seluruh instruksi pengawas.",
-    timestamp: "Sekolah",
-    isRead: true,
-  });
-
   return (
     <StudentDashboardClient
       studentName={studentName}

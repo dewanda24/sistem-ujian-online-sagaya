@@ -28,7 +28,14 @@ export function StudentLatestResultsList({
   attempts,
   maxDisplay = 3,
 }: StudentLatestResultsListProps) {
-  const displayedAttempts = attempts.slice(0, maxDisplay);
+  // Deduplicate attempts by schedule ID so we only show the latest attempt per schedule
+  const uniqueAttempts = attempts.filter((attempt, index, self) => {
+    const scheduleId = firstRelation(attempt.exam_schedules)?.id;
+    if (!scheduleId) return true;
+    return index === self.findIndex((a) => firstRelation(a.exam_schedules)?.id === scheduleId);
+  });
+
+  const displayedAttempts = uniqueAttempts.slice(0, maxDisplay);
 
   return (
     <div className="space-y-3">

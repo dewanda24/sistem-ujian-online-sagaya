@@ -18,6 +18,7 @@ import {
 } from "@/features/results/queries";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { requireAuth } from "@/lib/auth/require-auth";
 
 type PageProps = {
   params: Promise<{
@@ -33,7 +34,10 @@ export default async function ExamResultDetailPage({
   params,
   searchParams,
 }: PageProps) {
-  const user = await requirePermission("exam_results.view");
+  const user = await requireAuth();
+  if (user.roles?.name !== "student") {
+    await requirePermission("exam_results.view");
+  }
   const [{ attemptId }, query] = await Promise.all([params, searchParams]);
   const result = await getResultDetail(attemptId);
 

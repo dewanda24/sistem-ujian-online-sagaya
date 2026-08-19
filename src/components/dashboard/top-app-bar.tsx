@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowLeft, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,8 @@ interface TopAppBarProps {
   variant?: "default" | "transparent";
   className?: string;
   onMenuClick?: () => void;
+  /** Whether to show the hamburger menu icon (defaults to true) */
+  showMenu?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ export function TopAppBar({
   variant = "default",
   className,
   onMenuClick,
+  showMenu = true,
 }: TopAppBarProps) {
   const isTransparent = variant === "transparent";
 
@@ -62,7 +65,7 @@ export function TopAppBar({
             <ArrowLeft className="size-6" />
           </button>
         )
-      ) : (
+      ) : showMenu ? (
         <button
           type="button"
           aria-label="Buka navigasi"
@@ -71,6 +74,8 @@ export function TopAppBar({
         >
           <Menu className="size-6" />
         </button>
+      ) : (
+        <div className="size-6 ml-2" /> // Spacer when menu is hidden
       )}
 
       {/* Title — fills space */}
