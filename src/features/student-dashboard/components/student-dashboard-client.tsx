@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -9,10 +9,7 @@ import { ActiveExamCard, type ActiveExamCardExam } from "./active-exam-card";
 import { EmptyExamState } from "./empty-exam-state";
 import { UpcomingExamCard, type UpcomingExamCardExam } from "./upcoming-exam-card";
 import { StudentLatestResultsList } from "./student-latest-results-list";
-import {
-  StudentNotificationDrawer,
-  type StudentNotificationItem,
-} from "./student-notification-drawer";
+
 import { PwaInstallBanner } from "./pwa-install-banner";
 
 interface StudentDashboardClientProps {
@@ -22,7 +19,6 @@ interface StudentDashboardClientProps {
   upcomingExams: UpcomingExamCardExam[];
   latestAttempts: any[];
   startExamAction: (formData: FormData) => void | Promise<void>;
-  notifications: StudentNotificationItem[];
   statusType: "active" | "empty" | "waiting_grading" | "result_ready";
 }
 
@@ -33,22 +29,8 @@ export function StudentDashboardClient({
   upcomingExams,
   latestAttempts,
   startExamAction,
-  notifications,
   statusType,
 }: StudentDashboardClientProps) {
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(
-    notifications.filter((n) => !n.isRead).length,
-  );
-
-  useEffect(() => {
-    const handleOpen = () => setNotificationOpen(true);
-    window.addEventListener("sagaya-open-notifications", handleOpen);
-    return () => window.removeEventListener("sagaya-open-notifications", handleOpen);
-  }, []);
-
-  const handleMarkAllRead = () => setUnreadCount(0);
-
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* PWA Install Banner (bottom priority — only shows when triggered) */}
@@ -126,14 +108,6 @@ export function StudentDashboardClient({
         </div>
         <StudentLatestResultsList attempts={latestAttempts} maxDisplay={3} />
       </section>
-
-      {/* Notification Drawer */}
-      <StudentNotificationDrawer
-        isOpen={notificationOpen}
-        onClose={() => setNotificationOpen(false)}
-        notifications={notifications}
-        onMarkAllAsRead={handleMarkAllRead}
-      />
     </div>
   );
 }

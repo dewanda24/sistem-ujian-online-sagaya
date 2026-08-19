@@ -609,6 +609,50 @@ export async function archiveExamPackageAction(formData: FormData) {
   });
 }
 
+export async function deleteExamPackageAction(formData: FormData) {
+  const currentUser = await requirePermission("exam_packages.manage");
+  if (isDemoUser(currentUser)) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: DEMO_MUTATION_BLOCKED_MESSAGE,
+    });
+  }
+
+  const supabase = await createClient();
+  const id = formString(formData, "id");
+  await assertPackageSchoolScope(id);
+
+  const { error } = await supabase.from("exam_packages").delete().eq("id", id);
+
+  if (error) {
+    if (error.code === "23503") {
+      redirectTo("/dashboard/exams/packages", {
+        ok: false,
+        message: "Gagal menghapus: Paket ini sedang digunakan di suatu Jadwal Ujian.",
+      });
+    }
+
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: error.message,
+    });
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "exam_packages.delete",
+    entityType: "exam_packages",
+    entityId: id,
+    payload: { action: "permanent_delete" },
+  });
+
+  revalidatePath("/dashboard/exams/packages");
+  redirectTo("/dashboard/exams/packages", {
+    ok: true,
+    message: "Paket ujian berhasil dihapus permanen.",
+  });
+}
+
 export async function saveExamScheduleAction(formData: FormData) {
   const currentUser = await requireAuth();
   const scheduleId = formString(formData, "id");

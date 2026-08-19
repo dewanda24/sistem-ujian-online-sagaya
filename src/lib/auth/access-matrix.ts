@@ -161,7 +161,7 @@ const questionBankMenu = (roles: RoleName[]): AccessMenuItem => ({
       label: "Kategori Soal",
       href: "/dashboard/question-bank/categories",
       icon: "list-checks",
-      roles,
+      roles: roles.filter((r) => r !== "teacher"),
       permission: "question_categories.manage",
     },
     {
@@ -261,13 +261,6 @@ const teacherMonitoringMenu: AccessMenuItem = {
     {
       label: "Monitoring Ujian",
       href: "/dashboard/teacher/monitoring",
-      icon: "activity",
-      roles: ["teacher"],
-      permission: "exam_monitoring.view",
-    },
-    {
-      label: "Pusat Pemulihan",
-      href: "/dashboard/recovery-center",
       icon: "activity",
       roles: ["teacher"],
       permission: "exam_monitoring.view",
@@ -639,7 +632,6 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "questions.update",
       "questions.publish",
       "questions.archive",
-      "question_categories.manage",
       "exams.view",
       "exam_packages.view",
       "exam_packages.manage",
@@ -727,7 +719,7 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   },
   {
     path: "/dashboard/recovery-center",
-    roles: ["super_admin", "admin", "teacher", "proctor"],
+    roles: ["super_admin", "admin", "proctor"],
     match: "prefix",
     permission: "exam_monitoring.view",
   },

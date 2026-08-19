@@ -9,7 +9,6 @@ import {
 } from "@/features/student-dashboard/components/active-exam-card";
 import { type StudentExamStatus } from "@/features/student-dashboard/components/exam-status-badge";
 import { StudentDashboardClient } from "@/features/student-dashboard/components/student-dashboard-client";
-import { type StudentNotificationItem } from "@/features/student-dashboard/components/student-notification-drawer";
 import { type UpcomingExamCardExam } from "@/features/student-dashboard/components/upcoming-exam-card";
 import { requireRole } from "@/lib/auth/require-role";
 import { formatJakartaDate, formatJakartaDateTime } from "@/lib/date-time";
@@ -159,66 +158,6 @@ export default async function StudentDashboardPage() {
     }
   }
 
-  // Build dynamic notifications list matching reference preview 3.6
-  const notifications: StudentNotificationItem[] = [];
-
-  if (activeSchedules.length > 0) {
-    const activeFirst = activeSchedules[0];
-    const subjName = activeFirst.exam_packages?.subjects?.name || activeFirst.title;
-    notifications.push({
-      id: `active-${activeFirst.id}`,
-      category: "exam",
-      title: "Ujian Dimulai",
-      message: `Ujian ${subjName} telah dimulai. Jangan lupa kerjakan sekarang.`,
-      timestamp: "Sekarang",
-      isRead: false,
-    });
-  }
-
-  if (latestAttempt) {
-    const schedule = firstRelation(latestAttempt.exam_schedules);
-    const examPackage = firstRelation(schedule?.exam_packages);
-    const subject = firstRelation(examPackage?.subjects);
-    const subjName = subject?.name || schedule?.title || "Ujian";
-
-    if (
-      examPackage?.show_result &&
-      latestAttempt.grading_status !== "needs_manual_grading" &&
-      latestAttempt.score !== null
-    ) {
-      notifications.push({
-        id: `result-${latestAttempt.id}`,
-        category: "exam",
-        title: "Nilai Tersedia",
-        message: `Nilai ${subjName} sudah tersedia (${latestAttempt.score}/${latestAttempt.max_score ?? 100}). Silakan lihat hasil Anda.`,
-        timestamp: latestAttempt.submitted_at ? formatJakartaDate(latestAttempt.submitted_at) : "Baru saja",
-        isRead: false,
-      });
-    } else {
-      notifications.push({
-        id: `submit-${latestAttempt.id}`,
-        category: "exam",
-        title: "Pengumpulan Berhasil",
-        message: `Jawaban ujian ${subjName} telah berhasil dikumpulkan.`,
-        timestamp: latestAttempt.submitted_at ? formatJakartaDate(latestAttempt.submitted_at) : "Baru saja",
-        isRead: true,
-      });
-    }
-  }
-
-  if (upcomingSchedules.length > 0) {
-    const nextUpcoming = upcomingSchedules[0];
-    const subjName = nextUpcoming.exam_packages?.subjects?.name || nextUpcoming.title;
-    notifications.push({
-      id: `upcoming-${nextUpcoming.id}`,
-      category: "exam",
-      title: "Ujian Akan Datang",
-      message: `Ujian ${subjName} akan dilaksanakan pada ${formatJakartaDateTime(nextUpcoming.start_at)}.`,
-      timestamp: formatJakartaDate(nextUpcoming.start_at),
-      isRead: true,
-    });
-  }
-
   return (
     <StudentDashboardClient
       studentName={studentName}
@@ -227,7 +166,6 @@ export default async function StudentDashboardPage() {
       upcomingExams={upcomingSchedules.map((s) => toUpcomingCard(s, now))}
       latestAttempts={attempts}
       startExamAction={startExamAction}
-      notifications={notifications}
       statusType={statusType}
     />
   );

@@ -17,7 +17,7 @@ import {
 import { UI_LABELS, getStatusLabel } from "@/constants/ui-labels";
 import {
   archiveExamPackageAction,
-  toggleExamPackageActiveAction,
+  deleteExamPackageAction,
   updateExamPackageStatusAction,
 } from "@/features/exams/actions";
 
@@ -235,48 +235,55 @@ function PackageActions({
       >
         {UI_LABELS.actions.update}
       </TableActionLink>
-      <TableActionLink
-        href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
-        icon="calendar-plus"
-      >
-        Jadwalkan
-      </TableActionLink>
-      {["draft", "published", "archived"].map((status) => (
-        <form key={status} action={updateExamPackageStatusAction}>
-          <input type="hidden" name="id" value={examPackage.id} />
-          <input type="hidden" name="status" value={status} />
-          <TableActionSubmit
-            confirmMessage={`Ubah status paket menjadi ${getStatusLabel(status)}?`}
-          >
-            {getStatusLabel(status)}
-          </TableActionSubmit>
-        </form>
-      ))}
-      <form action={toggleExamPackageActiveAction}>
+      {examPackage.status === "published" ? (
+        <TableActionLink
+          href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
+          icon="calendar-plus"
+        >
+          Jadwalkan
+        </TableActionLink>
+      ) : null}
+      
+      <div className="my-1 h-px bg-slate-100" />
+      
+      <form action={updateExamPackageStatusAction}>
         <input type="hidden" name="id" value={examPackage.id} />
-        <input
-          type="hidden"
-          name="is_active"
-          value={examPackage.is_active ? "false" : "true"}
+        <input 
+          type="hidden" 
+          name="status" 
+          value={examPackage.status === "published" ? "draft" : "published"} 
         />
         <TableActionSubmit
+          icon={examPackage.status === "published" ? "undo" : "send"}
           confirmMessage={
-            examPackage.is_active
-              ? "Nonaktifkan paket ujian ini?"
-              : "Aktifkan paket ujian ini?"
+            examPackage.status === "published" 
+              ? "Tarik kembali paket ini menjadi Draf?" 
+              : "Terbitkan paket ujian ini agar dapat dijadwalkan?"
           }
         >
-          {examPackage.is_active ? "Nonaktifkan" : "Aktifkan"}
+          {examPackage.status === "published" ? "Jadikan Draf" : "Terbitkan Paket"}
         </TableActionSubmit>
       </form>
+
       <form action={archiveExamPackageAction}>
         <input type="hidden" name="id" value={examPackage.id} />
         <TableActionSubmit
           icon="archive"
-          confirmMessage="Arsipkan paket ujian ini?"
+          confirmMessage="Arsipkan paket ujian ini? Paket yang diarsipkan tidak akan muncul di daftar utama."
           tone="danger"
         >
           Arsipkan
+        </TableActionSubmit>
+      </form>
+      <form action={deleteExamPackageAction}>
+        <input type="hidden" name="id" value={examPackage.id} />
+        <TableActionSubmit
+          icon="trash"
+          confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN paket ujian ini? Tindakan ini tidak bisa dibatalkan."
+          confirmationText="HAPUS"
+          tone="danger"
+        >
+          Hapus Permanen
         </TableActionSubmit>
       </form>
     </TableActions>

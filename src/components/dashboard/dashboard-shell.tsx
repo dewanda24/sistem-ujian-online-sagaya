@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, User } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { TopAppBar } from "@/components/dashboard/top-app-bar";
 import { AppBottomNav } from "@/components/dashboard/app-bottom-nav";
 import { getDashboardMenu } from "@/constants/dashboard-menu";
 import { SessionGuard } from "@/features/auth/components/session-guard";
+import { GlobalNotificationDrawer } from "@/components/dashboard/global-notification-drawer";
 import type { CurrentUser } from "@/types/auth";
 import type { RoleName } from "@/types/auth";
 import { cn } from "@/lib/utils";
@@ -93,12 +94,19 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
   const pathname = usePathname();
   const isExamRoom = pathname.startsWith("/dashboard/exam-room");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
 
   const isCollapsed = useSyncExternalStore(
     subscribe,
     getSidebarSnapshot,
     getServerSnapshot,
   );
+
+  useEffect(() => {
+    const handleOpen = () => setNotificationOpen(true);
+    window.addEventListener("sagaya-open-notifications", handleOpen);
+    return () => window.removeEventListener("sagaya-open-notifications", handleOpen);
+  }, []);
 
   const handleToggleCollapse = () => {
     try {
@@ -221,6 +229,10 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
         </main>
 
         <DashboardToaster />
+        <GlobalNotificationDrawer
+          isOpen={notificationOpen}
+          onClose={() => setNotificationOpen(false)}
+        />
       </div>
 
       {/* Android-style Bottom Navigation — all roles on mobile */}

@@ -765,10 +765,10 @@ export async function getScheduleExamReadiness(
 
 export async function getExamReadinessSummary(): Promise<ExamReadinessSummary> {
   const [packages, schedules] = await Promise.all([
-    getExamPackages({}),
+    getExamPackages({ includeQuestions: true }),
     getExamSchedules({}),
   ]);
-  const typedPackages = packages as PackageRow[];
+  const typedPackages = packages as unknown as PackageRow[];
   const typedSchedules = schedules as ScheduleRow[];
   const packageIssues: ExamReadinessIssue[] = typedPackages.flatMap(
     (examPackage) => {

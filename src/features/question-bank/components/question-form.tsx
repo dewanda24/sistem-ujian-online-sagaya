@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
+  Check,
   Eye,
   Image as ImageIcon,
   Loader2,
@@ -234,7 +235,7 @@ export function QuestionForm({
   const [uploadState, setUploadState] = useState<UploadState>(null);
 
   // Target input for inserting math formula: "content" or "A", "B", "C", "D", "E"
-  const [mathTarget, setMathTarget] = useState<"content" | "A" | "B" | "C" | "D" | "E">("content");
+  const [mathTarget, setMathTarget] = useState<"content" | "A" | "B" | "C" | "D" | "E" | null>(null);
 
   // Visual Math Assistant Dialog State
   const [mathModal, setMathModal] = useState<
@@ -301,6 +302,7 @@ export function QuestionForm({
   const isMultipleChoice = type === "multiple_choice";
 
   function insertTextToTarget(insertedText: string) {
+    if (!mathTarget) return;
     if (mathTarget === "content") {
       setContent((current) => {
         if (!current) return insertedText;
@@ -410,6 +412,124 @@ export function QuestionForm({
     });
   }
 
+  const renderMathToolbar = (target: "content" | "A" | "B" | "C" | "D" | "E") => {
+    if (mathTarget !== target) return null;
+    return (
+      <div className="mb-3 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2 mb-2.5">
+            <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <span>📐</span>
+              <span>Bantuan Rumus Matematika (Visual)</span>
+            </span>
+            <button type="button" onClick={() => setMathTarget(null)} className="text-slate-400 hover:text-slate-600">
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <button type="button" onClick={() => setMathModal("fraction")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>➗</span> <span>Pecahan</span></button>
+            <button type="button" onClick={() => setMathModal("sqrt")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>√</span> <span>Bentuk Akar</span></button>
+            <button type="button" onClick={() => setMathModal("power")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>xⁿ</span> <span>Pangkat</span></button>
+            <button type="button" onClick={() => setMathModal("degree")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>°</span> <span>Derajat</span></button>
+            <button type="button" onClick={() => setMathModal("matrix")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>🔲</span> <span>Matriks 2x2</span></button>
+            <button type="button" onClick={() => setMathModal("system")} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"><span>📏</span> <span>Sistem Persamaan</span></button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[11px] text-[#64748B] font-medium mr-1">Simbol Cepat:</span>
+            {[
+              { label: "×", val: "\\times" }, { label: "÷", val: "\\div" }, { label: "±", val: "\\pm" }, { label: "≤", val: "\\le" }, { label: "≥", val: "\\ge" }, { label: "≠", val: "\\neq" }, { label: "≈", val: "\\approx" }, { label: "°", val: "^\\circ" }, { label: "∠", val: "\\angle" }, { label: "△", val: "\\triangle" }, { label: "π", val: "\\pi" }, { label: "θ", val: "\\theta" }, { label: "α", val: "\\alpha" }, { label: "β", val: "\\beta" }, { label: "∞", val: "\\infty" }, { label: "∫", val: "\\int" }, { label: "lim", val: "\\lim" }
+            ].map((sym) => (
+              <button key={sym.label} type="button" onClick={() => handleInsertMathSymbol(sym.val)} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 shadow-2xs hover:bg-blue-50 active:scale-90 transition" title={`Sisipkan simbol ${sym.label}`}>
+                {sym.label}
+              </button>
+            ))}
+          </div>
+
+          {mathModal && (
+            <div className="mt-4 rounded-xl border-2 border-blue-400 bg-white p-4 shadow-md animate-in fade-in duration-150">
+              <div className="flex items-center justify-between border-b pb-2 mb-3">
+                <h4 className="text-xs font-bold text-blue-900">
+                  {mathModal === "fraction" && "➗ Sisipkan Pecahan"}
+                  {mathModal === "sqrt" && "√ Sisipkan Bentuk Akar"}
+                  {mathModal === "power" && "xⁿ Sisipkan Pangkat"}
+                  {mathModal === "degree" && "° Sisipkan Derajat / Sudut"}
+                  {mathModal === "matrix" && "🔲 Sisipkan Matriks 2x2"}
+                  {mathModal === "system" && "📏 Sisipkan Sistem Persamaan Linier"}
+                </h4>
+                <button type="button" onClick={() => setMathModal(null)} className="size-6 inline-flex items-center justify-center rounded-md hover:bg-slate-100">
+                  <X className="size-4 text-slate-500" />
+                </button>
+              </div>
+
+              {mathModal === "fraction" && (
+                <div className="flex items-center gap-3">
+                  <div className="grid gap-2">
+                    <input placeholder="Pembilang (Atas), contoh: 3" value={mathInputs.fracTop} onChange={(e) => setMathInputs({ ...mathInputs, fracTop: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" autoFocus />
+                    <div className="border-b-2 border-slate-800" />
+                    <input placeholder="Penyebut (Bawah), contoh: 4" value={mathInputs.fracBottom} onChange={(e) => setMathInputs({ ...mathInputs, fracBottom: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" />
+                  </div>
+                </div>
+              )}
+
+              {mathModal === "sqrt" && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FieldLabel label="Angka di dalam akar">
+                    <input placeholder="Contoh: 16 atau x + 4" value={mathInputs.sqrtVal} onChange={(e) => setMathInputs({ ...mathInputs, sqrtVal: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" autoFocus />
+                  </FieldLabel>
+                  <FieldLabel label="Pangkat akar (Opsional)">
+                    <input placeholder="Contoh: 3 untuk akar pangkat 3" value={mathInputs.sqrtDegree} onChange={(e) => setMathInputs({ ...mathInputs, sqrtDegree: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" />
+                  </FieldLabel>
+                </div>
+              )}
+
+              {mathModal === "power" && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FieldLabel label="Angka / Variabel Dasar">
+                    <input placeholder="Contoh: x atau 2" value={mathInputs.powerBase} onChange={(e) => setMathInputs({ ...mathInputs, powerBase: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" autoFocus />
+                  </FieldLabel>
+                  <FieldLabel label="Nilai Pangkat">
+                    <input placeholder="Contoh: 2 atau n+1" value={mathInputs.powerExp} onChange={(e) => setMathInputs({ ...mathInputs, powerExp: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" />
+                  </FieldLabel>
+                </div>
+              )}
+
+              {mathModal === "degree" && (
+                <div>
+                  <FieldLabel label="Besar Sudut / Derajat">
+                    <input placeholder="Contoh: 45 atau 90 atau 180" value={mathInputs.degreeVal} onChange={(e) => setMathInputs({ ...mathInputs, degreeVal: e.target.value })} className="h-9 max-w-xs rounded-lg border border-slate-300 px-3 text-xs font-semibold" autoFocus />
+                  </FieldLabel>
+                </div>
+              )}
+
+              {mathModal === "matrix" && (
+                <div className="grid grid-cols-2 gap-2 max-w-xs p-2 border border-slate-200 rounded-xl bg-slate-50">
+                  <input value={mathInputs.m00} onChange={(e) => setMathInputs({ ...mathInputs, m00: e.target.value })} className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold" placeholder="Baris 1 Kolom 1" />
+                  <input value={mathInputs.m01} onChange={(e) => setMathInputs({ ...mathInputs, m01: e.target.value })} className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold" placeholder="Baris 1 Kolom 2" />
+                  <input value={mathInputs.m10} onChange={(e) => setMathInputs({ ...mathInputs, m10: e.target.value })} className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold" placeholder="Baris 2 Kolom 1" />
+                  <input value={mathInputs.m11} onChange={(e) => setMathInputs({ ...mathInputs, m11: e.target.value })} className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold" placeholder="Baris 2 Kolom 2" />
+                </div>
+              )}
+
+              {mathModal === "system" && (
+                <div className="grid gap-2">
+                  <input value={mathInputs.sysEq1} onChange={(e) => setMathInputs({ ...mathInputs, sysEq1: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" placeholder="Persamaan 1, misal: 2x + y = 5" />
+                  <input value={mathInputs.sysEq2} onChange={(e) => setMathInputs({ ...mathInputs, sysEq2: e.target.value })} className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold" placeholder="Persamaan 2, misal: x - y = 1" />
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onClick={() => setMathModal(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                <button type="button" onClick={handleApplyMathModal} className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700">Sisipkan Rumus</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <form
       action={saveQuestionAction}
@@ -493,301 +613,24 @@ export function QuestionForm({
         description="Tulis pertanyaan soal, unggah gambar/diagram bila ada, atau gunakan bantuan rumus matematika visual."
       >
         <div className="space-y-4">
-          {/* Visual Math Builder Toolbar */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2">
-              <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                <span>📐</span>
-                <span>Bantuan Rumus Matematika (Visual)</span>
-              </span>
-
-              {/* Target Selector */}
-              <div className="flex items-center gap-1 text-[11px]">
-                <span className="text-[#64748B] font-medium">Sisipkan ke:</span>
-                <select
-                  value={mathTarget}
-                  onChange={(e) =>
-                    setMathTarget(
-                      e.target.value as "content" | "A" | "B" | "C" | "D" | "E",
-                    )
-                  }
-                  className="rounded-lg border border-blue-300 bg-white px-2 py-1 text-xs font-bold text-[#0F172A] outline-none"
-                >
-                  <option value="content">Teks Soal</option>
-                  <option value="A">Opsi A</option>
-                  <option value="B">Opsi B</option>
-                  <option value="C">Opsi C</option>
-                  <option value="D">Opsi D</option>
-                  <option value="E">Opsi E</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Visual Builder Buttons */}
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setMathModal("fraction")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>➗</span>
-                <span>Pecahan (Atas/Bawah)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMathModal("sqrt")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>√</span>
-                <span>Bentuk Akar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMathModal("power")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>xⁿ</span>
-                <span>Pangkat</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMathModal("degree")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>°</span>
-                <span>Derajat & Sudut</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMathModal("matrix")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>🔲</span>
-                <span>Matriks 2x2</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMathModal("system")}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-              >
-                <span>📏</span>
-                <span>Sistem Persamaan</span>
-              </button>
-            </div>
-
-            {/* Quick 1-click math symbols */}
-            <div className="flex flex-wrap items-center gap-1 pt-1">
-              <span className="text-[11px] text-[#64748B] font-medium mr-1">Simbol Cepat:</span>
-              {[
-                { label: "×", val: "\\times" },
-                { label: "÷", val: "\\div" },
-                { label: "±", val: "\\pm" },
-                { label: "≤", val: "\\le" },
-                { label: "≥", val: "\\ge" },
-                { label: "≠", val: "\\neq" },
-                { label: "≈", val: "\\approx" },
-                { label: "°", val: "^\\circ" },
-                { label: "∠", val: "\\angle" },
-                { label: "△", val: "\\triangle" },
-                { label: "π", val: "\\pi" },
-                { label: "θ", val: "\\theta" },
-                { label: "α", val: "\\alpha" },
-                { label: "β", val: "\\beta" },
-                { label: "∞", val: "\\infty" },
-                { label: "∫", val: "\\int" },
-                { label: "lim", val: "\\lim" },
-              ].map((sym) => (
-                <button
-                  key={sym.label}
-                  type="button"
-                  onClick={() => handleInsertMathSymbol(sym.val)}
-                  className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 shadow-2xs hover:bg-blue-50 active:scale-90 transition"
-                  title={`Sisipkan simbol ${sym.label}`}
-                >
-                  {sym.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Modal Visual Math Builder */}
-          {mathModal && (
-            <div className="rounded-xl border-2 border-blue-400 bg-white p-4 shadow-md animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between border-b pb-2 mb-3">
-                <h4 className="text-xs font-bold text-blue-900">
-                  {mathModal === "fraction" && "➗ Sisipkan Pecahan"}
-                  {mathModal === "sqrt" && "√ Sisipkan Bentuk Akar"}
-                  {mathModal === "power" && "xⁿ Sisipkan Pangkat"}
-                  {mathModal === "degree" && "° Sisipkan Derajat / Sudut"}
-                  {mathModal === "matrix" && "🔲 Sisipkan Matriks 2x2"}
-                  {mathModal === "system" && "📏 Sisipkan Sistem Persamaan Linier"}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setMathModal(null)}
-                  className="size-6 inline-flex items-center justify-center rounded-md hover:bg-slate-100"
-                >
-                  <X className="size-4 text-slate-500" />
-                </button>
-              </div>
-
-              {/* Fraction fields */}
-              {mathModal === "fraction" && (
-                <div className="flex items-center gap-3">
-                  <div className="grid gap-2">
-                    <input
-                      placeholder="Pembilang (Atas), contoh: 3"
-                      value={mathInputs.fracTop}
-                      onChange={(e) => setMathInputs({ ...mathInputs, fracTop: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                      autoFocus
-                    />
-                    <div className="border-b-2 border-slate-800" />
-                    <input
-                      placeholder="Penyebut (Bawah), contoh: 4"
-                      value={mathInputs.fracBottom}
-                      onChange={(e) => setMathInputs({ ...mathInputs, fracBottom: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Sqrt fields */}
-              {mathModal === "sqrt" && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <FieldLabel label="Angka di dalam akar">
-                    <input
-                      placeholder="Contoh: 16 atau x + 4"
-                      value={mathInputs.sqrtVal}
-                      onChange={(e) => setMathInputs({ ...mathInputs, sqrtVal: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                      autoFocus
-                    />
-                  </FieldLabel>
-                  <FieldLabel label="Pangkat akar (Opsional, kosongkan jika akar kuadrat biasa)">
-                    <input
-                      placeholder="Contoh: 3 untuk akar pangkat 3"
-                      value={mathInputs.sqrtDegree}
-                      onChange={(e) => setMathInputs({ ...mathInputs, sqrtDegree: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                    />
-                  </FieldLabel>
-                </div>
-              )}
-
-              {/* Power fields */}
-              {mathModal === "power" && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <FieldLabel label="Angka / Variabel Dasar">
-                    <input
-                      placeholder="Contoh: x atau 2"
-                      value={mathInputs.powerBase}
-                      onChange={(e) => setMathInputs({ ...mathInputs, powerBase: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                      autoFocus
-                    />
-                  </FieldLabel>
-                  <FieldLabel label="Nilai Pangkat">
-                    <input
-                      placeholder="Contoh: 2 atau n+1"
-                      value={mathInputs.powerExp}
-                      onChange={(e) => setMathInputs({ ...mathInputs, powerExp: e.target.value })}
-                      className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                    />
-                  </FieldLabel>
-                </div>
-              )}
-
-              {/* Degree fields */}
-              {mathModal === "degree" && (
-                <div>
-                  <FieldLabel label="Besar Sudut / Derajat">
-                    <input
-                      placeholder="Contoh: 45 atau 90 atau 180"
-                      value={mathInputs.degreeVal}
-                      onChange={(e) => setMathInputs({ ...mathInputs, degreeVal: e.target.value })}
-                      className="h-9 max-w-xs rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                      autoFocus
-                    />
-                  </FieldLabel>
-                </div>
-              )}
-
-              {/* Matrix fields */}
-              {mathModal === "matrix" && (
-                <div className="grid grid-cols-2 gap-2 max-w-xs p-2 border border-slate-200 rounded-xl bg-slate-50">
-                  <input
-                    value={mathInputs.m00}
-                    onChange={(e) => setMathInputs({ ...mathInputs, m00: e.target.value })}
-                    className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold"
-                    placeholder="Baris 1 Kolom 1"
-                  />
-                  <input
-                    value={mathInputs.m01}
-                    onChange={(e) => setMathInputs({ ...mathInputs, m01: e.target.value })}
-                    className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold"
-                    placeholder="Baris 1 Kolom 2"
-                  />
-                  <input
-                    value={mathInputs.m10}
-                    onChange={(e) => setMathInputs({ ...mathInputs, m10: e.target.value })}
-                    className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold"
-                    placeholder="Baris 2 Kolom 1"
-                  />
-                  <input
-                    value={mathInputs.m11}
-                    onChange={(e) => setMathInputs({ ...mathInputs, m11: e.target.value })}
-                    className="h-8 rounded-md border border-slate-300 bg-white text-center text-xs font-bold"
-                    placeholder="Baris 2 Kolom 2"
-                  />
-                </div>
-              )}
-
-              {/* System of equations */}
-              {mathModal === "system" && (
-                <div className="grid gap-2">
-                  <input
-                    value={mathInputs.sysEq1}
-                    onChange={(e) => setMathInputs({ ...mathInputs, sysEq1: e.target.value })}
-                    className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                    placeholder="Persamaan 1, misal: 2x + y = 5"
-                  />
-                  <input
-                    value={mathInputs.sysEq2}
-                    onChange={(e) => setMathInputs({ ...mathInputs, sysEq2: e.target.value })}
-                    className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-semibold"
-                    placeholder="Persamaan 2, misal: x - y = 1"
-                  />
-                </div>
-              )}
-
-              <div className="mt-3 flex justify-end gap-2 pt-2 border-t">
-                <button
-                  type="button"
-                  onClick={() => setMathModal(null)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleApplyMathModal}
-                  className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
-                >
-                  Sisipkan Rumus ke {mathTarget === "content" ? "Teks Soal" : `Opsi ${mathTarget}`}
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Question text textarea */}
           <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Teks Pertanyaan / Soal</span>
+              <button
+                type="button"
+                onClick={() => setMathTarget(mathTarget === "content" ? null : "content")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition",
+                  mathTarget === "content" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                )}
+              >
+                <span>∑</span> <span>Sisipkan Rumus</span>
+              </button>
+            </div>
+            
+            {renderMathToolbar("content")}
+            
             <textarea
               name="content"
               value={content}
@@ -901,24 +744,13 @@ export function QuestionForm({
 
           {/* Multiple Choice Options A, B, C, D, E */}
           {isMultipleChoice ? (
-            <div className="space-y-4 pt-2">
-              <FieldLabel label="Kunci Jawaban yang Benar">
-                <select
-                  name="correct_option"
-                  value={correct}
-                  onChange={(event) => setCorrect(event.target.value)}
-                  className="h-10 max-w-sm rounded-xl border border-blue-300 bg-white px-3 text-xs font-bold text-blue-900 outline-none"
-                >
-                  <option value="">Pilih kunci jawaban benar...</option>
-                  {labels.map((label) => (
-                    <option key={label} value={label}>
-                      Jawaban Benar: Opsi {label}
-                    </option>
-                  ))}
-                </select>
-              </FieldLabel>
-
-              <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-4 pt-4 border-t border-slate-200 mt-4">
+              <input type="hidden" name="correct_option" value={correct} />
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pilihan Jawaban (A-E)</span>
+              </div>
+              
+              <div className="grid gap-4">
                 {labels.map((label) => {
                   const isCorrect = correct === label;
                   const optionText = options[label];
@@ -927,29 +759,47 @@ export function QuestionForm({
                     <div
                       key={label}
                       className={cn(
-                        "rounded-xl border p-3.5 transition space-y-2",
+                        "rounded-xl border p-4 transition space-y-3",
                         isCorrect
                           ? "border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400"
-                          : "border-slate-200 bg-white",
+                          : "border-slate-200 bg-white hover:border-slate-300",
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <span
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setCorrect(label)}
+                            className={cn(
+                              "flex size-7 items-center justify-center rounded-full border-2 transition active:scale-95",
+                              isCorrect 
+                                ? "border-emerald-500 bg-emerald-500 text-white" 
+                                : "border-slate-300 bg-white text-transparent hover:border-emerald-400"
+                            )}
+                            title="Jadikan Kunci Jawaban"
+                          >
+                            <Check className="size-4" />
+                          </button>
+                          <span className="font-bold text-[#0F172A]">Opsi {label}</span>
+                          {isCorrect && (
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                              Kunci Jawaban Benar
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setMathTarget(mathTarget === label ? null : label)}
                           className={cn(
-                            "flex size-6 items-center justify-center rounded-lg text-xs font-bold",
-                            isCorrect
-                              ? "bg-emerald-600 text-white"
-                              : "bg-blue-100 text-blue-800",
+                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition",
+                            mathTarget === label ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"
                           )}
                         >
-                          {label}
-                        </span>
-                        {isCorrect && (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                            ✓ Kunci Jawaban
-                          </span>
-                        )}
+                          <span>∑</span> <span className="hidden sm:inline">Sisipkan Rumus</span>
+                        </button>
                       </div>
+
+                      {renderMathToolbar(label)}
 
                       <textarea
                         name={`option_${label}`}
@@ -961,13 +811,13 @@ export function QuestionForm({
                           }))
                         }
                         placeholder={`Tulis isi pilihan ${label}${label === "E" ? " (opsional)" : ""}`}
-                        className="min-h-20 w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs outline-none focus:border-[#2563EB]"
+                        className="min-h-20 w-full rounded-lg border border-slate-200 bg-white p-3 text-sm outline-none focus:border-[#2563EB] focus:ring-3 focus:ring-blue-100 transition"
                       />
 
                       {/* Live preview for Option */}
                       {optionText.trim() ? (
-                        <div className="rounded-md bg-slate-50 p-2 border border-slate-200/80 text-[11px]">
-                          <span className="text-[10px] font-semibold text-slate-500 block mb-0.5">Preview:</span>
+                        <div className="rounded-lg bg-slate-50 p-3 border border-slate-200/80 text-sm">
+                          <span className="text-[10px] font-semibold text-slate-500 block mb-1 uppercase tracking-wider">Preview:</span>
                           <QuestionMathRenderer content={optionText} />
                         </div>
                       ) : null}
