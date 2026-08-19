@@ -39,19 +39,6 @@ export function StudentLatestResultsList({
 
   return (
     <div className="space-y-3">
-      {/* Header with "Lihat Semua" */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-          Hasil Terbaru
-        </h3>
-        <Link
-          href="/dashboard/student/history"
-          className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
-        >
-          <span>Lihat Semua</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
 
       {displayedAttempts.length > 0 ? (
         <div className="space-y-2.5">

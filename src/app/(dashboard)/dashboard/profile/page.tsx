@@ -5,6 +5,7 @@ import { ActionToast } from "@/components/master-data/action-toast";
 import { FormSection } from "@/components/master-data/form-section";
 import { saveProfileSettingsAction } from "@/features/profile/actions";
 import { getProfileSettings } from "@/features/profile/queries";
+import { LogoutButton } from "@/features/auth/components/logout-button";
 
 type PageProps = {
   searchParams: Promise<{
@@ -80,6 +81,18 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           </div>
         </form>
       </FormSection>
+
+      <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-red-800">Sesi Akun</h3>
+            <p className="text-sm text-red-600/80 mt-1">
+              Akhiri sesi Anda dan keluar dari aplikasi pada perangkat ini.
+            </p>
+          </div>
+          <LogoutButton />
+        </div>
+      </div>
     </div>
   );
 }
