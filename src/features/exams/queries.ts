@@ -250,36 +250,49 @@ export async function getExamPackages(filters: ExamPackageFilters) {
     return [];
   }
 
-  let query = supabase
-    .from("exam_packages")
-    .select(
-      filters.includeQuestions
-        ? "*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id, point_override, questions(id, subject_id, type, difficulty, point, status, is_active, deleted_at))"
-        : "*, subjects(id, code, name), schools(name), users(username)"
-    )
-    .is("deleted_at", null)
-    .in("subject_id", subjectIds)
-    .order("created_at", { ascending: false });
+  if (filters.includeQuestions) {
+    let query = supabase
+      .from("exam_packages")
+      .select("*, subjects(id, code, name), schools(name), users(username), exam_package_questions(id, question_id, point_override, questions(id, subject_id, type, difficulty, point, status, is_active, deleted_at))")
+      .is("deleted_at", null)
+      .in("subject_id", subjectIds)
+      .order("created_at", { ascending: false });
 
-  if (filters.subject_id) {
-    query = query.eq("subject_id", filters.subject_id);
+    if (filters.subject_id) {
+      query = query.eq("subject_id", filters.subject_id);
+    }
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+    if (filters.q) {
+      query = query.ilike("title", `%${filters.q}%`);
+    }
+    
+    const { data, error } = await query;
+    if (error || !data) return [];
+    return data;
+  } else {
+    let query = supabase
+      .from("exam_packages")
+      .select("*, subjects(id, code, name), schools(name), users(username)")
+      .is("deleted_at", null)
+      .in("subject_id", subjectIds)
+      .order("created_at", { ascending: false });
+
+    if (filters.subject_id) {
+      query = query.eq("subject_id", filters.subject_id);
+    }
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+    if (filters.q) {
+      query = query.ilike("title", `%${filters.q}%`);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+    return data;
   }
-
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-
-  if (filters.q) {
-    query = query.ilike("title", `%${filters.q}%`);
-  }
-
-  const { data, error } = await query;
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data;
 }
 
 export async function getExamPackageOptions(): Promise<SelectOption[]> {
