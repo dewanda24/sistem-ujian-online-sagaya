@@ -52,7 +52,7 @@ export async function getResultDetail(attemptId: string) {
   const { data: attempt, error } = await attemptQuery.single();
 
   if (error) {
-    throw new Error(`DB Error: ${error.message} (Hint: ${error.hint || "none"})`);
+    return { _isError: true, message: `DB Error: ${error.message} (Hint: ${error.hint || "none"})` };
   }
   if (!attempt) {
     return null;
