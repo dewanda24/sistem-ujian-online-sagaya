@@ -258,11 +258,16 @@ export async function saveAcademicYearAction(formData: FormData) {
   const { id, is_active, starts_at, ends_at, ...rest } = parsed.data;
   assertSameSchool(scope, rest.school_id);
 
+  // Use service-role client for writes — RLS requires matching school_id in JWT
+  const adminDb = serviceRoleClient() ?? supabase;
+
   if (is_active) {
-    await supabase
+    await adminDb
       .from("academic_years")
       .update({ is_active: false })
       .eq("school_id", rest.school_id);
+
+    await deactivateSchoolSemesters(rest.school_id, adminDb);
   }
 
   const payload = {
@@ -273,19 +278,38 @@ export async function saveAcademicYearAction(formData: FormData) {
   };
 
   const { data: savedAcademicYear, error } = id
-    ? await supabase
+    ? await adminDb
         .from("academic_years")
         .update(payload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await adminDb
         .from("academic_years")
         .insert(payload)
         .select("id")
         .single();
 
   if (!error && savedAcademicYear?.id) {
+    // If creating a new academic year, automatically generate Ganjil and Genap semesters!
+    if (!id) {
+      const initialSemester = formString(formData, "initial_semester") || "ganjil";
+      await adminDb.from("semesters").insert([
+        {
+          academic_year_id: savedAcademicYear.id,
+          name: "Ganjil",
+          code: "ganjil",
+          is_active: is_active ? initialSemester === "ganjil" : false,
+        },
+        {
+          academic_year_id: savedAcademicYear.id,
+          name: "Genap",
+          code: "genap",
+          is_active: is_active ? initialSemester === "genap" : false,
+        },
+      ]);
+    }
+
     await logAuditEvent({
       userId: currentUser.id,
       action: id ? "academic_years.update" : "academic_years.create",
@@ -315,14 +339,16 @@ export async function toggleAcademicYearAction(formData: FormData) {
   assertSameSchool(scope, schoolId);
   const isActive = formBoolean(formData, "is_active");
 
+  const adminDb = serviceRoleClient() ?? supabase;
+
   if (isActive) {
-    await supabase
+    await adminDb
       .from("academic_years")
       .update({ is_active: false })
       .eq("school_id", schoolId);
   }
 
-  const { error } = await supabase
+  const { error } = await adminDb
     .from("academic_years")
     .update({ is_active: isActive })
     .eq("id", id);
@@ -357,13 +383,19 @@ export async function saveSemesterAction(formData: FormData) {
     });
   }
 
+  const semesterName = formString(formData, "name") ?? "";
+  // Auto-generate code from name: lowercase, spaces → hyphen, strip non-alphanum
+  const autoCode = formString(formData, "code") ||
+    semesterName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
   const parsed = semesterSchema.safeParse({
     id: formString(formData, "id"),
     academic_year_id: academicYearId,
-    name: formString(formData, "name"),
-    code: formString(formData, "code"),
+    name: semesterName,
+    code: autoCode,
     is_active: formBoolean(formData, "is_active"),
   });
+
 
   if (!parsed.success) {
     redirectTo(redirectPath, {
@@ -373,7 +405,9 @@ export async function saveSemesterAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const adminDb = serviceRoleClient() ?? supabase;
   const { id, is_active, ...rest } = parsed.data;
+  // Use anon client for auth check (reads school_id)
   const { data: academicYear, error: academicYearError } = await supabase
     .from("academic_years")
     .select("school_id")
@@ -392,7 +426,7 @@ export async function saveSemesterAction(formData: FormData) {
   assertSameSchool(scope, academicYear?.school_id);
 
   if (is_active) {
-    const deactivateError = await deactivateSchoolSemesters(academicYear.school_id);
+    const deactivateError = await deactivateSchoolSemesters(academicYear.school_id, adminDb);
 
     if (deactivateError) {
       redirectTo(redirectPath, {
@@ -408,13 +442,13 @@ export async function saveSemesterAction(formData: FormData) {
   };
 
   const { data: savedSemester, error } = id
-    ? await supabase
+    ? await adminDb
         .from("semesters")
         .update(payload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase.from("semesters").insert(payload).select("id").single();
+    : await adminDb.from("semesters").insert(payload).select("id").single();
 
   if (!error && savedSemester?.id) {
     await logAuditEvent({
@@ -442,6 +476,7 @@ export async function toggleSemesterAction(formData: FormData) {
   const currentUser = await requirePermission("semesters.manage");
   const scope = await requireSchoolScope();
   const supabase = await createClient();
+  const adminDb = serviceRoleClient() ?? supabase;
   const id = formString(formData, "id");
   const isActive = formBoolean(formData, "is_active");
   const { data: semester } = await supabase
@@ -456,8 +491,8 @@ export async function toggleSemesterAction(formData: FormData) {
 
   assertSameSchool(scope, schoolId);
 
-  if (isActive) {
-    const deactivateError = await deactivateSchoolSemesters(schoolId);
+  if (isActive && schoolId && semester?.academic_year_id) {
+    const deactivateError = await deactivateSchoolSemesters(schoolId, adminDb);
 
     if (deactivateError) {
       redirectTo(redirectPath, {
@@ -465,9 +500,20 @@ export async function toggleSemesterAction(formData: FormData) {
         message: getFriendlyErrorMessage(deactivateError),
       });
     }
+
+    // Auto-activate the parent academic year and deactivate others in the school
+    await adminDb
+      .from("academic_years")
+      .update({ is_active: false })
+      .eq("school_id", schoolId);
+
+    await adminDb
+      .from("academic_years")
+      .update({ is_active: true })
+      .eq("id", semester.academic_year_id);
   }
 
-  const { error } = await supabase
+  const { error } = await adminDb
     .from("semesters")
     .update({ is_active: isActive })
     .eq("id", id);
@@ -489,12 +535,14 @@ export async function toggleSemesterAction(formData: FormData) {
   });
 }
 
-async function deactivateSchoolSemesters(schoolId: string | null) {
+type DbClient = ReturnType<typeof serviceRoleClient> | Awaited<ReturnType<typeof createClient>>;
+
+async function deactivateSchoolSemesters(schoolId: string | null, db?: DbClient) {
   if (!schoolId) {
     return null;
   }
 
-  const supabase = await createClient();
+  const supabase = db ?? (await createClient());
   const { data: academicYears, error: academicYearsError } = await supabase
     .from("academic_years")
     .select("id")
@@ -541,16 +589,17 @@ export async function saveClassAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const { id, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
   const { data: savedClass, error } = id
-    ? await supabase
+    ? await dbClient
         .from("classes")
         .update(payload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase.from("classes").insert(payload).select("id").single();
+    : await dbClient.from("classes").insert(payload).select("id").single();
 
   if (!error && savedClass?.id) {
     await logAuditEvent({
@@ -577,8 +626,9 @@ export async function toggleClassAction(formData: FormData) {
   const currentUser = await requirePermission("classes.manage");
   const scope = await requireSchoolScope();
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const id = formString(formData, "id");
-  const { data: classItem } = await supabase
+  const { data: classItem } = await dbClient
     .from("classes")
     .select("school_id")
     .eq("id", id)
@@ -587,7 +637,7 @@ export async function toggleClassAction(formData: FormData) {
   assertSameSchool(scope, classItem?.school_id);
 
   const isActive = formBoolean(formData, "is_active");
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("classes")
     .update({ is_active: isActive })
     .eq("id", id);
@@ -629,16 +679,17 @@ export async function saveSubjectAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const { id, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
   const { data: savedSubject, error } = id
-    ? await supabase
+    ? await dbClient
         .from("subjects")
         .update(payload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase.from("subjects").insert(payload).select("id").single();
+    : await dbClient.from("subjects").insert(payload).select("id").single();
 
   if (!error && savedSubject?.id) {
     await logAuditEvent({
@@ -665,8 +716,9 @@ export async function toggleSubjectAction(formData: FormData) {
   const currentUser = await requirePermission("subjects.manage");
   const scope = await requireSchoolScope();
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const id = formString(formData, "id");
-  const { data: subject } = await supabase
+  const { data: subject } = await dbClient
     .from("subjects")
     .select("school_id")
     .eq("id", id)
@@ -675,7 +727,7 @@ export async function toggleSubjectAction(formData: FormData) {
   assertSameSchool(scope, subject?.school_id);
 
   const isActive = formBoolean(formData, "is_active");
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("subjects")
     .update({ is_active: isActive })
     .eq("id", id);
@@ -1821,7 +1873,20 @@ export async function saveTeacherAssignmentAction(formData: FormData) {
   assertSameSchool(scope, classItem?.school_id);
   assertSameSchool(scope, academicYear?.school_id);
 
-  const { data: assignment, error } = await supabase
+  // Use service-role client so RLS does not block teacher subject assignment.
+  // Application-layer auth (requirePermission + assertSameSchool) already verified
+  // the caller is allowed to manage these resources.
+  const adminSupabase = serviceRoleClient();
+
+  if (!adminSupabase) {
+    revalidatePath("/dashboard/master-data/teachers");
+    redirectTo("/dashboard/master-data/teachers", {
+      ok: false,
+      message: "Service role key tidak tersedia, penugasan gagal disimpan.",
+    });
+  }
+
+  const { data: assignment, error } = await adminSupabase!
     .from("teacher_subjects")
     .insert(parsed.data)
     .select("id")
@@ -1851,9 +1916,10 @@ export async function toggleUserStatusAction(formData: FormData) {
   );
   const scope = await requireSchoolScope();
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const status = formString(formData, "status") === "active" ? "active" : "inactive";
   const id = formString(formData, "id");
-  const { data: targetUser } = await supabase
+  const { data: targetUser } = await dbClient
     .from("users")
     .select("school_id")
     .eq("id", id)
@@ -1861,7 +1927,7 @@ export async function toggleUserStatusAction(formData: FormData) {
 
   assertSameSchool(scope, targetUser?.school_id);
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("users")
     .update({ status })
     .eq("id", id);
@@ -1896,6 +1962,7 @@ export async function saveStudentAction(formData: FormData) {
     nisn: formString(formData, "nisn"),
     phone: formString(formData, "phone"),
     status: formString(formData, "status") || "active",
+    class_id: formString(formData, "class_id"),
   });
 
   if (!parsed.success) {
@@ -1915,10 +1982,13 @@ export async function saveStudentAction(formData: FormData) {
     });
   }
 
-  const { id, full_name, nis, nisn, phone, password, ...userPayload } =
-    parsed.data;
+  const { id, full_name, nis, nisn, phone, class_id, ...userPayload } = parsed.data;
   let authUserId: string | null = null;
   let targetSchoolId: string | null = null;
+  
+  // Auto-generate password if empty and creating a new student
+  const password = parsed.data.password || (!id ? (nisn || nis || "123456") : undefined);
+
 
   await ensureUniqueUserCredentials({
     id,
@@ -2014,14 +2084,63 @@ export async function saveStudentAction(formData: FormData) {
     });
   }
 
+  let classMemberError: string | null = null;
+
+  if (!profileError && class_id) {
+    // Use service-role client so RLS does not block class assignment.
+    // Application-layer auth (requirePermission + assertSameSchool) already
+    // verified that the caller is allowed to manage this student's school.
+    const adminSupabase = serviceRoleClient();
+
+    if (!adminSupabase) {
+      classMemberError = "Service role key tidak tersedia, kelas tidak dapat ditetapkan.";
+    } else {
+      const { data: existingClass } = await adminSupabase
+        .from("class_members")
+        .select("class_id")
+        .eq("student_id", savedUser.id)
+        .is("left_at", null)
+        .maybeSingle();
+
+      if (existingClass?.class_id !== class_id) {
+        if (existingClass) {
+          const { error: updateErr } = await adminSupabase
+            .from("class_members")
+            .update({ left_at: new Date().toISOString() })
+            .eq("student_id", savedUser.id)
+            .is("left_at", null);
+
+          if (updateErr) {
+            classMemberError = getFriendlyErrorMessage(updateErr);
+          }
+        }
+
+        if (!classMemberError) {
+          const { error: insertErr } = await adminSupabase
+            .from("class_members")
+            .insert({ class_id, student_id: savedUser.id });
+
+          if (insertErr) {
+            classMemberError = getFriendlyErrorMessage(insertErr);
+          }
+        }
+      }
+    }
+  }
+
   revalidatePath("/dashboard/master-data/students");
+
+  const overallOk = !profileError && !classMemberError;
+  const successMsg = id ? "Data berhasil diperbarui." : "Data berhasil disimpan.";
+  const failMsg = profileError
+    ? getFriendlyErrorMessage(profileError)
+    : classMemberError
+      ? `Data siswa disimpan, tapi gagal menetapkan kelas: ${classMemberError}`
+      : successMsg;
+
   redirectTo("/dashboard/master-data/students", {
-    ok: !profileError,
-    message: profileError
-      ? getFriendlyErrorMessage(profileError)
-      : id
-        ? "Data berhasil diperbarui."
-        : "Data berhasil disimpan.",
+    ok: overallOk,
+    message: overallOk ? successMsg : failMsg,
   });
 }
 
@@ -2042,14 +2161,15 @@ export async function saveClassMemberAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = serviceRoleClient() ?? supabase;
   const { student_id, class_id, joined_at } = parsed.data;
   const [{ data: student }, { data: classItem }] = await Promise.all([
-    supabase
+    dbClient
       .from("users")
       .select("school_id")
       .eq("id", student_id)
       .maybeSingle(),
-    supabase
+    dbClient
       .from("classes")
       .select("school_id")
       .eq("id", class_id)
@@ -2059,7 +2179,7 @@ export async function saveClassMemberAction(formData: FormData) {
   assertSameSchool(scope, student?.school_id);
   assertSameSchool(scope, classItem?.school_id);
 
-  const { data: activeMembership } = await supabase
+  const { data: activeMembership } = await dbClient
     .from("class_members")
     .select("id")
     .eq("student_id", student_id)
@@ -2072,21 +2192,21 @@ export async function saveClassMemberAction(formData: FormData) {
     joined_at: joined_at || new Date().toISOString().slice(0, 10),
     left_at: null,
   };
-  const { data: membership, error } = await supabase
+  const { data: membership, error } = await dbClient
     .from("class_members")
     .insert(membershipPayload)
     .select("id")
     .single();
 
   if (!error && activeMembership?.id) {
-    const { error: closeError } = await supabase
+    const { error: closeError } = await dbClient
       .from("class_members")
       .update({ left_at: new Date().toISOString().slice(0, 10) })
       .eq("id", activeMembership.id);
 
     if (closeError) {
       if (membership?.id) {
-        await supabase.from("class_members").delete().eq("id", membership.id);
+        await dbClient.from("class_members").delete().eq("id", membership.id);
       }
 
       redirectTo("/dashboard/master-data/students", {
@@ -2108,7 +2228,6 @@ export async function saveClassMemberAction(formData: FormData) {
       },
     });
   }
-
   revalidatePath("/dashboard/master-data/students");
   redirectTo("/dashboard/master-data/students", {
     ok: !error,
@@ -2129,7 +2248,8 @@ export async function deleteStudentAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: student } = await supabase
+  const dbClient = serviceRoleClient() ?? supabase;
+  const { data: student } = await dbClient
     .from("users")
     .select("id, school_id, auth_user_id, email, username")
     .eq("id", id)
@@ -2145,7 +2265,7 @@ export async function deleteStudentAction(formData: FormData) {
   assertSameSchool(scope, student.school_id);
 
   // Check if student has exam history to prevent corrupting reports/grades
-  const { data: attempts } = await supabase
+  const { data: attempts } = await dbClient
     .from("exam_attempts")
     .select("id")
     .eq("student_id", id)
@@ -2160,10 +2280,10 @@ export async function deleteStudentAction(formData: FormData) {
   }
 
   // Safe to delete cleanly
-  await supabase.from("class_members").delete().eq("student_id", id);
-  await supabase.from("exam_participants").delete().eq("student_id", id);
-  await supabase.from("user_profiles").delete().eq("user_id", id);
-  const { error } = await supabase.from("users").delete().eq("id", id);
+  await dbClient.from("class_members").delete().eq("student_id", id);
+  await dbClient.from("exam_participants").delete().eq("student_id", id);
+  await dbClient.from("user_profiles").delete().eq("user_id", id);
+  const { error } = await dbClient.from("users").delete().eq("id", id);
 
   if (student.auth_user_id) {
     await deleteAuthUser(student.auth_user_id);
@@ -2206,7 +2326,8 @@ export async function deleteTeacherAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: teacher } = await supabase
+  const dbClient = serviceRoleClient() ?? supabase;
+  const { data: teacher } = await dbClient
     .from("users")
     .select("id, school_id, auth_user_id, email, username")
     .eq("id", id)
@@ -2222,9 +2343,9 @@ export async function deleteTeacherAction(formData: FormData) {
   assertSameSchool(scope, teacher.school_id);
 
   // Delete assignments & profile
-  await supabase.from("teacher_subjects").delete().eq("teacher_id", id);
-  await supabase.from("user_profiles").delete().eq("user_id", id);
-  const { error } = await supabase.from("users").delete().eq("id", id);
+  await dbClient.from("teacher_subjects").delete().eq("teacher_id", id);
+  await dbClient.from("user_profiles").delete().eq("user_id", id);
+  const { error } = await dbClient.from("users").delete().eq("id", id);
 
   if (teacher.auth_user_id) {
     await deleteAuthUser(teacher.auth_user_id);
@@ -2260,7 +2381,8 @@ export async function deleteClassAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: classItem } = await supabase
+  const dbClient = serviceRoleClient() ?? supabase;
+  const { data: classItem } = await dbClient
     .from("classes")
     .select("id, school_id, name")
     .eq("id", id)
@@ -2276,7 +2398,7 @@ export async function deleteClassAction(formData: FormData) {
   assertSameSchool(scope, classItem.school_id);
 
   // Check if class has active members
-  const { data: activeMembers } = await supabase
+  const { data: activeMembers } = await dbClient
     .from("class_members")
     .select("id")
     .eq("class_id", id)
@@ -2290,8 +2412,8 @@ export async function deleteClassAction(formData: FormData) {
     });
   }
 
-  await supabase.from("class_members").delete().eq("class_id", id);
-  const { error } = await supabase.from("classes").delete().eq("id", id);
+  await dbClient.from("class_members").delete().eq("class_id", id);
+  const { error } = await dbClient.from("classes").delete().eq("id", id);
 
   if (!error) {
     await logAuditEvent({
@@ -2323,7 +2445,8 @@ export async function deleteSubjectAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: subject } = await supabase
+  const dbClient = serviceRoleClient() ?? supabase;
+  const { data: subject } = await dbClient
     .from("subjects")
     .select("id, school_id, code, name")
     .eq("id", id)
@@ -2338,8 +2461,8 @@ export async function deleteSubjectAction(formData: FormData) {
 
   assertSameSchool(scope, subject.school_id);
 
-  await supabase.from("teacher_subjects").delete().eq("subject_id", id);
-  const { error } = await supabase.from("subjects").delete().eq("id", id);
+  await dbClient.from("teacher_subjects").delete().eq("subject_id", id);
+  const { error } = await dbClient.from("subjects").delete().eq("id", id);
 
   if (!error) {
     await logAuditEvent({
@@ -2357,3 +2480,79 @@ export async function deleteSubjectAction(formData: FormData) {
     message: error ? getFriendlyErrorMessage(error) : "Mata pelajaran berhasil dihapus.",
   });
 }
+
+export async function deleteAcademicYearAction(formData: FormData) {
+  const currentUser = await requirePermission("academic_years.manage");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo("/dashboard/master-data/academic-years", {
+      ok: false,
+      message: "ID tahun ajaran tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { data: year } = await supabase
+    .from("academic_years")
+    .select("id, school_id, name, is_active")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!year) {
+    redirectTo("/dashboard/master-data/academic-years", {
+      ok: false,
+      message: "Data tahun ajaran tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, year.school_id);
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("academic_year_id", id)
+    .limit(1);
+
+  if (classes && classes.length > 0) {
+    redirectTo("/dashboard/master-data/academic-years", {
+      ok: false,
+      message: "Tahun ajaran masih digunakan oleh data kelas. Hapus atau pindahkan kelas terlebih dahulu.",
+    });
+  }
+
+  const { data: schedules } = await supabase
+    .from("exam_schedules")
+    .select("id")
+    .eq("academic_year_id", id)
+    .limit(1);
+
+  if (schedules && schedules.length > 0) {
+    redirectTo("/dashboard/master-data/academic-years", {
+      ok: false,
+      message: "Tahun ajaran masih digunakan oleh jadwal ujian. Hapus jadwal ujian terkait terlebih dahulu.",
+    });
+  }
+
+  const adminClient = serviceRoleClient() ?? supabase;
+  await adminClient.from("semesters").delete().eq("academic_year_id", id);
+  const { error } = await adminClient.from("academic_years").delete().eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "academic_years.delete",
+      entityType: "academic_years",
+      entityId: id,
+      payload: { name: year.name },
+    });
+  }
+
+  revalidateAcademicContextPaths();
+  redirectTo("/dashboard/master-data/academic-years", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Tahun ajaran berhasil dihapus.",
+  });
+}
+

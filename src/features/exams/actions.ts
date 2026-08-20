@@ -17,6 +17,7 @@ import {
 } from "@/lib/auth/school-scope";
 import { jakartaDatetimeLocalToIso } from "@/lib/date-time";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 import {
   examPackageActiveSchema,
   examPackageSchema,
@@ -174,6 +175,7 @@ export async function saveExamPackageAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const { id, question_ids, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
 
@@ -181,30 +183,36 @@ export async function saveExamPackageAction(formData: FormData) {
     await assertPackageSchoolScope(id);
   }
 
-  const selectedQuestions = await supabase
+  const { data: subject } = await dbClient
+    .from("subjects")
+    .select("school_id")
+    .eq("id", payload.subject_id)
+    .maybeSingle();
+
+  assertSameSchool(scope, subject?.school_id);
+
+  const selectedQuestions = await dbClient
     .from("questions")
-    .select("id, school_id, subject_id, point, status, is_active, deleted_at")
+    .select("id, subject_id, point, status, is_active, deleted_at")
     .in("id", question_ids);
 
-  if (selectedQuestions.error || !selectedQuestions.data?.length) {
+  if (!selectedQuestions.data || selectedQuestions.error) {
     redirectTo("/dashboard/exams/packages", {
       ok: false,
-      message: selectedQuestions.error?.message ?? "Soal paket tidak valid.",
+      message:
+        selectedQuestions.error?.message ??
+        "Gagal memverifikasi butir soal yang dipilih.",
     });
   }
 
-  const selectionReadiness = validateSelectedQuestionsForPackage(
+  const validation = validateSelectedQuestionsForPackage(
     selectedQuestions.data,
     question_ids,
     payload.subject_id,
   );
 
-  selectedQuestions.data.forEach((question) => {
-    assertSameSchool(scope, question.school_id);
-  });
-
-  if (!selectionReadiness.ok) {
-    redirectTo("/dashboard/exams/packages", selectionReadiness);
+  if (!validation.ok) {
+    redirectTo("/dashboard/exams/packages", validation);
   }
 
   const totalPoints = selectedQuestions.data.reduce(
@@ -220,13 +228,13 @@ export async function saveExamPackageAction(formData: FormData) {
   };
 
   const { data: savedPackage, error: packageError } = id
-    ? await supabase
+    ? await dbClient
         .from("exam_packages")
         .update(packagePayload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await dbClient
         .from("exam_packages")
         .insert({ ...packagePayload, created_by: currentUser.id })
         .select("id")
@@ -239,7 +247,7 @@ export async function saveExamPackageAction(formData: FormData) {
     });
   }
 
-  await supabase
+  await dbClient
     .from("exam_package_questions")
     .delete()
     .eq("exam_package_id", savedPackage.id);
@@ -250,7 +258,7 @@ export async function saveExamPackageAction(formData: FormData) {
     order_number: index + 1,
   }));
 
-  const { error: questionsError } = await supabase
+  const { error: questionsError } = await dbClient
     .from("exam_package_questions")
     .insert(packageQuestions);
 
@@ -302,6 +310,7 @@ export async function updateExamPackageStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   await assertPackageSchoolScope(parsed.data.id);
 
   if (parsed.data.status === "published") {
@@ -312,7 +321,7 @@ export async function updateExamPackageStatusAction(formData: FormData) {
     }
   }
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("exam_packages")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.id);
@@ -355,7 +364,8 @@ export async function updateExamPackageQuestionPointsAction(formData: FormData) 
 
   await assertPackageSchoolScope(packageId);
   const supabase = await createClient();
-  const { data: packageQuestions, error: readError } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: packageQuestions, error: readError } = await dbClient
     .from("exam_package_questions")
     .select("id")
     .eq("exam_package_id", packageId);
@@ -367,7 +377,7 @@ export async function updateExamPackageQuestionPointsAction(formData: FormData) 
     });
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await dbClient
     .from("exam_package_questions")
     .update({ point_override: point })
     .eq("exam_package_id", packageId);
@@ -619,10 +629,11 @@ export async function deleteExamPackageAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const id = formString(formData, "id");
   await assertPackageSchoolScope(id);
 
-  const { error } = await supabase.from("exam_packages").delete().eq("id", id);
+  const { error } = await dbClient.from("exam_packages").delete().eq("id", id);
 
   if (error) {
     if (error.code === "23503") {
@@ -682,6 +693,7 @@ export async function saveExamScheduleAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const { id, class_ids, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
 
@@ -694,30 +706,26 @@ export async function saveExamScheduleAction(formData: FormData) {
     { data: academicYear },
     { data: classes },
   ] = await Promise.all([
-    supabase
+    dbClient
       .from("exam_packages")
       .select("school_id")
       .eq("id", payload.exam_package_id)
       .maybeSingle(),
-    supabase
+    dbClient
       .from("academic_years")
       .select("school_id")
       .eq("id", payload.academic_year_id)
       .maybeSingle(),
     class_ids.length > 0
-      ? supabase.from("classes").select("id, school_id").in("id", class_ids)
+      ? dbClient.from("classes").select("id, school_id").in("id", class_ids)
       : Promise.resolve({ data: [] }),
   ]);
 
   assertSameSchool(scope, examPackage?.school_id);
   assertSameSchool(scope, academicYear?.school_id);
-  if ((classes ?? []).length !== new Set(class_ids).size) {
-    assertSameSchool(scope, null);
-  }
-
-  (classes ?? []).forEach((classItem) =>
-    assertSameSchool(scope, classItem.school_id),
-  );
+  (classes ?? []).forEach((classItem) => {
+    assertSameSchool(scope, classItem.school_id);
+  });
 
   if (payload.status === "scheduled" || payload.status === "active") {
     const validation = await validateScheduleInputReady({
@@ -739,13 +747,13 @@ export async function saveExamScheduleAction(formData: FormData) {
   };
 
   const { data: savedSchedule, error: scheduleError } = id
-    ? await supabase
+    ? await dbClient
         .from("exam_schedules")
         .update(schedulePayload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await dbClient
         .from("exam_schedules")
         .insert({ ...schedulePayload, created_by: currentUser.id })
         .select("id")
@@ -758,12 +766,12 @@ export async function saveExamScheduleAction(formData: FormData) {
     });
   }
 
-  await supabase
+  await dbClient
     .from("exam_schedule_classes")
     .delete()
     .eq("exam_schedule_id", savedSchedule.id);
 
-  const { error: classError } = await supabase
+  const { error: classError } = await dbClient
     .from("exam_schedule_classes")
     .insert(
       class_ids.map((classId: string) => ({
@@ -842,6 +850,7 @@ export async function updateExamScheduleStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   await assertScheduleSchoolScope(parsed.data.id);
 
   if (parsed.data.status === "scheduled" || parsed.data.status === "active") {
@@ -863,7 +872,7 @@ export async function updateExamScheduleStatusAction(formData: FormData) {
     }
   }
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("exam_schedules")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.id);
@@ -939,7 +948,8 @@ export async function resetExamScheduleSessionsAction(formData: FormData) {
   await assertScheduleSchoolScope(id);
 
   const supabase = await createClient();
-  const { data: attempts, error: attemptsError } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: attempts, error: attemptsError } = await dbClient
     .from("exam_attempts")
     .select("id")
     .eq("exam_schedule_id", id)
@@ -952,7 +962,7 @@ export async function resetExamScheduleSessionsAction(formData: FormData) {
     });
   }
 
-  const { data: participants, error: participantsError } = await supabase
+  const { data: participants, error: participantsError } = await dbClient
     .from("exam_participants")
     .select("id")
     .eq("exam_schedule_id", id);
@@ -965,7 +975,7 @@ export async function resetExamScheduleSessionsAction(formData: FormData) {
   }
 
   const now = new Date().toISOString();
-  const { error: attemptResetError } = await supabase
+  const { error: attemptResetError } = await dbClient
     .from("exam_attempts")
     .update({
       status: "cancelled",
@@ -984,7 +994,7 @@ export async function resetExamScheduleSessionsAction(formData: FormData) {
     });
   }
 
-  const { error: participantResetError } = await supabase
+  const { error: participantResetError } = await dbClient
     .from("exam_participants")
     .update({
       status: "assigned",
@@ -1039,9 +1049,10 @@ export async function toggleExamScheduleActiveAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   await assertScheduleSchoolScope(parsed.data.id);
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("exam_schedules")
     .update({ is_active: parsed.data.is_active })
     .eq("id", parsed.data.id);
@@ -1073,10 +1084,11 @@ export async function archiveExamScheduleAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const id = formString(formData, "id");
   await assertScheduleSchoolScope(id);
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("exam_schedules")
     .update({
       status: "archived",
@@ -1116,10 +1128,11 @@ export async function regenerateExamTokenAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   await assertScheduleSchoolScope(parsed.data.id);
 
   const accessToken = generateExamToken();
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("exam_schedules")
     .update({
       access_token: accessToken,
@@ -1150,7 +1163,8 @@ export async function regenerateExamTokenAction(formData: FormData) {
 
 async function validateScheduleReady(scheduleId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data: schedule, error } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: schedule, error } = await dbClient
     .from("exam_schedules")
     .select(
       "id, exam_package_id, start_at, end_at, exam_schedule_classes(class_id)",
@@ -1192,6 +1206,7 @@ async function validateScheduleInputReady({
   classIds: string[];
 }): Promise<ActionResult> {
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
 
   if (!examPackageId) {
     return {
@@ -1200,7 +1215,7 @@ async function validateScheduleInputReady({
     };
   }
 
-  const { data: packageData, error: packageError } = await supabase
+  const { data: packageData, error: packageError } = await dbClient
     .from("exam_packages")
     .select("id, status, is_active, total_questions")
     .eq("id", examPackageId)
@@ -1275,7 +1290,8 @@ async function findScheduleClassConflict({
   classIds: string[];
 }) {
   const supabase = await createClient();
-  let query = supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  let query = dbClient
     .from("exam_schedules")
     .select(
       "id, title, start_at, end_at, status, exam_schedule_classes!inner(class_id, classes(name))",
@@ -1325,7 +1341,8 @@ async function syncScheduleParticipants(scheduleId: string): Promise<
   }
 
   const supabase = await createClient();
-  const { data: scheduleClasses, error: classError } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: scheduleClasses, error: classError } = await dbClient
     .from("exam_schedule_classes")
     .select("class_id")
     .eq("exam_schedule_id", scheduleId);
@@ -1341,7 +1358,7 @@ async function syncScheduleParticipants(scheduleId: string): Promise<
     .map((item) => item.class_id as string | null)
     .filter((classId): classId is string => Boolean(classId));
 
-  const { data: members, error: memberError } = await supabase
+  const { data: members, error: memberError } = await dbClient
     .from("class_members")
     .select("class_id, student_id, users(status, roles(name))")
     .in("class_id", classIds)
@@ -1387,7 +1404,7 @@ async function syncScheduleParticipants(scheduleId: string): Promise<
     };
   }
 
-  const { data: existingParticipants } = await supabase
+  const { data: existingParticipants } = await dbClient
     .from("exam_participants")
     .select("student_id")
     .eq("exam_schedule_id", scheduleId);
@@ -1402,7 +1419,7 @@ async function syncScheduleParticipants(scheduleId: string): Promise<
   );
 
   if (missingParticipants.length > 0) {
-    const { error: insertError } = await supabase.from("exam_participants").insert(
+    const { error: insertError } = await dbClient.from("exam_participants").insert(
       missingParticipants.map((student) => ({
         exam_schedule_id: scheduleId,
         student_id: student.student_id,
@@ -1444,10 +1461,11 @@ export async function deleteExamScheduleAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const id = formString(formData, "id");
   await assertScheduleSchoolScope(id);
 
-  const { error } = await supabase.from("exam_schedules").delete().eq("id", id);
+  const { error } = await dbClient.from("exam_schedules").delete().eq("id", id);
 
   if (error) {
     if (error.code === "23503") {

@@ -1,8 +1,9 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { SubmitButton } from "@/components/dashboard/submit-button";
 import {
   TableActionLink,
   TableActions,
@@ -11,17 +12,14 @@ import {
 import { ActionToast } from "@/components/master-data/action-toast";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  saveAcademicYearAction,
-  saveSemesterAction,
+  deleteAcademicYearAction,
   toggleAcademicYearAction,
   toggleSemesterAction,
 } from "@/lib/actions/master-data-actions";
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   getAcademicYears,
-  getSchoolOptions,
   getSemesters,
-  type SelectOption,
 } from "@/lib/master-data/queries";
 
 type PageProps = {
@@ -31,116 +29,173 @@ type PageProps = {
 export default async function AcademicYearsPage({ searchParams }: PageProps) {
   await requirePermission("academic_years.view");
   const params = await searchParams;
-  const [academicYears, allAcademicYears, semesters, schools] = await Promise.all([
+  const [academicYears, allAcademicYears, semesters] = await Promise.all([
     getAcademicYears(params.q),
     getAcademicYears(),
     getSemesters(),
-    getSchoolOptions(),
   ]);
+
   const rows = academicYears.filter((year) =>
     params.status ? String(Boolean(year.is_active)) === params.status : true,
   );
-  const activeAcademicYear =
-    allAcademicYears.find((academicYear) => academicYear.is_active) ?? null;
-  const activeSemester =
-    semesters.find((semester) => Boolean(semester.is_active)) ?? null;
+  const activeAcademicYear = allAcademicYears.find((y) => y.is_active) ?? null;
+  const activeSemester = semesters.find((s) => Boolean(s.is_active)) ?? null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <DashboardPageHeader title="Tahun Ajaran & Semester" description="Kelola periode akademik aktif dalam satu tempat." />
+
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <DashboardPageHeader
+          title="Tahun Ajaran & Semester"
+          description="Atur periode akademik aktif. Semester yang aktif menentukan jadwal ujian dan kelas yang berjalan."
+        />
+        <Link
+          href="/dashboard/master-data/academic-years/create"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        >
+          <span>+ Tambah Tahun Ajaran</span>
+        </Link>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <AcademicSummaryItem label="Tahun ajaran aktif" value={activeAcademicYear?.name ?? "Belum ada"} active={Boolean(activeAcademicYear)} />
-        <AcademicSummaryItem label="Semester aktif" value={activeSemester?.name ?? "Belum ada"} active={Boolean(activeSemester)} />
-        <AcademicSummaryItem label="Total periode" value={`${allAcademicYears.length} tahun ajaran / ${semesters.length} semester`} active={allAcademicYears.length > 0} />
+      {/* Summary Cards */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Tahun Ajaran Aktif</div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-[#0F172A]">{activeAcademicYear?.name ?? "Belum Diatur"}</span>
+            <StatusBadge active={Boolean(activeAcademicYear)} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Semester Aktif</div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-[#0F172A]">{activeSemester ? `Semester ${activeSemester.name}` : "Belum Diatur"}</span>
+            <StatusBadge active={Boolean(activeSemester)} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Total Tahun Ajaran</div>
+          <div className="mt-2">
+            <span className="text-lg font-bold text-[#0F172A]">{allAcademicYears.length} Periode</span>
+          </div>
+        </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <QuickAcademicYearForm schools={schools} />
-        <QuickSemesterForm academicYears={allAcademicYears} />
-      </section>
-
+      {/* Filter & Search */}
       <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.5fr_1fr_auto]">
-        <input name="q" defaultValue={params.q ?? ""} placeholder="Cari tahun ajaran" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-        <select name="status" defaultValue={params.status ?? ""} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
-          <option value="">Semua status</option>
+        <input
+          name="q"
+          defaultValue={params.q ?? ""}
+          placeholder="Cari tahun ajaran (contoh: 2025/2026)"
+          className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+        />
+        <select
+          name="status"
+          defaultValue={params.status ?? ""}
+          className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+        >
+          <option value="">Semua Status</option>
           <option value="true">Aktif</option>
           <option value="false">Nonaktif</option>
         </select>
         <div className="flex gap-2">
-          <Link href="/dashboard/master-data/academic-years" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]">Reset</Link>
-          <button className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Filter</button>
+          <Link
+            href="/dashboard/master-data/academic-years"
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC]"
+          >
+            Reset
+          </Link>
+          <button
+            type="submit"
+            className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Filter
+          </button>
         </div>
       </form>
 
+      {/* Desktop Table */}
       <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
         <table className="w-full table-fixed text-left text-sm">
-          <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
-            <tr className="h-10">
-              <th className="px-3 py-2 font-medium">Tahun Ajaran</th>
-              <th className="w-48 px-3 py-2 font-medium">Semester</th>
-              <th className="w-28 px-3 py-2 font-medium">Status</th>
-              <th className="w-36 px-3 py-2 font-medium">Aksi</th>
+          <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-xs font-semibold uppercase text-[#64748B]">
+            <tr className="h-11">
+              <th className="px-4 py-2">Tahun Ajaran</th>
+              <th className="w-80 px-4 py-2">Pilih Semester Aktif</th>
+              <th className="w-32 px-4 py-2">Status</th>
+              <th className="w-44 px-4 py-2 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0]">
             {rows.map((year) => {
-              const yearSemesters = semesters.filter((semester) => semester.academic_year_id === year.id);
-              const activeSemester = yearSemesters.find((semester) => semester.is_active);
+              const yearSemesters = semesters.filter((s) => s.academic_year_id === year.id);
 
               return (
-                <tr key={year.id} className="h-14 hover:bg-[#F8FAFC]">
-                  <td className="min-w-0 px-3 py-2">
-                    <div className="line-clamp-1 font-medium text-[#0F172A]">{year.name}</div>
-                    <div className="line-clamp-1 text-xs text-[#64748B]">{year.start_date || "-"} - {year.end_date || "-"}</div>
+                <tr key={year.id} className="h-16 hover:bg-[#F8FAFC]/80">
+                  <td className="px-4 py-3 font-semibold text-[#0F172A]">
+                    {year.name}
                   </td>
-                  <td className="truncate px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       {yearSemesters.length ? (
-                        yearSemesters.map((semester) => (
-                          <span
-                            key={semester.id}
-                            className={
-                              semester.is_active
-                                ? "rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
-                                : "rounded-md bg-[#F8FAFC] px-2 py-1 text-xs text-[#64748B] ring-1 ring-[#E2E8F0]"
-                            }
-                          >
-                            {semester.name}
-                            {semester.is_active ? " aktif" : ""}
-                          </span>
+                        yearSemesters.map((s) => (
+                          <form key={s.id} action={toggleSemesterAction}>
+                            <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
+                            <input type="hidden" name="id" value={s.id} />
+                            <input type="hidden" name="academic_year_id" value={s.academic_year_id} />
+                            <input type="hidden" name="is_active" value={s.is_active ? "false" : "true"} />
+                            <button
+                              type="submit"
+                              className={
+                                s.is_active
+                                  ? "inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300 shadow-xs cursor-pointer"
+                                  : "inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-700 hover:ring-blue-200 ring-1 ring-slate-200 cursor-pointer transition"
+                              }
+                              title={s.is_active ? "Semester ini sedang aktif" : `Klik untuk mengaktifkan semester ${s.name}`}
+                            >
+                              {s.is_active ? (
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
+                              ) : null}
+                              <span>Semester {s.name}</span>
+                              {s.is_active ? <span className="text-[10px] font-bold uppercase">(Aktif)</span> : null}
+                            </button>
+                          </form>
                         ))
                       ) : (
-                        <span className="text-[#64748B]">Belum ada</span>
+                        <span className="text-xs text-[#94A3B8]">Belum ada semester</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2"><StatusBadge active={Boolean(year.is_active)} /></td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
+                    <StatusBadge active={Boolean(year.is_active)} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <TableActions>
-                      <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">Edit</TableActionLink>
+                      <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">
+                        Edit
+                      </TableActionLink>
                       <form action={toggleAcademicYearAction}>
                         <input type="hidden" name="id" value={year.id} />
                         <input type="hidden" name="school_id" value={year.school_id} />
                         <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
-                        <TableActionSubmit icon="power" confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
+                        <TableActionSubmit
+                          icon="power"
+                          confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} tahun ajaran ${year.name}?`}
+                        >
                           {year.is_active ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
-                      {activeSemester ? (
-                        <form action={toggleSemesterAction}>
-                          <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
-                          <input type="hidden" name="id" value={activeSemester.id} />
-                          <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
-                          <input type="hidden" name="is_active" value="false" />
-                          <TableActionSubmit icon="power" confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
-                            Nonaktifkan Semester
-                          </TableActionSubmit>
-                        </form>
-                      ) : null}
+                      <form action={deleteAcademicYearAction}>
+                        <input type="hidden" name="id" value={year.id} />
+                        <TableActionSubmit
+                          icon="trash"
+                          confirmMessage={`Hapus tahun ajaran ${year.name} beserta semesternya? Tindakan ini tidak dapat dibatalkan.`}
+                        >
+                          Hapus
+                        </TableActionSubmit>
+                      </form>
                     </TableActions>
                   </td>
                 </tr>
@@ -148,168 +203,97 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
             })}
           </tbody>
         </table>
-        {rows.length === 0 ? <div className="p-8"><EmptyState title="Belum ada tahun ajaran" description="Tambahkan tahun ajaran sebelum membuat kelas." actionHref="/dashboard/master-data/academic-years/create" actionLabel="Tambah Tahun Ajaran" /></div> : null}
+        {rows.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              title="Belum ada tahun ajaran"
+              description="Tambahkan tahun ajaran baru untuk memulai konfigurasi akademik."
+              actionHref="/dashboard/master-data/academic-years/create"
+              actionLabel="Tambah Tahun Ajaran"
+            />
+          </div>
+        ) : null}
       </div>
 
-      <div className="grid gap-2 md:hidden">
-        {rows.length ? rows.map((year) => {
-          const yearSemesters = semesters.filter((semester) => semester.academic_year_id === year.id);
-          const activeSemester = yearSemesters.find((semester) => semester.is_active);
+      {/* Mobile Card List */}
+      <div className="grid gap-3 md:hidden">
+        {rows.length ? (
+          rows.map((year) => {
+            const yearSemesters = semesters.filter((s) => s.academic_year_id === year.id);
 
-          return (
-            <article key={year.id} className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{year.name}</div>
-                  <div className="mt-0.5 line-clamp-1 text-xs text-[#64748B]">
-                    {activeSemester
-                      ? `${activeSemester.name} aktif`
-                      : yearSemesters.map((item) => item.name).join(", ") || "Belum ada semester"}
+            return (
+              <article key={year.id} className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-base text-[#0F172A]">{year.name}</div>
+                  <StatusBadge active={Boolean(year.is_active)} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-xs font-medium text-[#64748B]">Semester:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {yearSemesters.map((s) => (
+                      <form key={s.id} action={toggleSemesterAction}>
+                        <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
+                        <input type="hidden" name="id" value={s.id} />
+                        <input type="hidden" name="academic_year_id" value={s.academic_year_id} />
+                        <input type="hidden" name="is_active" value={s.is_active ? "false" : "true"} />
+                        <button
+                          type="submit"
+                          className={
+                            s.is_active
+                              ? "inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300"
+                              : "inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
+                          }
+                        >
+                          {s.is_active ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> : null}
+                          {s.name} {s.is_active ? "(Aktif)" : ""}
+                        </button>
+                      </form>
+                    ))}
                   </div>
                 </div>
-                <StatusBadge active={Boolean(year.is_active)} />
-              </div>
-              <div className="mt-2 flex items-center gap-1.5">
-                <TableActions>
-                  <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">Edit</TableActionLink>
-                  <form action={toggleAcademicYearAction}>
-                    <input type="hidden" name="id" value={year.id} />
-                    <input type="hidden" name="school_id" value={year.school_id} />
-                    <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
-                    <TableActionSubmit icon="power" confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} ${year.name}?`}>
-                      {year.is_active ? "Nonaktifkan" : "Aktifkan"}
-                    </TableActionSubmit>
-                  </form>
-                  {activeSemester ? (
-                    <form action={toggleSemesterAction}>
-                      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
-                      <input type="hidden" name="id" value={activeSemester.id} />
-                      <input type="hidden" name="academic_year_id" value={activeSemester.academic_year_id} />
-                      <input type="hidden" name="is_active" value="false" />
-                      <TableActionSubmit icon="power" confirmMessage={`Nonaktifkan semester ${activeSemester.name}?`}>
-                        Nonaktifkan Semester
+
+                <div className="pt-2 border-t border-[#E2E8F0]">
+                  <TableActions>
+                    <TableActionLink href={`/dashboard/master-data/academic-years/${year.id}/edit`} icon="pencil">
+                      Edit
+                    </TableActionLink>
+                    <form action={toggleAcademicYearAction}>
+                      <input type="hidden" name="id" value={year.id} />
+                      <input type="hidden" name="school_id" value={year.school_id} />
+                      <input type="hidden" name="is_active" value={year.is_active ? "false" : "true"} />
+                      <TableActionSubmit
+                        icon="power"
+                        confirmMessage={`${year.is_active ? "Nonaktifkan" : "Aktifkan"} tahun ajaran ${year.name}?`}
+                      >
+                        {year.is_active ? "Nonaktifkan" : "Aktifkan"}
                       </TableActionSubmit>
                     </form>
-                  ) : null}
-                </TableActions>
-              </div>
-            </article>
-          );
-        }) : (
+                    <form action={deleteAcademicYearAction}>
+                      <input type="hidden" name="id" value={year.id} />
+                      <TableActionSubmit
+                        icon="trash"
+                        confirmMessage={`Hapus tahun ajaran ${year.name}?`}
+                      >
+                        Hapus
+                      </TableActionSubmit>
+                    </form>
+                  </TableActions>
+                </div>
+              </article>
+            );
+          })
+        ) : (
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-8">
-            <EmptyState title="Belum ada tahun ajaran" description="Tambahkan tahun ajaran sebelum membuat kelas." actionHref="/dashboard/master-data/academic-years/create" actionLabel="Tambah Tahun Ajaran" />
+            <EmptyState
+              title="Belum ada tahun ajaran"
+              description="Tambahkan tahun ajaran baru untuk memulai konfigurasi akademik."
+              actionHref="/dashboard/master-data/academic-years/create"
+              actionLabel="Tambah Tahun Ajaran"
+            />
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function SchoolField({ schools }: { schools: SelectOption[] }) {
-  if (schools.length <= 1) {
-    return <input type="hidden" name="school_id" value={schools[0]?.value ?? ""} />;
-  }
-
-  return (
-    <select
-      name="school_id"
-      defaultValue={schools[0]?.value ?? ""}
-      className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-      required
-    >
-      {schools.map((school) => (
-        <option key={school.value} value={school.value}>
-          {school.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function AcademicSummaryItem({
-  label,
-  value,
-  active,
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
-      <div className="text-xs font-medium uppercase text-[#64748B]">{label}</div>
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <div className="min-w-0 truncate text-base font-semibold text-[#0F172A]">{value}</div>
-        <StatusBadge active={active} />
-      </div>
-    </div>
-  );
-}
-
-function QuickAcademicYearForm({ schools }: { schools: SelectOption[] }) {
-  return (
-    <form action={saveAcademicYearAction} className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2">
-      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
-      <div className="md:col-span-2">
-        <h2 className="text-sm font-semibold text-[#0F172A]">Tambah Tahun Ajaran</h2>
-      </div>
-      <input type="hidden" name="id" value="" />
-      <SchoolField schools={schools} />
-      <input name="name" placeholder="2025/2026" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-      <input name="starts_at" type="date" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-      <input name="ends_at" type="date" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-      <label className="flex items-center gap-2 text-sm text-[#0F172A]">
-        <input name="is_active" type="checkbox" defaultChecked />
-        Jadikan aktif
-      </label>
-      <div className="flex justify-end md:col-span-2">
-        <SubmitButton loadingText="Menyimpan...">Simpan Tahun Ajaran</SubmitButton>
-      </div>
-    </form>
-  );
-}
-
-function QuickSemesterForm({ academicYears }: { academicYears: Array<{ id: string; name: string; is_active?: boolean | null }> }) {
-  const defaultAcademicYear =
-    academicYears.find((academicYear) => academicYear.is_active)?.id ??
-    academicYears[0]?.id ??
-    "";
-
-  return (
-    <form action={saveSemesterAction} className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2">
-      <input type="hidden" name="redirect_path" value="/dashboard/master-data/academic-years" />
-      <div className="md:col-span-2">
-        <h2 className="text-sm font-semibold text-[#0F172A]">Tambah Semester</h2>
-      </div>
-      <input type="hidden" name="id" value="" />
-      <select
-        name="academic_year_id"
-        defaultValue={defaultAcademicYear}
-        className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-        required
-      >
-        {academicYears.map((academicYear) => (
-          <option key={academicYear.id} value={academicYear.id}>
-            {academicYear.name}
-          </option>
-        ))}
-      </select>
-      <input name="name" defaultValue="Ganjil" placeholder="Ganjil" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-      <input name="code" defaultValue="ganjil" placeholder="ganjil" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-      <label className="flex items-center gap-2 text-sm text-[#0F172A]">
-        <input name="is_active" type="checkbox" defaultChecked />
-        Jadikan aktif
-      </label>
-      <div className="flex justify-end md:col-span-2">
-        <SubmitButton loadingText="Menyimpan..." disabled={academicYears.length === 0}>
-          Simpan Semester
-        </SubmitButton>
-      </div>
-      {academicYears.length === 0 ? (
-        <p className="text-xs text-[#64748B] md:col-span-2">
-          Buat tahun ajaran terlebih dahulu sebelum menambahkan semester.
-        </p>
-      ) : null}
-    </form>
   );
 }

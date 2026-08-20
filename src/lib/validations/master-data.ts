@@ -77,6 +77,7 @@ export const studentSchema = z.object({
   nisn: z.string().optional().default(""),
   phone: z.string().optional().default(""),
   status: z.enum(["active", "inactive"]).default("active"),
+  class_id: z.string().uuid("Kelas tidak valid").optional().or(z.literal("")),
 });
 
 export const teacherAssignmentSchema = z.object({

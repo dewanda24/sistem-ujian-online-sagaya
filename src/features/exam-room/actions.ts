@@ -7,6 +7,7 @@ import { getStudentClassIds } from "@/features/exam-room/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 import {
   saveAnswerSchema,
   startExamSchema,
@@ -65,6 +66,7 @@ export async function startExamAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const classIds = await getStudentClassIds(user.id);
 
   if (classIds.length === 0) {
@@ -75,7 +77,7 @@ export async function startExamAction(formData: FormData) {
     );
   }
 
-  const { data: scheduleClass } = await supabase
+  const { data: scheduleClass } = await dbClient
     .from("exam_schedule_classes")
     .select("class_id")
     .eq("exam_schedule_id", parsed.data.schedule_id)
@@ -92,7 +94,7 @@ export async function startExamAction(formData: FormData) {
   }
 
   const now = new Date().toISOString();
-  const { data: schedule } = await supabase
+  const { data: schedule } = await dbClient
     .from("exam_schedules")
     .select("id, status, start_at, end_at, is_active, token_required, access_token")
     .eq("id", parsed.data.schedule_id)
@@ -122,7 +124,7 @@ export async function startExamAction(formData: FormData) {
     );
   }
 
-  const { data: existingParticipant } = await supabase
+  const { data: existingParticipant } = await dbClient
     .from("exam_participants")
     .select("id, status, exam_attempts(id, status)")
     .eq("exam_schedule_id", parsed.data.schedule_id)
@@ -140,7 +142,7 @@ export async function startExamAction(formData: FormData) {
   const participant: ParticipantWithAttempts | null =
     existingParticipant ??
     (
-      await supabase
+      await dbClient
         .from("exam_participants")
         .insert({
           exam_schedule_id: parsed.data.schedule_id,
@@ -170,7 +172,7 @@ export async function startExamAction(formData: FormData) {
     redirect(`/dashboard/exam-room/${existingAttempt.id}/briefing`);
   }
 
-  const { data: attempt, error: attemptError } = await supabase
+  const { data: attempt, error: attemptError } = await dbClient
     .from("exam_attempts")
     .insert({
       exam_participant_id: participant.id,
@@ -183,7 +185,7 @@ export async function startExamAction(formData: FormData) {
     .single();
 
   if (attemptError || !attempt) {
-    const { data: activeAttempt } = await supabase
+    const { data: activeAttempt } = await dbClient
       .from("exam_attempts")
       .select("id")
       .eq("exam_participant_id", participant.id)
@@ -201,7 +203,7 @@ export async function startExamAction(formData: FormData) {
     );
   }
 
-  await supabase
+  await dbClient
     .from("exam_participants")
     .update({
       status: "in_progress",
@@ -218,23 +220,26 @@ export async function saveAnswerAction(formData: FormData) {
   const parsed = saveAnswerSchema.safeParse({
     attempt_id: formString(formData, "attempt_id"),
     question_id: formString(formData, "question_id"),
-    session_id: formString(formData, "session_id"),
-    selected_option_id: formString(formData, "selected_option_id"),
-    essay_answer: formString(formData, "essay_answer"),
+    selected_option_id: formString(formData, "selected_option_id") || undefined,
+    essay_answer: formString(formData, "essay_answer") || undefined,
+    session_id: formString(formData, "session_id") || undefined,
   });
 
   if (!parsed.success) {
     redirectWithNotice(
       `/dashboard/exam-room/${formString(formData, "attempt_id")}`,
       false,
-      `Gagal Menyimpan||${parsed.error.issues[0]?.message ?? "Data jawaban tidak valid."}`,
+      `Gagal Menyimpan||${parsed.error.issues[0]?.message ?? "Jawaban tidak valid."}`,
     );
   }
 
   const supabase = await createClient();
-  const { data: attempt } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: attempt } = await dbClient
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at)")
+    .select(
+      "id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at)",
+    )
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
     .eq("status", "in_progress")
@@ -242,17 +247,9 @@ export async function saveAnswerAction(formData: FormData) {
 
   if (!attempt) {
     redirectWithNotice(
-      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      "/dashboard/student/active-exams",
       false,
-      "Sesi Ujian Selesai||Pengerjaan ujian tidak aktif atau sudah selesai dikumpulkan.",
-    );
-  }
-
-  if ((attempt as AttemptTiming).locked_at) {
-    redirectWithNotice(
-      `/dashboard/exam-room/${parsed.data.attempt_id}`,
-      false,
-      "Ujian Dikunci||Pengerjaan ujian Anda sedang dikunci oleh pengawas karena alasan tertentu.",
+      "Data Tidak Ditemukan||Pengerjaan tidak ditemukan atau ujian sudah selesai.",
     );
   }
 
@@ -260,7 +257,15 @@ export async function saveAnswerAction(formData: FormData) {
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
-      "Akses Ganda Terdeteksi||Ujian ini sedang dikerjakan di perangkat atau browser lain. Harap tutup sesi yang lain.",
+      "Akses Ganda Terdeteksi||Ujian ini sedang dibuka pada tab atau perangkat lain. Tutup sesi lain untuk melanjutkan.",
+    );
+  }
+
+  if ((attempt as AttemptTiming).locked_at) {
+    redirectWithNotice(
+      `/dashboard/exam-room/${parsed.data.attempt_id}`,
+      false,
+      "Ujian Dikunci||Pengerjaan ujian sedang dikunci oleh pengawas.",
     );
   }
 
@@ -274,7 +279,7 @@ export async function saveAnswerAction(formData: FormData) {
   }
 
   const now = new Date().toISOString();
-  const { error } = await supabase.from("exam_answers").upsert(
+  const { error } = await dbClient.from("exam_answers").upsert(
     {
       exam_attempt_id: parsed.data.attempt_id,
       question_id: parsed.data.question_id,
@@ -288,7 +293,7 @@ export async function saveAnswerAction(formData: FormData) {
     },
   );
 
-  await supabase
+  await dbClient
     .from("exam_attempts")
     .update({
       active_session_id:
@@ -325,7 +330,8 @@ export async function submitAttemptAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data: attempt } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: attempt } = await dbClient
     .from("exam_attempts")
     .select(
       "id, exam_participant_id, exam_schedule_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(exam_package_id, end_at)",
@@ -407,7 +413,7 @@ export async function submitAttemptAction(formData: FormData) {
   }
 
   const now = new Date().toISOString();
-  const { data: submittedAttempt, error: submitError } = await supabase
+  const { data: submittedAttempt, error: submitError } = await dbClient
     .from("exam_attempts")
     .update({
       status: "submitted",
@@ -453,7 +459,7 @@ export async function submitAttemptAction(formData: FormData) {
     );
   }
 
-  await supabase
+  await dbClient
     .from("exam_participants")
     .update({
       status: "submitted",
@@ -484,9 +490,10 @@ async function isAttemptExpired(attempt: AttemptTiming) {
 
 async function expireAttempt(attemptId: string, participantId: string) {
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const now = new Date().toISOString();
 
-  await supabase
+  await dbClient
     .from("exam_attempts")
     .update({
       status: "expired",
@@ -496,7 +503,7 @@ async function expireAttempt(attemptId: string, participantId: string) {
     .eq("id", attemptId)
     .eq("status", "in_progress");
 
-  await supabase
+  await dbClient
     .from("exam_participants")
     .update({
       status: "expired",
@@ -535,8 +542,9 @@ async function logExamAttemptEvent(
   metadata: Record<string, unknown>,
 ) {
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
 
-  await supabase.from("exam_events").insert({
+  await dbClient.from("exam_events").insert({
     exam_attempt_id: attemptId,
     exam_schedule_id: scheduleId,
     student_id: studentId,

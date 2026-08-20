@@ -44,26 +44,51 @@ export function TeacherForm({
 
   return (
     <div className="grid gap-4">
-      <form action={saveTeacherAction} className="grid gap-4 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm md:grid-cols-2">
+      <form action={saveTeacherAction} className="grid gap-4 rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm md:grid-cols-2">
         <input type="hidden" name="id" defaultValue={teacher?.id ?? ""} />
-        <input name="full_name" defaultValue={profile?.full_name ?? ""} placeholder="Nama lengkap" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-        <input name="nip" defaultValue={profile?.nip ?? ""} placeholder="NIP" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-        <input name="email" defaultValue={teacher?.email ?? ""} placeholder="Email" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-        <input name="username" defaultValue={teacher?.username ?? ""} placeholder="Username" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" required />
-        <input name="phone" defaultValue={profile?.phone ?? ""} placeholder="Telepon" className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-        <input name="password" type="password" placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Password awal"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm" />
-        <select name="status" defaultValue={teacher?.status ?? "active"} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
-          <option value="active">Aktif</option>
-          <option value="inactive">Tidak Aktif</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm text-[#64748B]">
-          <input type="checkbox" disabled />
-          Pengawas Ujian
-        </label>
-        <div className="flex justify-end gap-2 md:col-span-2">
-          <Link href="/dashboard/master-data/teachers" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm hover:bg-[#F8FAFC]">Batal</Link>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">Nama Lengkap <span className="text-red-500">*</span></label>
+          <input name="full_name" defaultValue={profile?.full_name ?? ""} placeholder="Contoh: Drs. Ahmad Fauzi, M.Pd" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" required />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">NIP</label>
+          <input name="nip" defaultValue={profile?.nip ?? ""} placeholder="Nomor Induk Pegawai" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">Email <span className="text-red-500">*</span></label>
+          <input name="email" type="email" defaultValue={teacher?.email ?? ""} placeholder="ahmad.fauzi@sekolah.com" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" required />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">Username <span className="text-red-500">*</span></label>
+          <input name="username" defaultValue={teacher?.username ?? ""} placeholder="ahmadfauzi" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" required />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">No. Telepon / WhatsApp</label>
+          <input name="phone" defaultValue={profile?.phone ?? ""} placeholder="Contoh: 081234567890" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">Status Akun</label>
+          <select name="status" defaultValue={teacher?.status ?? "active"} className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none">
+            <option value="active">Aktif</option>
+            <option value="inactive">Tidak Aktif</option>
+          </select>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-[#64748B]">Password Login</label>
+          <input name="password" type="password" placeholder={isEdit ? "Biarkan kosong jika tidak ingin mengubah password" : "Password awal untuk login guru"} className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" />
+        </div>
+
+        <div className="flex justify-end gap-2 md:col-span-2 pt-2">
+          <Link href="/dashboard/master-data/teachers" className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC]">Batal</Link>
           <SubmitButton loadingText={isEdit ? "Memperbarui..." : "Menyimpan..."}>
-            Simpan Guru
+            {isEdit ? "Simpan Perubahan" : "Simpan Guru"}
           </SubmitButton>
         </div>
       </form>

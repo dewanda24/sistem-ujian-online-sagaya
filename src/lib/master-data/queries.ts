@@ -271,7 +271,7 @@ export async function getUsersByRole(roleName: "teacher" | "student", search = "
   let query = supabase
     .from("users")
     .select(
-      "*, roles!inner(name, label), user_profiles(full_name, nip, nis, nisn, phone, avatar_url)",
+      "*, roles!inner(name, label), user_profiles(full_name, nip, nis, nisn, phone, avatar_url), class_members(id, left_at, classes(id, name))",
     )
     .eq("roles.name", roleName)
     .order("username");

@@ -13,6 +13,7 @@ import {
   requireScopedSchoolId,
 } from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 import {
   questionActiveSchema,
   questionAttachmentSchema,
@@ -543,6 +544,7 @@ export async function saveQuestionStimulusAction(formData: FormData) {
   await assertAdminSameSchool(user, parsed.data.school_id);
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const { id, ...payload } = parsed.data;
   const normalizedPayload = {
     ...payload,
@@ -552,13 +554,13 @@ export async function saveQuestionStimulusAction(formData: FormData) {
     media_type: payload.media_type || null,
   };
   const { data: savedStimulus, error } = id
-    ? await supabase
+    ? await dbClient
         .from("question_stimuli")
         .update(normalizedPayload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await dbClient
         .from("question_stimuli")
         .insert({ ...normalizedPayload, created_by: user.id })
         .select("id")
@@ -603,7 +605,8 @@ export async function toggleQuestionStimulusAction(formData: FormData) {
   await assertStimulusRecordInScope(user, parsed.data.id);
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { error } = await dbClient
     .from("question_stimuli")
     .update({ is_active: parsed.data.is_active })
     .eq("id", parsed.data.id);
@@ -632,7 +635,8 @@ export async function deleteQuestionStimulusAction(formData: FormData) {
   await assertStimulusRecordInScope(user, id);
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { error } = await dbClient
     .from("question_stimuli")
     .update({
       deleted_at: new Date().toISOString(),
@@ -880,15 +884,16 @@ export async function saveQuestionCategoryAction(formData: FormData) {
   await assertAdminSameSchool(user, parsed.data.school_id);
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const { id, ...payload } = parsed.data;
   const { data: savedCategory, error } = id
-    ? await supabase
+    ? await dbClient
         .from("question_categories")
         .update(payload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await dbClient
         .from("question_categories")
         .insert({ ...payload, created_by: user.id })
         .select("id")
@@ -920,12 +925,13 @@ export async function saveQuestionCategoryAction(formData: FormData) {
 export async function toggleQuestionCategoryAction(formData: FormData) {
   const user = await requirePermission("question_categories.manage");
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const id = formString(formData, "id");
   const isActive = formBoolean(formData, "is_active");
 
   await assertCategoryInScope(user, id);
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("question_categories")
     .update({ is_active: isActive })
     .eq("id", id);
@@ -950,11 +956,12 @@ export async function toggleQuestionCategoryAction(formData: FormData) {
 export async function deleteQuestionCategoryAction(formData: FormData) {
   const user = await requirePermission("question_categories.manage");
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const id = formString(formData, "id");
 
   await assertCategoryInScope(user, id);
 
-  const { error } = await supabase
+  const { error } = await dbClient
     .from("question_categories")
     .update({
       deleted_at: new Date().toISOString(),
@@ -1017,6 +1024,7 @@ export async function saveQuestionAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const { id, options, ...payload } = parsed.data;
 
   if (id) {
@@ -1057,13 +1065,13 @@ export async function saveQuestionAction(formData: FormData) {
   };
 
   const { data: savedQuestion, error: questionError } = id
-    ? await supabase
+    ? await dbClient
         .from("questions")
         .update(questionPayload)
         .eq("id", id)
         .select("id")
         .single()
-    : await supabase
+    : await dbClient
         .from("questions")
         .insert({ ...questionPayload, created_by: currentUser.id })
         .select("id")
@@ -1076,7 +1084,7 @@ export async function saveQuestionAction(formData: FormData) {
     });
   }
 
-  await supabase
+  await dbClient
     .from("question_options")
     .delete()
     .eq("question_id", savedQuestion.id);
@@ -1092,7 +1100,7 @@ export async function saveQuestionAction(formData: FormData) {
         order_number: option.order_number,
       }));
 
-    const { error: optionError } = await supabase
+    const { error: optionError } = await dbClient
       .from("question_options")
       .insert(filledOptions);
 
@@ -1159,7 +1167,8 @@ export async function updateQuestionStatusAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { error } = await dbClient
     .from("questions")
     .update({ status: parsed.data.status })
     .eq("id", parsed.data.id);
@@ -1219,6 +1228,7 @@ export async function bulkQuestionAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const payload =
     action === "publish"
       ? { status: "published" }
@@ -1227,7 +1237,7 @@ export async function bulkQuestionAction(formData: FormData) {
         : action === "archive"
           ? { status: "archived" }
           : { deleted_at: new Date().toISOString(), is_active: false };
-  const { error } = await supabase.from("questions").update(payload).in("id", ids);
+  const { error } = await dbClient.from("questions").update(payload).in("id", ids);
 
   if (!error) {
     await logAuditEvent({
@@ -1253,8 +1263,9 @@ export async function bulkQuestionAction(formData: FormData) {
 export async function publishAllQuestionsAction() {
   const user = await requirePermission("questions.publish");
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
 
-  let query = supabase
+  let query = dbClient
     .from("questions")
     .select(
       "id, school_id, subject_id, category_id, stimulus_id, type, difficulty, content, explanation, point, is_active, question_categories(subject_id), question_options(id, option_label, option_text, is_correct, order_number)",
@@ -1311,7 +1322,7 @@ export async function publishAllQuestionsAction() {
   let updateError: { message: string } | null = null;
 
   if (publishableIds.length > 0) {
-    const { error: statusError } = await supabase
+    const { error: statusError } = await dbClient
       .from("questions")
       .update({ status: "published" })
       .in("id", publishableIds);
@@ -1534,3 +1545,36 @@ export async function importQuestionsCsvAction(formData: FormData) {
         : `Import berhasil: ${success} soal ditambahkan.`,
   });
 }
+
+export async function deleteQuestionAction(formData: FormData) {
+  const user = await requirePermission("questions.delete");
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo(QUESTION_PATH, { ok: false, message: "ID soal tidak valid." });
+  }
+
+  await assertQuestionInScope(user, id);
+  const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { error } = await dbClient
+    .from("questions")
+    .update({ deleted_at: new Date().toISOString(), is_active: false })
+    .eq("id", id);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "questions.delete",
+      entityType: "questions",
+      entityId: id,
+    });
+  }
+
+  revalidatePath(QUESTION_PATH);
+  redirectTo(QUESTION_PATH, {
+    ok: !error,
+    message: error ? error.message : "Soal berhasil dihapus.",
+  });
+}
+

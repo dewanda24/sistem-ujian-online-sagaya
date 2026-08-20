@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at)")
+    .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_package_id)")
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user!.id)
     .eq("status", "in_progress")

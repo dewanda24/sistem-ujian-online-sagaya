@@ -1,4 +1,7 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
+import { Plus, Printer } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -6,10 +9,9 @@ import { StudentsTable, type StudentRow } from "@/features/master-data/component
 import { requirePermission } from "@/lib/auth/require-permission";
 import {
   getClassOptions,
-  getStudentActiveClassCounts,
-  getStudentClassHistory,
   getUsersByRole,
 } from "@/lib/master-data/queries";
+
 
 type PageProps = {
   searchParams: Promise<{
@@ -36,14 +38,12 @@ export default async function StudentsPage({ searchParams }: PageProps) {
     getUsersByRole("student", params.q),
     getClassOptions(),
   ]);
-  const [activeClassCounts, histories] = await Promise.all([
-    getStudentActiveClassCounts(students.map((student) => student.id)),
-    Promise.all(students.map((student) => getStudentClassHistory(student.id))),
-  ]);
   const rows: StudentRow[] = students
-    .map((student, index) => {
+    .map((student) => {
       const profile = getProfile(student);
-      const activeClass = histories[index]?.find((item) => !item.left_at);
+      const classMembers = student.class_members ?? [];
+      const activeClass = Array.isArray(classMembers) ? classMembers.find((item: any) => !item.left_at) : null;
+      const activeClassCount = Array.isArray(classMembers) ? classMembers.filter((item: any) => !item.left_at).length : 0;
 
       return {
         id: student.id,
@@ -55,7 +55,7 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         phone: profile?.phone ?? "",
         status: student.status,
         className: activeClass?.classes?.name ?? "Belum ada kelas",
-        activeClassCount: activeClassCounts.get(student.id) ?? 0,
+        activeClassCount,
       };
     })
     .filter((row) => (params.status ? row.status === params.status : true))
@@ -72,15 +72,17 @@ export default async function StudentsPage({ searchParams }: PageProps) {
         <div className="flex gap-2">
           <Link
             href="/dashboard/reports/login-cards"
-            className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3.5 py-2 text-sm font-medium text-[#0F172A] shadow-sm transition-all hover:bg-[#F8FAFC]"
           >
-            Cetak Kartu Login
+            <Printer className="size-4 text-[#64748B]" />
+            <span>Cetak Kartu Login</span>
           </Link>
           <Link
             href="/dashboard/master-data/students/create"
-            className="rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700"
           >
-            Tambah Siswa
+            <Plus className="size-4" />
+            <span>Tambah Siswa</span>
           </Link>
         </div>
       </div>

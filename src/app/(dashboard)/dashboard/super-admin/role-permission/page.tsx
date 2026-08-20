@@ -43,7 +43,7 @@ export default async function SuperAdminRolePermissionPage() {
           description="Ubah label peran dan lihat jumlah pengguna/izin."
         >
           <Link
-            href="/dashboard/admin/roles"
+            href="/dashboard/super-admin/roles"
             className="inline-flex rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             Buka Peran
@@ -54,7 +54,7 @@ export default async function SuperAdminRolePermissionPage() {
           description="Tinjau dan ubah matriks izin akses tiap peran."
         >
           <Link
-            href="/dashboard/admin/permissions"
+            href="/dashboard/super-admin/permissions"
             className="inline-flex rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             Buka Izin

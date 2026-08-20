@@ -13,7 +13,21 @@ import { getExamReadinessSummary } from "@/features/exams/exam-readiness.service
 import { getRecoveryCenterData } from "@/features/recovery-center/queries";
 import { requireSchoolScope } from "@/lib/auth/school-scope";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { CurrentUser, RoleName } from "@/types/auth";
+
+function serviceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 type DashboardStat = {
   title: string;
@@ -54,6 +68,8 @@ export type AdminUpcomingSchedule = {
 export type AdminOperationalDashboardData = {
   activeAcademicYearName: string | null;
   activeSemesterName: string | null;
+  totalClasses: number;
+  totalSubjects: number;
   tasks: AdminTask[];
   dataIssues: MasterDataReadinessIssue[];
   examReadiness: {
@@ -77,8 +93,12 @@ async function getAdminSchoolId() {
   return scope.user.roles?.name === "admin" ? scope.schoolId : null;
 }
 
+async function getDbClient() {
+  return serviceRoleClient() ?? (await createClient());
+}
+
 async function countTable(table: string, schoolId?: string | null) {
-  const supabase = await createClient();
+  const supabase = await getDbClient();
   let query = supabase
     .from(table)
     .select("id", { count: "exact", head: true });
@@ -98,7 +118,7 @@ async function countWhere(
   value: string | boolean,
   schoolId?: string | null,
 ) {
-  const supabase = await createClient();
+  const supabase = await getDbClient();
   let query = supabase
     .from(table)
     .select("id", { count: "exact", head: true })
@@ -115,7 +135,7 @@ async function countWhere(
 
 async function countUsersByRole(roleName: RoleName) {
   const schoolId = await getAdminSchoolId();
-  const supabase = await createClient();
+  const supabase = await getDbClient();
   let query = supabase
     .from("users")
     .select("id, roles!inner(name)", { count: "exact", head: true })
@@ -293,6 +313,8 @@ export async function getAdminOperationalDashboardData(
     return {
       activeAcademicYearName: null,
       activeSemesterName: null,
+      totalClasses: 0,
+      totalSubjects: 0,
       tasks: [],
       dataIssues: [],
       examReadiness: {
@@ -529,6 +551,8 @@ export async function getAdminOperationalDashboardData(
   return {
     activeAcademicYearName: activeAcademicYear?.name ?? null,
     activeSemesterName: activeSemester?.name ?? null,
+    totalClasses: (classes ?? []).length,
+    totalSubjects: subjectCount ?? 0,
     tasks,
     dataIssues,
     examReadiness: {

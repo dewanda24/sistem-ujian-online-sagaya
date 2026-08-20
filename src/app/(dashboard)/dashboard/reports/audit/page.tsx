@@ -71,7 +71,7 @@ function summarizePayload(value: unknown) {
 
 export default async function AuditLogsPage({
   searchParams,
-  basePath = "/dashboard/admin/audit-logs",
+  basePath = "/dashboard/reports/audit",
 }: PageProps) {
   await requirePermission("audit_logs.view");
   const params = await searchParams;

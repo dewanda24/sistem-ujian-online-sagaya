@@ -325,6 +325,13 @@ const reportMenu = (roles: RoleName[]): AccessMenuItem => ({
       roles,
       permission: "reports.export",
     },
+    {
+      label: "Audit Logs",
+      href: "/dashboard/reports/audit",
+      icon: "scroll-text",
+      roles: ["admin"],
+      permission: "audit_logs.view",
+    },
   ],
 });
 
@@ -507,9 +514,9 @@ const superAdminSystemMenu: AccessMenuItem = {
   children: [
     {
       label: "Hak Akses",
-      href: "/dashboard/admin/roles",
+      href: "/dashboard/super-admin/roles",
       activePaths: [
-        "/dashboard/admin/permissions",
+        "/dashboard/super-admin/permissions",
         "/dashboard/super-admin/role-permission",
       ],
       icon: "shield-check",
@@ -541,6 +548,99 @@ const superAdminSystemMenu: AccessMenuItem = {
       href: "/dashboard/super-admin/support",
       icon: "file-text",
       roles: ["super_admin"],
+    },
+  ],
+};
+
+const adminSetupMenu: AccessMenuItem = {
+  label: "Setup & Data Induk",
+  description: "Kelola tahun ajaran, kurikulum, guru, kelas, dan siswa.",
+  href: "/dashboard/master-data/academic-years",
+  icon: "database",
+  roles: ["admin"],
+  permission: "master_data.view",
+  children: [
+    {
+      label: "Tahun Ajaran & Semester",
+      href: "/dashboard/master-data/academic-years",
+      icon: "calendar-days",
+      roles: ["admin"],
+      permission: "academic_years.view",
+    },
+    {
+      label: "Mata Pelajaran",
+      href: "/dashboard/master-data/subjects",
+      icon: "book-open",
+      roles: ["admin"],
+      permission: "subjects.view",
+    },
+    {
+      label: "Guru & Pengawas",
+      href: "/dashboard/master-data/teachers",
+      activePaths: ["/dashboard/exams/proctors"],
+      icon: "users",
+      roles: ["admin"],
+      permission: "teachers.view",
+    },
+    {
+      label: "Kelas",
+      href: "/dashboard/master-data/classes",
+      icon: "list-checks",
+      roles: ["admin"],
+      permission: "classes.view",
+    },
+    {
+      label: "Siswa",
+      href: "/dashboard/master-data/students",
+      icon: "graduation-cap",
+      roles: ["admin"],
+      permission: "students.view",
+    },
+  ],
+};
+
+const adminOperationsMenu: AccessMenuItem = {
+  label: "Ujian & Pelaksanaan",
+  description: "Kelola paket, jadwal, pencetakan kartu, dan pemantauan ujian.",
+  href: "/dashboard/exams/packages",
+  icon: "file-text",
+  roles: ["admin"],
+  permission: "exams.view",
+  children: [
+    {
+      label: "Paket Ujian",
+      href: "/dashboard/exams/packages",
+      icon: "book-open",
+      roles: ["admin"],
+      permission: "exam_packages.view",
+    },
+    {
+      label: "Jadwal Ujian",
+      href: "/dashboard/exams/schedules",
+      icon: "calendar-days",
+      roles: ["admin"],
+      permission: "exam_schedules.view",
+    },
+    {
+      label: "Cetak Kartu Login",
+      href: "/dashboard/reports/login-cards",
+      icon: "clipboard-check",
+      roles: ["admin"],
+      permission: "students.view",
+    },
+    {
+      label: "Monitoring Berjalan",
+      href: "/dashboard/admin/monitoring",
+      icon: "activity",
+      roles: ["admin"],
+      permission: "exam_monitoring.view",
+    },
+    {
+      label: "Pusat Pemulihan",
+      href: "/dashboard/recovery-center",
+      icon: "shield-check",
+      roles: ["admin"],
+      permission: "exam_monitoring.view",
     },
   ],
 };
@@ -579,14 +679,6 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "teachers.manage",
       "students.view",
       "students.manage",
-      "question_bank.view",
-      "question_bank.export",
-      "question_bank.manage",
-      "questions.create",
-      "questions.update",
-      "questions.publish",
-      "questions.archive",
-      "question_categories.manage",
       "exams.view",
       "exam_packages.view",
       "exam_packages.manage",
@@ -600,14 +692,12 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "reports.view",
       "reports.export",
       "import_export.view",
+      "audit_logs.view",
     ],
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
-      academicMenu(["admin"]),
-      adminUserMenu,
-      questionBankMenu(["admin"]),
-      adminExamMenu(["admin"]),
-      adminExecutionMenu,
+      adminSetupMenu,
+      adminOperationsMenu,
       reportMenu(["admin"]),
       profileItem("admin"),
     ],
@@ -726,25 +816,25 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   { path: "/dashboard/super-admin", roles: ["super_admin"], match: "prefix" },
   { path: "/dashboard/admin", roles: ["admin"], match: "exact" },
   {
-    path: "/dashboard/admin/users",
-    roles: userAdminRoles,
+    path: "/dashboard/super-admin/users",
+    roles: ["super_admin"],
     match: "prefix",
     permission: "users.view",
   },
   {
-    path: "/dashboard/admin/roles",
+    path: "/dashboard/super-admin/roles",
     roles: ["super_admin"],
     match: "prefix",
     permission: "roles.view",
   },
   {
-    path: "/dashboard/admin/permissions",
+    path: "/dashboard/super-admin/permissions",
     roles: ["super_admin"],
     match: "prefix",
     permission: "roles.manage",
   },
   {
-    path: "/dashboard/admin/audit-logs",
+    path: "/dashboard/super-admin/audit-logs",
     roles: ["super_admin"],
     match: "prefix",
     permission: "audit_logs.view",
@@ -797,6 +887,12 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
     permission: "question_bank.view",
   },
   {
+    path: "/dashboard/reports/audit",
+    roles: ["admin"],
+    match: "prefix",
+    permission: "audit_logs.view",
+  },
+  {
     path: "/dashboard/exams",
     roles: examManagerRoles,
     match: "prefix",
@@ -830,11 +926,6 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   { path: "/dashboard/proctor", roles: ["proctor"], match: "prefix" },
   { path: "/dashboard/student", roles: ["student"], match: "prefix" },
   { path: "/dashboard/principal", roles: ["principal"], match: "prefix" },
-  { path: "/admin", roles: ["admin"], match: "prefix" },
-  { path: "/teacher", roles: ["teacher"], match: "prefix" },
-  { path: "/proctor", roles: ["proctor"], match: "prefix" },
-  { path: "/student", roles: ["student"], match: "prefix" },
-  { path: "/principal", roles: ["principal"], match: "prefix" },
 ];
 
 export function getRoleDashboardPath(role?: string | null) {
