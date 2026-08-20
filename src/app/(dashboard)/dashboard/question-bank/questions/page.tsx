@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { QuestionBankFilters } from "@/features/question-bank/components/question-bank-filters";
 import { QuestionTable } from "@/features/question-bank/components/question-table";
@@ -123,14 +124,14 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
 
           {canPublish && draftCount > 0 ? (
             <form action={publishAllQuestionsAction}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-2xs transition-all hover:bg-amber-100"
+              <SubmitButton
+                loadingText="Menerbitkan..."
+                className="h-8 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-800 shadow-2xs hover:bg-amber-100"
                 title={`Terbitkan sekaligus ${draftCount} soal draft`}
               >
                 <Send className="size-3.5" />
                 <span>Terbitkan Semua ({draftCount})</span>
-              </button>
+              </SubmitButton>
             </form>
           ) : null}
         </div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getRapidGradingAnswers, firstRelation } from "@/features/results/queries";
@@ -145,10 +146,13 @@ export default async function RapidGradingPage({ searchParams }: PageProps) {
                       />
                     </div>
                     
-                    <button type="submit" className="h-12 w-full sm:w-auto rounded-lg bg-blue-600 px-8 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2">
+                    <SubmitButton
+                      loadingText="Menyimpan Nilai..."
+                      className="h-12 w-full sm:w-auto rounded-lg bg-blue-600 px-8 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2"
+                    >
                       <span>Simpan & Lanjut</span>
                       <span className="text-blue-200 text-xs font-normal hidden sm:inline">(Enter)</span>
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Save, Send } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { Loader2, Save, Send } from "lucide-react";
 
 import { saveExamScheduleAction } from "@/features/exams/actions";
 import { cn } from "@/lib/utils";
@@ -484,8 +485,7 @@ export function ExamScheduleForm({
           </button>
         </div>
         <div className="flex gap-2">
-          <button
-            type="submit"
+          <ScheduleDraftButton
             onClick={() => {
               setStatus("draft");
               if (statusInputRef.current) statusInputRef.current.value = "draft";
@@ -493,13 +493,8 @@ export function ExamScheduleForm({
                 confirmWarningsInputRef.current.value = "false";
               }
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC]"
-          >
-            <Save className="size-4" />
-            Simpan Draft
-          </button>
-          <button
-            type="submit"
+          />
+          <SchedulePublishButton
             onClick={(event) => {
               const confirmed = window.confirm(
                 "Tetap publish? Jika hanya warning readiness, jadwal tetap dipublish. Jika ada critical, sistem akan menolak publish.",
@@ -516,14 +511,58 @@ export function ExamScheduleForm({
                 confirmWarningsInputRef.current.value = "true";
               }
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8]"
-          >
-            <Send className="size-4" />
-            Jadwalkan Ujian
-          </button>
+          />
         </div>
       </div>
     </form>
+  );
+}
+
+function ScheduleDraftButton({ onClick }: { onClick: () => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50 transition"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin text-slate-500" />
+          <span>Menyimpan Draft...</span>
+        </>
+      ) : (
+        <>
+          <Save className="size-4" />
+          <span>Simpan Draft</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function SchedulePublishButton({ onClick }: { onClick: (event: React.MouseEvent<HTMLButtonElement>) => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50 transition"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin text-white" />
+          <span>Menjadwalkan Ujian...</span>
+        </>
+      ) : (
+        <>
+          <Send className="size-4" />
+          <span>Jadwalkan Ujian</span>
+        </>
+      )}
+    </button>
   );
 }
 

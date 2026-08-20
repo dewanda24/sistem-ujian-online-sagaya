@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Archive,
@@ -10,6 +11,7 @@ import {
   Eye,
   FileText,
   KeyRound,
+  Loader2,
   MoreHorizontal,
   PenLine,
   Pencil,
@@ -25,7 +27,6 @@ import {
   UserCheck,
   type LucideIcon,
 } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { cn } from "@/lib/utils";
@@ -69,11 +70,30 @@ export function TableActions({
   align = "end",
   className,
 }: TableActionsProps) {
+  const [isPending, setIsPending] = useState(false);
+
   return (
-    <details className={cn("group relative inline-block text-left open:z-50", className)}>
-      <summary className="inline-flex h-10 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#1E293B] shadow-sm transition-all duration-150 select-none hover:bg-[#F8FAFC] active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20">
-        <MoreHorizontal className="size-4 text-[#64748B]" aria-hidden="true" />
-        <span>{label}</span>
+    <details
+      className={cn("group relative inline-block text-left open:z-50", className)}
+      onSubmitCapture={() => setIsPending(true)}
+    >
+      <summary
+        className={cn(
+          "inline-flex h-10 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#1E293B] shadow-sm transition-all duration-150 select-none hover:bg-[#F8FAFC] active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20",
+          isPending && "pointer-events-none opacity-80 border-blue-300 bg-blue-50/50 text-blue-700",
+        )}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="size-4 animate-spin text-blue-600 shrink-0" aria-hidden="true" />
+            <span>Memproses...</span>
+          </>
+        ) : (
+          <>
+            <MoreHorizontal className="size-4 text-[#64748B]" aria-hidden="true" />
+            <span>{label}</span>
+          </>
+        )}
       </summary>
       <div
         onClick={(e) => {

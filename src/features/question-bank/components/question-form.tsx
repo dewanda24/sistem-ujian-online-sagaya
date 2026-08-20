@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import type { ReactNode } from "react";
 import {
   Check,
@@ -906,8 +907,7 @@ export function QuestionForm({
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="submit"
+          <QuestionDraftButton
             onClick={() => {
               if (statusInputRef.current) {
                 statusInputRef.current.value = "draft";
@@ -916,14 +916,9 @@ export function QuestionForm({
                 saveAndAddAnotherRef.current.value = "false";
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-[#64748B] shadow-xs hover:bg-slate-50 active:scale-95 transition"
-          >
-            <Save className="size-4" />
-            <span>Simpan Draf</span>
-          </button>
+          />
 
-          <button
-            type="submit"
+          <QuestionSaveAndAddAnotherButton
             onClick={() => {
               if (statusInputRef.current) {
                 statusInputRef.current.value = "published";
@@ -932,15 +927,9 @@ export function QuestionForm({
                 saveAndAddAnotherRef.current.value = "true";
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-600 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 active:scale-95 transition"
-            title="Simpan soal dan langsung buka formulir baru untuk soal berikutnya"
-          >
-            <Plus className="size-4" />
-            <span>Simpan & Buat Lagi</span>
-          </button>
+          />
 
-          <button
-            type="submit"
+          <QuestionPublishButton
             onClick={() => {
               if (statusInputRef.current) {
                 statusInputRef.current.value = "published";
@@ -949,13 +938,82 @@ export function QuestionForm({
                 saveAndAddAnotherRef.current.value = "false";
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition"
-          >
-            <Send className="size-4" />
-            <span>Terbitkan Soal</span>
-          </button>
+          />
         </div>
       </div>
     </form>
+  );
+}
+
+function QuestionDraftButton({ onClick }: { onClick: () => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-[#64748B] shadow-xs hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin text-slate-500" />
+          <span>Menyimpan Draf...</span>
+        </>
+      ) : (
+        <>
+          <Save className="size-4" />
+          <span>Simpan Draf</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function QuestionSaveAndAddAnotherButton({ onClick }: { onClick: () => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-600 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition"
+      title="Simpan soal dan langsung buka formulir baru untuk soal berikutnya"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin text-blue-600" />
+          <span>Menyimpan & Membuka Form...</span>
+        </>
+      ) : (
+        <>
+          <Plus className="size-4" />
+          <span>Simpan & Buat Lagi</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function QuestionPublishButton({ onClick }: { onClick: () => void }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin text-white" />
+          <span>Menerbitkan Soal...</span>
+        </>
+      ) : (
+        <>
+          <Send className="size-4" />
+          <span>Terbitkan Soal</span>
+        </>
+      )}
+    </button>
   );
 }

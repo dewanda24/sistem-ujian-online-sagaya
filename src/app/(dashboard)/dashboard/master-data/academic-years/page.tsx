@@ -10,6 +10,7 @@ import {
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
 import { ActionToast } from "@/components/master-data/action-toast";
+import { SemesterToggleButton } from "@/components/master-data/semester-toggle-button";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
   deleteAcademicYearAction,
@@ -146,21 +147,10 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                             <input type="hidden" name="id" value={s.id} />
                             <input type="hidden" name="academic_year_id" value={s.academic_year_id} />
                             <input type="hidden" name="is_active" value={s.is_active ? "false" : "true"} />
-                            <button
-                              type="submit"
-                              className={
-                                s.is_active
-                                  ? "inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300 shadow-xs cursor-pointer"
-                                  : "inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-700 hover:ring-blue-200 ring-1 ring-slate-200 cursor-pointer transition"
-                              }
-                              title={s.is_active ? "Semester ini sedang aktif" : `Klik untuk mengaktifkan semester ${s.name}`}
-                            >
-                              {s.is_active ? (
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
-                              ) : null}
-                              <span>Semester {s.name}</span>
-                              {s.is_active ? <span className="text-[10px] font-bold uppercase">(Aktif)</span> : null}
-                            </button>
+                            <SemesterToggleButton
+                              name={`Semester ${s.name}`}
+                              isActive={Boolean(s.is_active)}
+                            />
                           </form>
                         ))
                       ) : (
@@ -237,17 +227,10 @@ export default async function AcademicYearsPage({ searchParams }: PageProps) {
                         <input type="hidden" name="id" value={s.id} />
                         <input type="hidden" name="academic_year_id" value={s.academic_year_id} />
                         <input type="hidden" name="is_active" value={s.is_active ? "false" : "true"} />
-                        <button
-                          type="submit"
-                          className={
-                            s.is_active
-                              ? "inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300"
-                              : "inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
-                          }
-                        >
-                          {s.is_active ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> : null}
-                          {s.name} {s.is_active ? "(Aktif)" : ""}
-                        </button>
+                        <SemesterToggleButton
+                          name={`Semester ${s.name}`}
+                          isActive={Boolean(s.is_active)}
+                        />
                       </form>
                     ))}
                   </div>

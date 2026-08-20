@@ -244,16 +244,16 @@ function TeacherDashboardOverview({ displayName, stats }: TeacherDashboardOvervi
     },
     {
       title: "Buat Paket Ujian",
-      description: "Rakit soal ke paket ujian",
+      description: "Rakit butir soal ke paket ujian",
       href: "/dashboard/exams/packages/create",
       icon: Layers,
       color: "text-purple-600 bg-purple-50 border-purple-100 hover:border-purple-300",
     },
     {
-      title: "Jadwalkan Ujian",
-      description: "Atur tanggal, kelas & token",
-      href: "/dashboard/exams/schedules/create",
-      icon: CalendarDays,
+      title: "Bank Soal Saya",
+      description: `${bankSoalCount} butir soal tersedia`,
+      href: "/dashboard/question-bank/questions",
+      icon: BookOpen,
       color: "text-amber-600 bg-amber-50 border-amber-100 hover:border-amber-300",
     },
     {
@@ -271,7 +271,7 @@ function TeacherDashboardOverview({ displayName, stats }: TeacherDashboardOvervi
       color: "text-cyan-600 bg-cyan-50 border-cyan-100 hover:border-cyan-300",
     },
     {
-      title: "Rekap Hasil Siswa",
+      title: "Rekap Nilai Siswa",
       description: "Daftar nilai & ekspor raport",
       href: "/dashboard/reports/students",
       icon: BarChart3,
@@ -295,10 +295,10 @@ function TeacherDashboardOverview({ displayName, stats }: TeacherDashboardOvervi
       urgent: draftSoal > 5,
     },
     {
-      title: `${ujianHariIni} Ujian Berlangsung / Dijadwalkan Hari Ini`,
-      description: "Pastikan kesiapan token ujian, peserta teralokasi, dan ruang monitoring aktif.",
-      href: "/dashboard/exams/schedules",
-      action: "Buka Jadwal",
+      title: `${ujianHariIni} Ujian Berlangsung Hari Ini`,
+      description: "Pantau pelaksanaan ujian siswa secara real-time di ruang pengawasan.",
+      href: "/dashboard/teacher/monitoring",
+      action: "Buka Monitoring",
       urgent: ujianHariIni > 0,
     },
   ];
@@ -320,7 +320,7 @@ function TeacherDashboardOverview({ displayName, stats }: TeacherDashboardOvervi
               Selamat Mengajar, {firstName}!
             </h1>
             <p className="text-sm text-blue-100 max-w-lg leading-relaxed">
-              Kelola butir soal, rakit paket ujian, jadwalkan tes kelas, dan lakukan koreksi esai siswa dengan cepat dan efisien.
+              Kelola butir soal, susun paket naskah ujian, dan lakukan koreksi esai siswa dengan cepat dan efisien.
             </p>
           </div>
 
@@ -333,11 +333,11 @@ function TeacherDashboardOverview({ displayName, stats }: TeacherDashboardOvervi
               <span>Buat Soal Cepat</span>
             </Link>
             <Link
-              href="/dashboard/exams/schedules/create"
+              href="/dashboard/exams/packages/create"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/15 px-5 text-sm font-semibold text-white backdrop-blur-md transition-all hover:bg-white/25 active:scale-[0.98]"
             >
-              <CalendarDays className="size-4" />
-              <span>Buat Jadwal</span>
+              <Layers className="size-4" />
+              <span>Rakit Paket Ujian</span>
             </Link>
           </div>
         </div>
