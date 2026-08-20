@@ -199,6 +199,7 @@ export function QuestionForm({
   const initialSubjectId =
     editable?.subject_id ?? defaultSubjectId ?? subjects[0]?.value ?? "";
   const statusInputRef = useRef<HTMLInputElement>(null);
+  const saveAndAddAnotherRef = useRef<HTMLInputElement>(null);
   const [subjectId, setSubjectId] = useState(initialSubjectId);
   const [type, setType] = useState(editable?.type ?? "multiple_choice");
   const [content, setContent] = useState(editable?.content ?? "");
@@ -887,6 +888,13 @@ export function QuestionForm({
         </div>
       </Accordion>
 
+      <input
+        type="hidden"
+        name="save_and_add_another"
+        ref={saveAndAddAnotherRef}
+        defaultValue="false"
+      />
+
       {/* Action Footer Buttons */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] pt-5">
         <button
@@ -897,18 +905,21 @@ export function QuestionForm({
           Kembali
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             onClick={() => {
               if (statusInputRef.current) {
                 statusInputRef.current.value = "draft";
               }
+              if (saveAndAddAnotherRef.current) {
+                saveAndAddAnotherRef.current.value = "false";
+              }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-bold text-[#2563EB] shadow-xs hover:bg-blue-50 active:scale-95 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-[#64748B] shadow-xs hover:bg-slate-50 active:scale-95 transition"
           >
             <Save className="size-4" />
-            <span>Simpan sebagai Draf</span>
+            <span>Simpan Draf</span>
           </button>
 
           <button
@@ -916,6 +927,26 @@ export function QuestionForm({
             onClick={() => {
               if (statusInputRef.current) {
                 statusInputRef.current.value = "published";
+              }
+              if (saveAndAddAnotherRef.current) {
+                saveAndAddAnotherRef.current.value = "true";
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-600 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 active:scale-95 transition"
+            title="Simpan soal dan langsung buka formulir baru untuk soal berikutnya"
+          >
+            <Plus className="size-4" />
+            <span>Simpan & Buat Lagi</span>
+          </button>
+
+          <button
+            type="submit"
+            onClick={() => {
+              if (statusInputRef.current) {
+                statusInputRef.current.value = "published";
+              }
+              if (saveAndAddAnotherRef.current) {
+                saveAndAddAnotherRef.current.value = "false";
               }
             }}
             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition"

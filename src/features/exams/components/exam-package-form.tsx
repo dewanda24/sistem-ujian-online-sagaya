@@ -131,6 +131,25 @@ export function ExamPackageForm({
     filteredQuestions.length > 0 &&
     filteredQuestions.every((question) => selectedSet.has(question.id));
 
+  const [randomCount, setRandomCount] = useState("");
+
+  function selectRandomQuestions() {
+    const count = parseInt(randomCount, 10);
+    if (isNaN(count) || count <= 0) return;
+    const available = filteredQuestions.filter((q) => !selectedSet.has(q.id));
+    const shuffled = [...available].sort(() => 0.5 - Math.random());
+    const picked = shuffled.slice(0, count).map((q) => q.id);
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...picked])));
+    setRandomCount("");
+  }
+
+  function clearCurrentSubjectSelection() {
+    setSelectedIds((prev) => prev.filter((id) => {
+      const q = questions.find((item) => item.id === id);
+      return q && q.subject_id !== subjectId;
+    }));
+  }
+
   function toggleQuestion(id: string) {
     setSelectedIds((current) =>
       current.includes(id)
@@ -270,20 +289,58 @@ export function ExamPackageForm({
       </section>
 
       <section className={step === 1 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-[#0F172A]">Pilih Soal</h2>
-            <p className="mt-1 text-sm text-[#64748B]">
-              {selectedForCurrentSubject.length} soal dipilih
-            </p>
+            <h2 className="text-base font-semibold text-[#0F172A]">Pilih Soal Ujian</h2>
+            <div className="mt-1 flex items-center gap-2 text-xs">
+              <span className="font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full">
+                {selectedForCurrentSubject.length} butir dipilih
+              </span>
+              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                Total {totalPoints} Poin
+              </span>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={toggleFiltered}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-          >
-            {allFilteredSelected ? "Batalkan hasil filter" : "Select all hasil filter"}
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="1"
+                max={filteredQuestions.length}
+                value={randomCount}
+                onChange={(e) => setRandomCount(e.target.value)}
+                placeholder="Jml acak"
+                className="h-8 w-20 rounded-lg border border-slate-200 px-2 text-xs"
+              />
+              <button
+                type="button"
+                onClick={selectRandomQuestions}
+                disabled={!randomCount || Number(randomCount) <= 0}
+                className="h-8 rounded-lg bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+              >
+                Pilih Acak
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleFiltered}
+              className="h-8 rounded-lg border border-[#E2E8F0] px-3 text-xs font-medium hover:bg-[#F8FAFC]"
+            >
+              {allFilteredSelected ? "Batal Pilih Hasil Filter" : "Pilih Semua Hasil Filter"}
+            </button>
+
+            {selectedForCurrentSubject.length > 0 ? (
+              <button
+                type="button"
+                onClick={clearCurrentSubjectSelection}
+                className="h-8 rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+              >
+                Reset Pilihan
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">

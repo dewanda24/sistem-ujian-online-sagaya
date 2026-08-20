@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { FolderTree, Plus } from "lucide-react";
+import {
+  BookOpen,
+  FileSpreadsheet,
+  FileText,
+  FolderTree,
+  Plus,
+  Send,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
@@ -7,6 +16,7 @@ import { QuestionBankFilters } from "@/features/question-bank/components/questio
 import { QuestionTable } from "@/features/question-bank/components/question-table";
 import { QuestionDrawer } from "@/features/question-bank/components/question-drawer";
 import { QuestionForm } from "@/features/question-bank/components/question-form";
+import { publishAllQuestionsAction } from "@/features/question-bank/actions";
 import {
   getQuestionCategoryOptions,
   getQuestions,
@@ -58,6 +68,8 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
       : Promise.resolve(null),
   ]);
 
+  const draftCount = questions.filter((q) => q.status === "draft").length;
+
   const editable = params.action === "duplicate" && fetchedQuestion
     ? { ...fetchedQuestion, id: null }
     : fetchedQuestion;
@@ -65,26 +77,62 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-5">
       <ActionToast status={params.notice} message={params.message} />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <DashboardPageHeader
           title="Bank Soal"
-          description="Kelola daftar soal, tambah soal baru, dan atur kategori tanpa form panjang di halaman daftar."
+          description="Pusat pembuatan dan manajemen butir soal pilihan ganda & esai dengan dukungan rumus KaTeX, media, dan import cepat."
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="?action=create"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-[#1D4ED8]"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1D4ED8] active:scale-[0.98]"
           >
             <Plus className="size-4" />
-            Tambah Soal
+            <span>Tambah Soal</span>
+          </Link>
+          <Link
+            href="/dashboard/question-bank/import-word"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
+            title="Import naskah soal dari Microsoft Word (.docx)"
+          >
+            <FileText className="size-3.5" />
+            <span>Import Word</span>
+          </Link>
+          <Link
+            href="/dashboard/question-bank/import-excel"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-100"
+            title="Import template butir soal dari Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="size-3.5" />
+            <span>Import Excel</span>
+          </Link>
+          <Link
+            href="/dashboard/question-bank/stimuli"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50"
+          >
+            <BookOpen className="size-3.5 text-slate-500" />
+            <span>Stimulus</span>
           </Link>
           <Link
             href="/dashboard/question-bank/categories"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#0F172A] shadow-sm transition hover:bg-[#F8FAFC]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50"
           >
-            <FolderTree className="size-4" />
-            Kategori Soal
+            <FolderTree className="size-3.5 text-slate-500" />
+            <span>Kategori</span>
           </Link>
+
+          {canPublish && draftCount > 0 ? (
+            <form action={publishAllQuestionsAction}>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-2xs transition-all hover:bg-amber-100"
+                title={`Terbitkan sekaligus ${draftCount} soal draft`}
+              >
+                <Send className="size-3.5" />
+                <span>Terbitkan Semua ({draftCount})</span>
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
 

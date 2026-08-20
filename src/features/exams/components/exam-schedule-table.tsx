@@ -233,6 +233,18 @@ function ScheduleActions({
         {UI_LABELS.actions.preview}
       </TableActionButton>
       <TableActionLink
+        href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
+        icon="screen-share"
+      >
+        Live Monitoring
+      </TableActionLink>
+      <TableActionLink
+        href={`/dashboard/reports/students?schedule_id=${schedule.id}`}
+        icon="clipboard"
+      >
+        Hasil Nilai Siswa
+      </TableActionLink>
+      <TableActionLink
         href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
         icon="pencil"
       >

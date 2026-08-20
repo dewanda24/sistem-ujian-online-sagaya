@@ -1129,10 +1129,17 @@ export async function saveQuestionAction(formData: FormData) {
     },
   });
 
+  const saveAndAddAnother = formBoolean(formData, "save_and_add_another");
+  const redirectTarget = saveAndAddAnother
+    ? `/dashboard/question-bank/questions?action=create&subject_id=${payload.subject_id}${payload.category_id ? `&category_id=${payload.category_id}` : ""}`
+    : "/dashboard/question-bank/questions";
+
   revalidatePath("/dashboard/question-bank/questions");
-  redirectTo("/dashboard/question-bank/questions", {
+  redirectTo(redirectTarget, {
     ok: true,
-    message: "Soal berhasil disimpan.",
+    message: saveAndAddAnother
+      ? "Soal berhasil disimpan. Silakan lanjutkan menulis soal berikutnya."
+      : "Soal berhasil disimpan.",
   });
 }
 

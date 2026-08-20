@@ -7,12 +7,23 @@ import { z } from "zod";
 import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 
 const profileSettingsSchema = z.object({
   full_name: z.string().min(2, "Nama lengkap wajib diisi"),
   phone: z.string().optional().default(""),
   avatar_url: z.string().url("Avatar URL tidak valid").or(z.literal("")).default(""),
 });
+
+const changePasswordSchema = z
+  .object({
+    new_password: z.string().min(6, "Password baru minimal 6 karakter"),
+    confirm_password: z.string().min(6, "Konfirmasi password minimal 6 karakter"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "Konfirmasi password tidak cocok dengan password baru",
+    path: ["confirm_password"],
+  });
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -43,7 +54,8 @@ export async function saveProfileSettingsAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("user_profiles").upsert(
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { error } = await dbClient.from("user_profiles").upsert(
     {
       user_id: user.id,
       full_name: parsed.data.full_name,
@@ -56,6 +68,34 @@ export async function saveProfileSettingsAction(formData: FormData) {
   revalidatePath("/dashboard/profile");
   redirectTo({
     ok: !error,
-    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
+    message: error ? getFriendlyErrorMessage(error) : "Profil berhasil diperbarui.",
+  });
+}
+
+export async function changePasswordAction(formData: FormData) {
+  const user = await requireAuth();
+  const parsed = changePasswordSchema.safeParse({
+    new_password: formString(formData, "new_password"),
+    confirm_password: formString(formData, "confirm_password"),
+  });
+
+  if (!parsed.success) {
+    redirectTo({
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Password tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.new_password,
+  });
+
+  revalidatePath("/dashboard/profile");
+  redirectTo({
+    ok: !error,
+    message: error
+      ? getFriendlyErrorMessage(error)
+      : "Kata sandi akun Anda berhasil diubah. Gunakan kata sandi baru untuk login berikutnya.",
   });
 }
