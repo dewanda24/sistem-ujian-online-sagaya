@@ -21,6 +21,7 @@ import {
   regenerateExamTokenAction,
   toggleExamScheduleActiveAction,
   updateExamScheduleStatusAction,
+  deleteExamScheduleAction,
 } from "@/features/exams/actions";
 import type { ExamReadinessResult } from "@/features/exams/exam-readiness.service";
 
@@ -237,12 +238,6 @@ function ScheduleActions({
       >
         {UI_LABELS.actions.update}
       </TableActionLink>
-      <TableActionLink
-        href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
-        icon="screen-share"
-      >
-        {UI_LABELS.navigation.examMonitoring}
-      </TableActionLink>
       <TableActionButton
         icon="clipboard"
         onClick={copyToken}
@@ -256,12 +251,6 @@ function ScheduleActions({
           {UI_LABELS.actions.generateToken}
         </TableActionSubmit>
       </form>
-      <TableActionLink
-        href={`/dashboard/exams/proctors?schedule_id=${schedule.id}`}
-        icon="user-check"
-      >
-        Penugasan Pengawas
-      </TableActionLink>
       {schedule.status === "draft" || schedule.status === "cancelled" ? (
         <form action={updateExamScheduleStatusAction}>
           <input type="hidden" name="id" value={schedule.id} />
@@ -320,6 +309,17 @@ function ScheduleActions({
           tone="danger"
         >
           {UI_LABELS.actions.archive}
+        </TableActionSubmit>
+      </form>
+      <form action={deleteExamScheduleAction}>
+        <input type="hidden" name="id" value={schedule.id} />
+        <TableActionSubmit
+          icon="trash"
+          confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN jadwal ujian ini? Tindakan ini tidak bisa dibatalkan."
+          confirmationText="HAPUS"
+          tone="danger"
+        >
+          Hapus Permanen
         </TableActionSubmit>
       </form>
     </TableActions>

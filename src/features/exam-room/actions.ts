@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -128,6 +128,14 @@ export async function startExamAction(formData: FormData) {
     .eq("exam_schedule_id", parsed.data.schedule_id)
     .eq("student_id", user.id)
     .maybeSingle();
+
+  if (existingParticipant?.status === "submitted" || existingParticipant?.status === "expired") {
+    redirectWithNotice(
+      "/dashboard/student/active-exams",
+      false,
+      "Ujian Selesai||Anda sudah mengumpulkan ujian ini dan tidak dapat mengulang.",
+    );
+  }
 
   const participant: ParticipantWithAttempts | null =
     existingParticipant ??
@@ -356,7 +364,17 @@ export async function submitAttemptAction(formData: FormData) {
   }
 
   if (await isAttemptExpired(attempt as AttemptTiming)) {
+    const scheduleRelation = attempt.exam_schedules as
+      | { exam_package_id?: string | null }
+      | Array<{ exam_package_id?: string | null }>
+      | null;
+    const packageId = Array.isArray(scheduleRelation)
+      ? scheduleRelation[0]?.exam_package_id
+      : scheduleRelation?.exam_package_id;
+
     await expireAttempt(attempt.id, attempt.exam_participant_id);
+    await calculateAndPersistAttemptScore(attempt.id, { packageId });
+
     redirectWithNotice(
       "/dashboard/student/history",
       false,

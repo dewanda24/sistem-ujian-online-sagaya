@@ -244,8 +244,6 @@ function PackageActions({
         </TableActionLink>
       ) : null}
       
-      <div className="my-1 h-px bg-slate-100" />
-      
       <form action={updateExamPackageStatusAction}>
         <input type="hidden" name="id" value={examPackage.id} />
         <input 

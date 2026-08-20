@@ -1433,3 +1433,47 @@ async function syncScheduleParticipants(scheduleId: string): Promise<
     },
   };
 }
+
+export async function deleteExamScheduleAction(formData: FormData) {
+  const currentUser = await requirePermission("exam_schedules.manage");
+  if (isDemoUser(currentUser)) {
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: DEMO_MUTATION_BLOCKED_MESSAGE,
+    });
+  }
+
+  const supabase = await createClient();
+  const id = formString(formData, "id");
+  await assertScheduleSchoolScope(id);
+
+  const { error } = await supabase.from("exam_schedules").delete().eq("id", id);
+
+  if (error) {
+    if (error.code === "23503") {
+      redirectTo("/dashboard/exams/schedules", {
+        ok: false,
+        message: "Gagal menghapus: Jadwal ujian ini sudah memiliki data partisipan yang terkait.",
+      });
+    }
+
+    redirectTo("/dashboard/exams/schedules", {
+      ok: false,
+      message: error.message,
+    });
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "exam_schedules.delete",
+    entityType: "exam_schedules",
+    entityId: id,
+    payload: { action: "permanent_delete" },
+  });
+
+  revalidatePath("/dashboard/exams/schedules");
+  redirectTo("/dashboard/exams/schedules", {
+    ok: true,
+    message: "Jadwal ujian berhasil dihapus permanen.",
+  });
+}

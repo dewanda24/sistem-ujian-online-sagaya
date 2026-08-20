@@ -70,7 +70,7 @@ export function TableActions({
   className,
 }: TableActionsProps) {
   return (
-    <details className={cn("group relative inline-block text-left", className)}>
+    <details className={cn("group relative inline-block text-left open:z-50", className)}>
       <summary className="inline-flex h-10 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#1E293B] shadow-sm transition-all duration-150 select-none hover:bg-[#F8FAFC] active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20">
         <MoreHorizontal className="size-4 text-[#64748B]" aria-hidden="true" />
         <span>{label}</span>

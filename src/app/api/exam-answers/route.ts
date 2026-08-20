@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/auth/has-permission";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
 import { saveAnswerSchema } from "@/lib/validations/exam-room";
+import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 
 type AttemptTiming = {
   id: string;
@@ -69,7 +70,13 @@ export async function POST(request: Request) {
   }
 
   if (isAttemptExpired(attempt as AttemptTiming)) {
+    const scheduleRelation = attempt.exam_schedules as any;
+    const packageId = Array.isArray(scheduleRelation)
+      ? scheduleRelation[0]?.exam_package_id
+      : scheduleRelation?.exam_package_id;
+
     await expireAttempt(attempt.id, attempt.exam_participant_id);
+    await calculateAndPersistAttemptScore(attempt.id, { packageId });
 
     return NextResponse.json(
       { ok: false, message: "Waktu ujian sudah berakhir." },
