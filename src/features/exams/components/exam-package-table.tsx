@@ -98,7 +98,7 @@ export function ExamPackageTable({ packages }: ExamPackageTableProps) {
 
   return (
     <div className="grid gap-3">
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs md:block">
+      <div className="hidden overflow-visible rounded-2xl border border-slate-200/90 bg-white shadow-2xs md:block">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
             <tr>

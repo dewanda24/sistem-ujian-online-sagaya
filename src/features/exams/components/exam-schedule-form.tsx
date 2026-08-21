@@ -274,7 +274,7 @@ export function ExamScheduleForm({
   return (
     <form
       action={saveExamScheduleAction}
-      className="space-y-6 pb-20"
+      className="space-y-6 pb-28 sm:pb-32"
       onSubmit={(event) => {
         if (!validate()) {
           event.preventDefault();
@@ -790,16 +790,16 @@ export function ExamScheduleForm({
       </div>
 
       {/* STICKY BOTTOM ACTION FOOTER FOR MOBILE / QUICK SAVE */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-3.5 backdrop-blur-md shadow-lg sm:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 p-3 backdrop-blur-md shadow-2xl sm:hidden">
         <div className="flex items-center justify-between gap-2">
           <Link
             href="/dashboard/exams/schedules"
-            className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs"
+            className="inline-flex h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs shrink-0"
           >
             <ArrowLeft className="size-3.5" />
             <span>Batal</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 justify-end">
             <ScheduleDraftButton
               onClick={() => {
                 setStatus("draft");
@@ -832,7 +832,7 @@ function ScheduleDraftButton({ onClick }: { onClick: () => void }) {
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 transition"
+      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 transition shrink-0"
     >
       {pending ? (
         <>
@@ -842,7 +842,7 @@ function ScheduleDraftButton({ onClick }: { onClick: () => void }) {
       ) : (
         <>
           <Save className="size-3.5 text-slate-600" />
-          <span>Simpan Draf</span>
+          <span><span className="hidden sm:inline">Simpan </span>Draf</span>
         </>
       )}
     </button>
@@ -856,7 +856,7 @@ function SchedulePublishButton({ onClick }: { onClick: () => void }) {
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 transition"
+      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 sm:px-4 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 transition shrink-0"
     >
       {pending ? (
         <>
@@ -866,7 +866,7 @@ function SchedulePublishButton({ onClick }: { onClick: () => void }) {
       ) : (
         <>
           <Send className="size-3.5" />
-          <span>Jadwalkan Ujian</span>
+          <span>Jadwalkan</span>
         </>
       )}
     </button>

@@ -247,7 +247,7 @@ export function ExamPackageForm({
   return (
     <form
       action={saveExamPackageAction}
-      className="space-y-6 pb-20"
+      className="space-y-6 pb-28 sm:pb-32"
       onSubmit={(event) => {
         if (!validate()) {
           event.preventDefault();
@@ -666,18 +666,18 @@ export function ExamPackageForm({
       </div>
 
       {/* STICKY BOTTOM ACTION FOOTER */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-3.5 backdrop-blur-md shadow-lg sm:left-64">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 p-3 backdrop-blur-md shadow-2xl sm:left-64">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/dashboard/exams/packages"
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-95"
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-95 transition"
             >
-              <ArrowLeft className="size-4" />
-              <span>Kembali</span>
+              <ArrowLeft className="size-4 shrink-0" />
+              <span className="hidden xs:inline">Kembali</span>
             </Link>
 
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
               <p className="text-xs font-bold text-slate-900 line-clamp-1">
                 {title || "Paket Ujian Baru"}
               </p>
@@ -687,7 +687,7 @@ export function ExamPackageForm({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
             <DraftSubmitButton
               onClick={() => {
                 if (statusInputRef.current) {
@@ -872,17 +872,17 @@ function DraftSubmitButton({ onClick }: { onClick: () => void }) {
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition-all shrink-0"
     >
       {pending ? (
         <>
           <Loader2 className="size-4 animate-spin text-slate-500" />
-          <span>Menyimpan Draf...</span>
+          <span>Menyimpan...</span>
         </>
       ) : (
         <>
           <Save className="size-4 text-slate-500" />
-          <span>Simpan Draf</span>
+          <span><span className="hidden sm:inline">Simpan </span>Draf</span>
         </>
       )}
     </button>
@@ -897,17 +897,17 @@ function PublishSubmitButton({ onClick }: { onClick: () => void }) {
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 sm:px-5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 transition-all shrink-0"
     >
       {pending ? (
         <>
           <Loader2 className="size-4 animate-spin text-white" />
-          <span>Menerbitkan Paket...</span>
+          <span>Menerbitkan...</span>
         </>
       ) : (
         <>
           <Send className="size-4" />
-          <span>Terbitkan Paket Ujian</span>
+          <span><span className="hidden sm:inline">Terbitkan </span>Paket</span>
         </>
       )}
     </button>
