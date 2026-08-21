@@ -46,6 +46,13 @@ export function ConfirmSubmitButton({
     confirmedRef.current = true;
     setSubmitted(true);
     setIsOpen(false);
+
+    // Close any parent details dropdown
+    const details = buttonRef.current?.closest("details");
+    if (details) {
+      details.removeAttribute("open");
+    }
+
     buttonRef.current?.form?.requestSubmit(buttonRef.current);
   }
 
@@ -55,6 +62,7 @@ export function ConfirmSubmitButton({
         {...props}
         ref={buttonRef}
         type="submit"
+        data-confirm-trigger="true"
         disabled={disabled || isBusy}
         onClick={(event) => {
           onClick?.(event);
@@ -65,6 +73,7 @@ export function ConfirmSubmitButton({
           }
 
           event.preventDefault();
+          event.stopPropagation();
           if (!isBusy) {
             setIsOpen(true);
           }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -26,29 +27,37 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (isOpen) {
       dialogRef.current?.showModal();
     } else {
       dialogRef.current?.close();
     }
-  }, [isOpen]);
+  }, [isOpen, mounted]);
 
   const handleConfirm = async () => {
     if (isLoading) return;
     await onConfirm();
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <dialog
       ref={dialogRef}
-      className="w-[calc(100vw-2rem)] max-w-md rounded-xl border border-[#E2E8F0] bg-white p-5 text-[#0F172A] shadow-xl backdrop:bg-[#0F172A]/50"
+      className="m-auto w-[calc(100vw-2rem)] max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-5 text-[#0F172A] shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-xs animate-in zoom-in-95 duration-150"
       onCancel={onCancel}
     >
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
           <p className="mt-2 text-sm leading-6 text-[#64748B]">{description}</p>
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -56,7 +65,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-[#F8FAFC] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -64,10 +73,10 @@ export function ConfirmDialog({
             type="button"
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`rounded-xl px-4 py-2 text-sm font-bold text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm ${
               isDangerous
-                ? "bg-[#EF4444] hover:bg-red-600"
-                : "bg-[#2563EB] hover:bg-blue-700"
+                ? "bg-[#EF4444] hover:bg-red-600 active:bg-red-700"
+                : "bg-[#2563EB] hover:bg-blue-700 active:bg-blue-800"
             }`}
           >
             {isLoading ? (
@@ -81,6 +90,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </dialog>
+    </dialog>,
+    document.body
   );
 }

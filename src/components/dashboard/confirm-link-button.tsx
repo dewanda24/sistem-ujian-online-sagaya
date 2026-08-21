@@ -34,6 +34,7 @@ export function ConfirmLinkButton({
         href={href}
         onClick={(event) => {
           event.preventDefault();
+          event.stopPropagation();
           setIsOpen(true);
         }}
         className={cn(

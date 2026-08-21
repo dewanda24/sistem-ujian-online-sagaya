@@ -99,7 +99,8 @@ export function TableActions({
       <div
         onClick={(e) => {
           const target = e.target as HTMLElement;
-          if (target.closest("a, button")) {
+          const isConfirmTrigger = Boolean(target.closest("[data-confirm-trigger]"));
+          if (!isConfirmTrigger && target.closest("a, button")) {
             const details = target.closest("details");
             if (details) details.removeAttribute("open");
           }
