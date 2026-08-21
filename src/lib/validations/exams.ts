@@ -60,11 +60,13 @@ export const examScheduleSchema = z
     start_at: z.string().datetime("Waktu mulai tidak valid."),
     end_at: z.string().datetime("Waktu selesai tidak valid."),
     status: z.enum(["draft", "scheduled", "active"]),
-  token_required: z.boolean().default(false),
-  is_active: z.boolean().default(true),
+    token_required: z.boolean().default(false),
+    access_token: z.string().optional().nullable(),
+    is_active: z.boolean().default(true),
     class_ids: stringList.pipe(
       z.array(uuidField).min(1, "Pilih minimal satu kelas."),
     ),
+    proctor_ids: stringList.optional(),
   })
   .refine((value) => new Date(value.end_at) > new Date(value.start_at), {
     message: "Waktu selesai harus setelah waktu mulai.",

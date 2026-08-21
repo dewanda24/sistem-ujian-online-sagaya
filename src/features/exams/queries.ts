@@ -222,7 +222,9 @@ export async function getPublishedQuestionOptions(subjectId?: string) {
 
   let query = supabase
     .from("questions")
-    .select("id, content, point, type, difficulty, subject_id, subjects(code, name), question_categories(id, name)")
+    .select(
+      "id, content, point, type, difficulty, explanation, subject_id, subjects(code, name), question_categories(id, name), question_attachments(id, media_type, url, file_name, caption, order_number), question_options(id, option_label, option_text, is_correct, order_number), question_stimuli(id, title, content, media_url, media_type)",
+    )
     .is("deleted_at", null)
     .eq("is_active", true)
     .eq("status", "published")
@@ -240,6 +242,24 @@ export async function getPublishedQuestionOptions(subjectId?: string) {
   }
 
   return data;
+}
+
+export async function getExamScheduleProctorTeacherIds(
+  scheduleId?: string,
+): Promise<string[]> {
+  if (!scheduleId) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exam_proctors")
+    .select("teacher_id")
+    .eq("exam_schedule_id", scheduleId)
+    .eq("is_active", true);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((row) => row.teacher_id as string).filter(Boolean);
 }
 
 export async function getExamPackages(filters: ExamPackageFilters) {

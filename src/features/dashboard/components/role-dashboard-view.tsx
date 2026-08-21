@@ -466,28 +466,30 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-safe">
       {/* Admin Hero */}
-      <section className="rounded-3xl bg-[#2563EB] p-6 text-white shadow-lg relative overflow-hidden">
-        <div className="pointer-events-none absolute right-0 top-0 size-40 rounded-full bg-white/10" />
+      <section className="rounded-3xl bg-blue-600 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="pointer-events-none absolute right-0 top-0 size-48 rounded-full bg-white/10 blur-xl" />
         <div className="relative z-10 flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[13px] font-semibold text-blue-200 uppercase tracking-wider">Admin Sekolah</p>
-              <h1 className="mt-1 text-[24px] font-bold leading-tight">Halo, {firstName}</h1>
-              <p className="mt-1 text-[14px] text-blue-100">Selamat datang di pusat pengelolaan ujian dan data induk sekolah.</p>
+              <p className="text-xs font-bold text-blue-200 uppercase tracking-widest">Admin Sekolah</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-black leading-tight">Halo, {firstName}!</h1>
+              <p className="mt-1 text-xs sm:text-sm text-blue-100 max-w-md leading-relaxed">
+                Pusat pengelolaan pelaksanaan ujian, rombongan belajar, dan data induk sekolah.
+              </p>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-sm">
               <School className="size-6" />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 pt-1">
-             <div className="rounded-full border border-blue-400 bg-blue-800/40 px-3.5 py-1 text-[12px] font-medium text-blue-100 backdrop-blur-sm">
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/15">
+             <div className="rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
                Sekolah: {schoolName ?? "Terdaftar"}
              </div>
-             <div className="rounded-full border border-blue-400 bg-blue-800/40 px-3.5 py-1 text-[12px] font-medium text-blue-100 backdrop-blur-sm">
+             <div className="rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
                Periode: {periodLabel}
              </div>
-             <div className="rounded-full border border-blue-400 bg-blue-800/40 px-3.5 py-1 text-[12px] font-medium text-blue-100 backdrop-blur-sm">
-               Total: {operationalData.totalClasses} Kelas - {operationalData.totalSubjects} Mapel
+             <div className="rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+               Total: {operationalData.totalClasses} Kelas • {operationalData.totalSubjects} Mapel
              </div>
           </div>
         </div>
@@ -496,14 +498,18 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
       {/* Stats Grid */}
       <section className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {primaryStats.map((stat) => (
-          <Link key={stat.title} href={stat.href} className="md-card-elevated flex flex-col p-4 active:scale-[0.98] transition-transform">
+          <Link
+            key={stat.title}
+            href={stat.href}
+            className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs transition-all hover:border-blue-300 hover:shadow-xs active:scale-[0.98]"
+          >
             <div className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <stat.icon className="size-5" />
               </span>
               <div>
-                <p className="text-[13px] font-medium text-[#64748B]">{stat.title}</p>
-                <p className="text-[24px] font-bold text-[#1E293B] leading-none mt-1">{stat.value}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{stat.title}</p>
+                <p className="text-2xl font-black text-slate-900 leading-none mt-1">{stat.value}</p>
               </div>
             </div>
           </Link>
@@ -512,7 +518,7 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
 
       {/* Aksi Cepat */}
       <section className="space-y-3">
-        <h2 className="text-[16px] font-semibold text-[#1E293B] px-1">Aksi Cepat</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 px-1">Aksi Cepat Admin</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           {[
             { title: "Buat Jadwal", href: "/dashboard/exams/schedules/create", icon: CalendarDays },
@@ -520,11 +526,15 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
             { title: "Tambah Guru", href: "/dashboard/master-data/teachers/create", icon: Users },
             { title: "Live Monitoring", href: "/dashboard/admin/monitoring", icon: Activity },
           ].map((action) => (
-            <Link key={action.title} href={action.href} className="md-card-elevated flex flex-col items-center justify-center gap-2 p-4 text-center active:scale-[0.98] transition-transform hover:border-blue-200">
-              <div className="flex size-12 items-center justify-center rounded-full bg-blue-50 text-[#2563EB]">
-                <action.icon className="size-6" />
+            <Link
+              key={action.title}
+              href={action.href}
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200/90 bg-white p-4 text-center shadow-2xs transition-all hover:border-blue-300 hover:shadow-xs active:scale-[0.98]"
+            >
+              <div className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <action.icon className="size-5.5" />
               </div>
-              <span className="text-[13px] font-semibold text-[#1E293B]">{action.title}</span>
+              <span className="text-xs font-bold text-slate-900">{action.title}</span>
             </Link>
           ))}
         </div>
@@ -535,20 +545,20 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
         <div className="space-y-4">
            {/* Notifikasi Penting */}
            <div className="space-y-2">
-             <h2 className="text-[16px] font-semibold text-[#1E293B] px-1">Pemberitahuan & Setup</h2>
-             <div className="md-card-elevated divide-y divide-[#F1F5F9] overflow-hidden">
+             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 px-1">Pemberitahuan & Setup</h2>
+             <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs divide-y divide-slate-100 overflow-hidden">
                {operationalData.tasks.length ? operationalData.tasks.map((task) => (
-                  <div key={task.title} className="p-4 flex items-start gap-3">
-                    <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${task.urgent ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
+                  <div key={task.title} className="p-4 flex items-start gap-3 hover:bg-slate-50/60 transition">
+                    <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl ${task.urgent ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
                       {task.urgent ? <AlertTriangle className="size-4" /> : <CheckCircle2 className="size-4" />}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[14px] font-semibold text-[#1E293B]">{task.title}</h3>
-                      <p className="text-[12px] text-[#64748B] mt-0.5">{task.description}</p>
-                      <Link href={task.href} className="mt-2 inline-flex text-[13px] font-semibold text-[#2563EB] hover:underline">{task.action}</Link>
+                      <h3 className="text-xs font-bold text-slate-900">{task.title}</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{task.description}</p>
+                      <Link href={task.href} className="mt-2 inline-flex text-xs font-bold text-blue-600 hover:underline">{task.action} →</Link>
                     </div>
                   </div>
-               )) : <div className="p-6 text-center text-[13px] text-[#64748B]">Semua konfigurasi data sekolah siap digunakan.</div>}
+               )) : <div className="p-6 text-center text-xs text-slate-500 font-medium">Semua konfigurasi data sekolah siap digunakan.</div>}
              </div>
            </div>
         </div>
@@ -565,19 +575,19 @@ function AdminDashboardOverview({ displayName, schoolName, stats, operationalDat
 function UpcomingSchedulesWidget({ schedules }: { schedules: AdminOperationalDashboardData["upcomingSchedules"] }) {
   return (
     <div className="space-y-2">
-      <h2 className="text-[16px] font-semibold text-[#1E293B] px-1">Jadwal Ujian Terdekat</h2>
-      <div className="md-card-elevated divide-y divide-[#F1F5F9] overflow-hidden">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 px-1">Jadwal Ujian Terdekat</h2>
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs divide-y divide-slate-100 overflow-hidden">
         {schedules.length ? schedules.map((schedule) => (
-          <Link key={schedule.id} href="/dashboard/exams/schedules" className="flex items-center justify-between p-4 active:bg-[#F8FAFC] hover:bg-slate-50 transition">
+          <Link key={schedule.id} href="/dashboard/exams/schedules" className="flex items-center justify-between p-4 hover:bg-slate-50 transition">
             <div className="min-w-0">
-              <p className="text-[14px] font-semibold text-[#1E293B] truncate">{schedule.title}</p>
-              <p className="text-[12px] text-[#64748B] truncate mt-0.5">{formatJakartaDate(schedule.startAt as string)} - {formatJakartaTime(schedule.startAt as string)}</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{schedule.title}</p>
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">{formatJakartaDate(schedule.startAt as string)} • {formatJakartaTime(schedule.startAt as string)}</p>
             </div>
-            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 ml-3">
+            <span className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-[10.5px] font-bold text-blue-700 ml-3">
               {schedule.participantCount} peserta
             </span>
           </Link>
-        )) : <div className="p-6 text-center text-[13px] text-[#64748B]">Belum ada jadwal ujian mendatang.</div>}
+        )) : <div className="p-6 text-center text-xs text-slate-500 font-medium">Belum ada jadwal ujian mendatang.</div>}
       </div>
     </div>
   );
@@ -587,16 +597,16 @@ function ExamReadinessWidget({ readiness }: { readiness: AdminOperationalDashboa
   const items = [
     { label: "Jadwal Siap Digunakan", value: readiness.ready, href: "/dashboard/exams/schedules?readiness=ready", color: "text-emerald-700 bg-emerald-50" },
     { label: "Perlu Kelengkapan", value: readiness.warning, href: "/dashboard/exams/schedules?readiness=warning", color: "text-amber-700 bg-amber-50" },
-    { label: "Belum Lengkap (Diblokir)", value: readiness.blocked, href: "/dashboard/exams/schedules?readiness=blocked", color: "text-red-700 bg-red-50" },
+    { label: "Belum Lengkap (Diblokir)", value: readiness.blocked, href: "/dashboard/exams/schedules?readiness=blocked", color: "text-rose-700 bg-rose-50" },
   ];
   return (
     <div className="space-y-2">
-      <h2 className="text-[16px] font-semibold text-[#1E293B] px-1">Kesiapan Pelaksanaan Ujian</h2>
-      <div className="md-card-elevated divide-y divide-[#F1F5F9] overflow-hidden">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 px-1">Kesiapan Pelaksanaan Ujian</h2>
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs divide-y divide-slate-100 overflow-hidden">
         {items.map((item) => (
-          <Link key={item.label} href={item.href} className="flex items-center justify-between p-3.5 active:bg-[#F8FAFC] hover:bg-slate-50 transition">
-            <span className="text-[14px] font-medium text-[#1E293B]">{item.label}</span>
-            <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${item.color}`}>{item.value}</span>
+          <Link key={item.label} href={item.href} className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition">
+            <span className="text-xs font-semibold text-slate-800">{item.label}</span>
+            <span className={`rounded-md px-2.5 py-0.5 text-xs font-bold ${item.color}`}>{item.value}</span>
           </Link>
         ))}
       </div>
@@ -626,20 +636,30 @@ function ProctorDashboardOverview({ displayName, summary }: ProctorDashboardOver
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-safe">
       {/* Proctor Hero Banner */}
-      <section className="rounded-3xl bg-[#2563EB] p-6 text-white shadow-lg relative overflow-hidden">
-        <div className="pointer-events-none absolute right-0 top-0 size-40 rounded-full bg-white/10" />
+      <section className="rounded-3xl bg-blue-600 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="pointer-events-none absolute right-0 top-0 size-48 rounded-full bg-white/10 blur-xl" />
         <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[13px] font-semibold text-blue-200 uppercase tracking-wider">Dashboard Pengawas</p>
-            <h1 className="mt-1 text-[24px] font-bold leading-tight">Halo, {firstName}</h1>
-            <p className="mt-2 text-[14px] text-blue-100 max-w-md">Pantau peserta, kelola token, dan tangani kendala teknis ujian secara langsung.</p>
+            <p className="text-xs font-bold text-blue-200 uppercase tracking-widest">Dashboard Pengawas</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black leading-tight">Halo, {firstName}!</h1>
+            <p className="mt-1 text-xs sm:text-sm text-blue-100 max-w-md leading-relaxed">
+              Pantau peserta, kelola token ruangan, dan tangani kendala teknis ujian secara langsung.
+            </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:w-auto">
-            <Link href="/dashboard/proctor/monitoring" className="flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#2563EB] active:scale-[0.97] transition-transform shadow-sm hover:bg-slate-50">
-              <Activity className="size-4" /> Live Monitoring
+          <div className="flex flex-wrap gap-2.5 shrink-0">
+            <Link
+              href="/dashboard/proctor/monitoring"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-blue-700 shadow-sm transition-all hover:bg-blue-50 active:scale-[0.98]"
+            >
+              <Activity className="size-4" />
+              <span>Live Monitoring</span>
             </Link>
-            <Link href="/dashboard/proctor/tokens" className="flex h-11 items-center justify-center gap-2 rounded-full bg-blue-700 px-5 text-[14px] font-semibold text-white active:scale-[0.97] transition-transform border border-blue-600 hover:bg-blue-800">
-              <KeyRound className="size-4" /> Token Ujian
+            <Link
+              href="/dashboard/proctor/tokens"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/15 px-5 text-sm font-semibold text-white backdrop-blur-md transition-all hover:bg-white/25 active:scale-[0.98]"
+            >
+              <KeyRound className="size-4" />
+              <span>Token Ujian</span>
             </Link>
           </div>
         </div>
@@ -648,14 +668,18 @@ function ProctorDashboardOverview({ displayName, summary }: ProctorDashboardOver
       {/* Stats Grid */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Link key={stat.title} href={stat.href} className="md-card-elevated flex flex-col p-4 active:scale-[0.98] transition-transform">
+          <Link
+            key={stat.title}
+            href={stat.href}
+            className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs transition-all hover:border-blue-300 hover:shadow-xs active:scale-[0.98]"
+          >
             <div className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <stat.icon className="size-5" />
               </span>
               <div>
-                <p className="text-[13px] font-medium text-[#64748B]">{stat.title}</p>
-                <p className="text-[24px] font-bold text-[#1E293B] leading-none mt-1">{stat.value}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{stat.title}</p>
+                <p className="text-2xl font-black text-slate-900 leading-none mt-1">{stat.value}</p>
               </div>
             </div>
           </Link>
@@ -664,48 +688,48 @@ function ProctorDashboardOverview({ displayName, summary }: ProctorDashboardOver
 
       {/* Active Schedules or Upcoming */}
       <section className="space-y-3">
-        <h2 className="text-[16px] font-semibold text-[#1E293B] px-1">Sesi Ujian yang Diawasi</h2>
-        <div className="md-card-elevated divide-y divide-[#F1F5F9] overflow-hidden">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 px-1">Sesi Ujian yang Diawasi</h2>
+        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs divide-y divide-slate-100 overflow-hidden">
           {summary.activeSchedules.length > 0 ? (
             summary.activeSchedules.map((schedule) => (
-              <div key={schedule.id} className="p-4 sm:flex sm:items-center sm:justify-between gap-4">
+              <div key={schedule.id} className="p-4 sm:flex sm:items-center sm:justify-between gap-4 hover:bg-slate-50/60 transition">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <h3 className="text-[15px] font-semibold text-[#1E293B]">{schedule.title}</h3>
+                    <h3 className="text-xs font-bold text-slate-900">{schedule.title}</h3>
                   </div>
-                  <p className="mt-1 text-[13px] text-[#64748B]">
-                    Token: <strong className="text-[#0F172A] tracking-wider">{schedule.access_token || "-"}</strong> - Peserta: {schedule.exam_participants?.length ?? 0} siswa
+                  <p className="mt-1 text-[11px] text-slate-500 font-medium">
+                    Token: <strong className="text-slate-900 font-mono tracking-wider">{schedule.access_token || "-"}</strong> • Peserta: {schedule.exam_participants?.length ?? 0} siswa
                   </p>
                 </div>
                 <Link
                   href={`/dashboard/proctor/monitoring?schedule_id=${schedule.id}`}
-                  className="mt-3 flex h-10 w-full sm:w-auto items-center justify-center gap-1.5 rounded-full bg-[#2563EB] px-5 text-[13px] font-semibold text-white hover:bg-blue-700 transition-colors"
+                  className="mt-3 sm:mt-0 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-2xs hover:bg-blue-700 transition"
                 >
                   <span>Pantau Ruangan</span>
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-3.5" />
                 </Link>
               </div>
             ))
           ) : summary.upcomingSchedules.length > 0 ? (
             summary.upcomingSchedules.map((schedule) => (
-              <div key={schedule.id} className="p-4 sm:flex sm:items-center sm:justify-between gap-4">
+              <div key={schedule.id} className="p-4 sm:flex sm:items-center sm:justify-between gap-4 hover:bg-slate-50/60 transition">
                 <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold text-[#1E293B]">{schedule.title}</h3>
-                  <p className="mt-1 text-[13px] text-[#64748B]">
-                    Mulai: {formatJakartaDate(schedule.start_at as string)} - {formatJakartaTime(schedule.start_at as string)}
+                  <h3 className="text-xs font-bold text-slate-900">{schedule.title}</h3>
+                  <p className="mt-1 text-[11px] text-slate-500 font-medium">
+                    Mulai: {formatJakartaDate(schedule.start_at as string)} • {formatJakartaTime(schedule.start_at as string)}
                   </p>
                 </div>
                 <Link
                   href="/dashboard/proctor/schedules"
-                  className="mt-3 flex h-10 w-full sm:w-auto items-center justify-center rounded-full bg-[#F1F5F9] px-4 text-[13px] font-semibold text-[#1E293B] hover:bg-[#E2E8F0]"
+                  className="mt-3 sm:mt-0 inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-4 text-xs font-bold text-slate-800 hover:bg-slate-200 transition"
                 >
                   Detail Jadwal
                 </Link>
               </div>
             ))
           ) : (
-            <div className="p-8 text-center text-[13px] text-[#64748B]">
+            <div className="p-8 text-center text-xs text-slate-500 font-medium">
               Belum ada sesi pengawasan ujian aktif atau terjadwal saat ini.
             </div>
           )}

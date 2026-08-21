@@ -20,6 +20,8 @@ export function QuestionMediaPreview({
 }: QuestionMediaPreviewProps) {
   const [imageError, setImageError] = useState(false);
 
+  const [isZoomed, setIsZoomed] = useState(false);
+
   if (!url) {
     return null;
   }
@@ -31,13 +33,13 @@ export function QuestionMediaPreview({
     if (imageError) {
       return (
         <div
-          className={`flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground ${className}`}
+          className={`flex items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 ${className}`}
         >
-          <ImageOff className="size-4" />
+          <ImageOff className="size-4 text-slate-400" />
           Gambar tidak dapat dimuat.{" "}
           <a
             href={url}
-            className="text-primary hover:underline"
+            className="text-blue-600 font-bold hover:underline"
             target="_blank"
             rel="noreferrer"
           >
@@ -48,13 +50,60 @@ export function QuestionMediaPreview({
     }
 
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={label}
-        onError={() => setImageError(true)}
-        className={`max-h-80 w-full rounded-md border object-contain ${className}`}
-      />
+      <>
+        <div className="group relative inline-block max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={label}
+            onError={() => setImageError(true)}
+            onClick={() => setIsZoomed(true)}
+            className={`max-h-80 w-full cursor-zoom-in object-contain transition-transform duration-200 group-hover:scale-[1.01] ${className}`}
+          />
+          <button
+            type="button"
+            onClick={() => setIsZoomed(true)}
+            className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-slate-900/80 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-xs shadow-xs hover:bg-slate-900 active:scale-95 transition"
+            title="Klik untuk memperbesar gambar"
+          >
+            <span>🔍 Ketuk untuk Perbesar</span>
+          </button>
+        </div>
+
+        {/* FULLSCREEN LIGHTBOX ZOOM MODAL */}
+        {isZoomed ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm animate-in fade-in select-none"
+            onClick={() => setIsZoomed(false)}
+          >
+            <div
+              className="relative max-h-[92vh] max-w-[95vw] overflow-auto rounded-2xl bg-slate-950 p-2 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-800 p-2 text-white">
+                <span className="text-xs font-bold text-slate-200 truncate pr-2">
+                  {label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsZoomed(false)}
+                  className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-slate-700 active:scale-95 transition"
+                >
+                  Tutup [ESC]
+                </button>
+              </div>
+              <div className="flex items-center justify-center p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={label}
+                  className="max-h-[80vh] max-w-full rounded-lg object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </>
     );
   }
 

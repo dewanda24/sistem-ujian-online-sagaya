@@ -3,8 +3,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  Calendar,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  GraduationCap,
+  KeyRound,
   ShieldAlert,
+  Users,
+  X,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -24,6 +33,7 @@ import {
   deleteExamScheduleAction,
 } from "@/features/exams/actions";
 import type { ExamReadinessResult } from "@/features/exams/exam-readiness.service";
+import { cn } from "@/lib/utils";
 
 type ScheduleClassRelation = {
   class_id?: string | null;
@@ -86,16 +96,25 @@ export function ExamScheduleTable({
   readinessBySchedule,
   monitoringBasePath,
 }: ExamScheduleTableProps) {
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
+  const pageCount = Math.max(1, Math.ceil(schedules.length / rowsPerPage));
+  const currentPage = Math.min(page, pageCount);
+  const pagedSchedules = schedules.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+
   const [previewSchedule, setPreviewSchedule] = useState<ExamScheduleRow | null>(null);
 
   if (schedules.length === 0) {
     return (
-      <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-8 shadow-2xs">
         <EmptyState
           title="Belum ada jadwal ujian"
-          description="Buat jadwal dari paket ujian yang sudah diterbitkan."
+          description="Buat jadwal pelaksanaan dari paket ujian yang sudah diterbitkan."
           actionHref="/dashboard/exams/schedules/create"
-          actionLabel="Buat Jadwal"
+          actionLabel="Buat Jadwal Ujian"
         />
       </div>
     );
@@ -103,19 +122,20 @@ export function ExamScheduleTable({
 
   return (
     <div className="grid gap-3">
-      <div className="hidden rounded-xl border border-[#E2E8F0] bg-white shadow-sm md:block">
-        <table className="w-full table-fixed text-left text-sm">
-          <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
-            <tr className="h-10">
-              <th className="px-3 py-2 font-medium">Jadwal</th>
-              <th className="w-36 px-3 py-2 font-medium">Waktu</th>
-              <th className="w-28 px-3 py-2 font-medium">Peserta</th>
-              <th className="w-28 px-3 py-2 font-medium">Status</th>
-              <th className="w-36 px-3 py-2 font-medium">Aksi</th>
+      {/* DESKTOP TABLE VIEW */}
+      <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs md:block">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Jadwal Ujian</th>
+              <th className="w-48 px-4 py-3">Waktu Pelaksanaan</th>
+              <th className="w-40 px-4 py-3">Peserta & Kelas</th>
+              <th className="w-32 px-4 py-3">Status</th>
+              <th className="w-36 px-4 py-3">Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8F0]">
-            {schedules.map((schedule) => {
+          <tbody className="divide-y divide-slate-100">
+            {pagedSchedules.map((schedule) => {
               const readiness = readinessBySchedule[schedule.id];
               const classes = schedule.exam_schedule_classes ?? [];
               const classNames = classes
@@ -123,43 +143,62 @@ export function ExamScheduleTable({
                 .filter(Boolean);
 
               return (
-                <tr key={schedule.id} className="h-16 hover:bg-[#F8FAFC]">
-                  <td className="min-w-0 px-3 py-2">
-                    <div className="line-clamp-1 font-medium text-[#0F172A]">
+                <tr key={schedule.id} className="transition-colors hover:bg-slate-50/60">
+                  <td className="min-w-0 px-4 py-3.5">
+                    <div className="font-bold text-slate-900 line-clamp-1 text-xs">
                       {schedule.title || schedule.exam_packages?.title || "-"}
                     </div>
-                    <div className="mt-1 line-clamp-1 text-xs text-[#64748B]">
-                      {schedule.exam_packages?.subjects?.code ?? "Mapel"} -{" "}
-                      {classNames.length > 0
-                        ? classNames.slice(0, 3).join(", ")
-                        : "Tanpa kelas"}
-                      {classNames.length > 3 ? ` +${classNames.length - 3}` : ""}
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+                      {schedule.exam_packages?.subjects ? (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.2 text-[10.5px] font-semibold text-blue-700">
+                          {schedule.exam_packages.subjects.code}
+                        </span>
+                      ) : null}
+                      <span className="truncate">
+                        {classNames.length > 0
+                          ? classNames.slice(0, 3).join(", ")
+                          : "Tanpa kelas"}
+                        {classNames.length > 3 ? ` +${classNames.length - 3}` : ""}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium text-[#0F172A]">
+
+                  <td className="px-4 py-3.5">
+                    <div className="font-semibold text-slate-900 text-xs">
                       {formatDate(schedule.start_at)}
                     </div>
-                    <div className="mt-1 text-xs text-[#64748B]">
-                      {formatTime(schedule.start_at)} - {formatTime(schedule.end_at)}
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                      <Clock className="size-3 text-slate-400" />
+                      <span>{formatTime(schedule.start_at)} - {formatTime(schedule.end_at)} WIB</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-[#64748B]">
-                    <div>{schedule.exam_participants?.length ?? 0} peserta</div>
-                    <div className="text-xs">{classes.length} kelas</div>
+
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-700">
+                        {schedule.exam_participants?.length ?? 0} Peserta
+                      </span>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                        {classes.length} Kelas
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-3 py-2">
-                    <StatusPill value={displayStatus(schedule)} />
-                    {readiness ? (
-                      <div className="mt-1">
+
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusPill value={displayStatus(schedule)} />
+                      {readiness ? (
                         <ReadinessBadge status={readiness.status} />
-                      </div>
-                    ) : null}
-                    {!schedule.is_active ? (
-                      <div className="mt-1 text-xs text-[#EF4444]">Nonaktif</div>
-                    ) : null}
+                      ) : null}
+                      {!schedule.is_active ? (
+                        <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                          Nonaktif
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
-                  <td className="px-3 py-2">
+
+                  <td className="px-4 py-3.5">
                     <ScheduleActions
                       schedule={schedule}
                       readiness={readiness}
@@ -174,31 +213,92 @@ export function ExamScheduleTable({
         </table>
       </div>
 
-      <div className="grid gap-2 md:hidden">
-        {schedules.map((schedule) => (
-          <article
-            key={schedule.id}
-            className="max-h-[120px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm"
-          >
-            <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">
-              {schedule.title || schedule.exam_packages?.title || "-"}
-            </div>
-            <div className="mt-1 flex items-center gap-1 overflow-hidden text-xs text-[#64748B]">
-              <span className="truncate">{formatDate(schedule.start_at)}</span>
-              <StatusPill value={displayStatus(schedule)} />
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              <ScheduleActions
-                schedule={schedule}
-                readiness={readinessBySchedule[schedule.id]}
-                monitoringBasePath={monitoringBasePath}
-                onPreview={() => setPreviewSchedule(schedule)}
-              />
-            </div>
-          </article>
-        ))}
+      {/* MOBILE CARD VIEW */}
+      <div className="grid gap-3 md:hidden">
+        {pagedSchedules.map((schedule) => {
+          const readiness = readinessBySchedule[schedule.id];
+          const classes = schedule.exam_schedule_classes ?? [];
+          return (
+            <article
+              key={schedule.id}
+              className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-slate-900 text-xs line-clamp-1">
+                    {schedule.title || schedule.exam_packages?.title || "-"}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                    <Clock className="size-3 text-slate-400" />
+                    <span>{formatDate(schedule.start_at)} ({formatTime(schedule.start_at)} - {formatTime(schedule.end_at)})</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <StatusPill value={displayStatus(schedule)} />
+                  {readiness ? <ReadinessBadge status={readiness.status} /> : null}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                {schedule.exam_packages?.subjects ? (
+                  <span className="rounded bg-blue-50 px-2 py-0.5 font-semibold text-blue-800">
+                    {schedule.exam_packages.subjects.code}
+                  </span>
+                ) : null}
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-bold text-slate-700">
+                  {schedule.exam_participants?.length ?? 0} Peserta
+                </span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                  {classes.length} Kelas
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
+                <ScheduleActions
+                  schedule={schedule}
+                  readiness={readiness}
+                  monitoringBasePath={monitoringBasePath}
+                  onPreview={() => setPreviewSchedule(schedule)}
+                />
+              </div>
+            </article>
+          );
+        })}
       </div>
 
+      {/* PAGINATION BAR */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-xs text-slate-600 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-medium">
+          Menampilkan <strong className="text-slate-900">{(currentPage - 1) * rowsPerPage + 1}</strong> -{" "}
+          <strong className="text-slate-900">{Math.min(schedules.length, currentPage * rowsPerPage)}</strong> dari{" "}
+          <strong className="text-slate-900">{schedules.length}</strong> jadwal ujian
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            disabled={currentPage <= 1}
+            className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 transition"
+          >
+            <ChevronLeft className="size-3.5" />
+            {UI_LABELS.actions.previous}
+          </button>
+          <span className="text-xs font-bold text-slate-700 px-1">
+            {currentPage} / {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+            disabled={currentPage >= pageCount}
+            className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 transition"
+          >
+            {UI_LABELS.actions.next}
+            <ChevronRight className="size-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* SCHEDULE PREVIEW MODAL */}
       {previewSchedule ? (
         <PreviewModal
           schedule={previewSchedule}
@@ -347,45 +447,91 @@ function PreviewModal({
   readiness?: ExamReadinessResult;
   onClose: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
   const classes = schedule.exam_schedule_classes ?? [];
   const classNames = classes
     .map((item) => firstRelation(item.classes)?.name)
     .filter(Boolean);
 
+  function handleCopy() {
+    if (!schedule.access_token) return;
+    navigator.clipboard.writeText(schedule.access_token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-      <div className="w-full max-w-xl rounded-xl bg-white p-5 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
+        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
           <div>
-            <h2 className="text-lg font-semibold text-[#0F172A]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+              Detail Jadwal Ujian
+            </span>
+            <h2 className="mt-1 text-sm font-bold text-slate-900">
               {schedule.title}
             </h2>
-            <p className="mt-1 text-sm text-[#64748B]">
+            <p className="text-xs text-slate-500">
               {schedule.exam_packages?.title ?? "Paket ujian"}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-3 text-xs">
+          <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/50 p-3 text-blue-950 font-medium">
+            <Calendar className="size-4 text-blue-600 shrink-0" />
+            <span>
+              {formatDate(schedule.start_at)} • {formatTime(schedule.start_at)} - {formatTime(schedule.end_at)} WIB
+            </span>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Summary label="Total Peserta" value={`${schedule.exam_participants?.length ?? 0} Siswa`} />
+            <Summary label="Target Kelas" value={`${classes.length} Kelas`} />
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+              <div className="text-[11px] text-slate-500 font-medium">Token Akses</div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-slate-900 text-xs">
+                  {schedule.access_token ?? "-"}
+                </span>
+                {schedule.access_token ? (
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="text-[10px] font-bold text-blue-600 hover:underline"
+                  >
+                    {copied ? "Disalin!" : "Salin"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+            <div className="text-[11px] font-bold text-slate-700">Daftar Kelas Peserta:</div>
+            <div className="text-slate-600 text-xs">
+              {classNames.length > 0 ? classNames.join(", ") : "Tanpa kelas target"}
+            </div>
+          </div>
+
+          {readiness ? <ReadinessCard readiness={readiness} /> : null}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-2xs"
           >
             Tutup
           </button>
-        </div>
-        <div className="grid gap-3 text-sm">
-          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-            {formatDate(schedule.start_at)} - {formatTime(schedule.start_at)} sampai{" "}
-            {formatTime(schedule.end_at)}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Summary label="Peserta" value={`${schedule.exam_participants?.length ?? 0}`} />
-            <Summary label="Kelas" value={`${classes.length}`} />
-            <Summary label="Token" value={schedule.access_token ?? "Belum dibuat"} />
-          </div>
-          <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 text-[#64748B]">
-            {classNames.length > 0 ? classNames.join(", ") : "Tanpa kelas target"}
-          </div>
-          {readiness ? <ReadinessCard readiness={readiness} /> : null}
         </div>
       </div>
     </div>
@@ -398,33 +544,34 @@ function ReadinessCard({ readiness }: { readiness: ExamReadinessResult }) {
     .slice(0, 8);
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
+    <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-[#0F172A]">
-            Status Kesiapan Ujian
+          <h3 className="text-xs font-bold text-slate-900">
+            Status Kesiapan Ujian (Readiness)
           </h3>
-          <p className="mt-1 text-xs text-[#64748B]">
-            Skor {readiness.score}% dengan status {readiness.status.toUpperCase()}.
+          <p className="text-[11px] text-slate-500">
+            Skor {readiness.score}% • Status {readiness.status.toUpperCase()}
           </p>
         </div>
         <ReadinessBadge status={readiness.status} />
       </div>
-      <div className="mt-3 grid gap-2">
+
+      <div className="grid gap-1.5">
         {visibleChecks.map((check) => {
           const content = (
-            <div className="flex items-start justify-between gap-3 rounded-lg border border-[#E2E8F0] px-3 py-2">
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50/50 px-2.5 py-1.5">
               <div className="flex min-w-0 gap-2">
                 {check.passed ? (
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
                 ) : (
-                  <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[#0F172A]">
+                  <p className="truncate text-xs font-semibold text-slate-900">
                     {check.title}
                   </p>
-                  <p className="line-clamp-2 text-xs leading-5 text-[#64748B]">
+                  <p className="line-clamp-1 text-[11px] text-slate-500">
                     {check.description}
                   </p>
                 </div>
@@ -449,14 +596,14 @@ function ReadinessCard({ readiness }: { readiness: ExamReadinessResult }) {
 function ReadinessBadge({ status }: { status: ExamReadinessResult["status"] }) {
   const className =
     status === "ready"
-      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
       : status === "warning"
-        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
-        : "bg-red-50 text-red-700 ring-1 ring-red-100";
+        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+        : "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
 
   return (
-    <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${className}`}>
-      {status === "ready" ? "Ready" : status === "warning" ? "Warning" : "Blocked"}
+    <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10.5px] font-bold ${className}`}>
+      {status === "ready" ? "Siap" : status === "warning" ? "Peringatan" : "Terblokir"}
     </span>
   );
 }
@@ -468,13 +615,13 @@ function SeverityBadge({
 }) {
   const className =
     severity === "critical"
-      ? "bg-red-50 text-red-700 ring-1 ring-red-100"
+      ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
       : severity === "warning"
-        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
-        : "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
+        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+        : "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
 
   return (
-    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${className}`}>
+    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${className}`}>
       {severity === "critical" ? "Critical" : severity === "warning" ? "Warning" : "Info"}
     </span>
   );
@@ -482,9 +629,9 @@ function SeverityBadge({
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
-      <div className="text-xs text-[#64748B]">{label}</div>
-      <div className="mt-1 line-clamp-1 font-semibold text-[#0F172A]">{value}</div>
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="text-[11px] text-slate-500 font-medium">{label}</div>
+      <div className="mt-0.5 line-clamp-1 font-bold text-slate-900 text-xs">{value}</div>
     </div>
   );
 }

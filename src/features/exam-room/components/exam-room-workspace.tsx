@@ -11,8 +11,10 @@ import {
   RefreshCw,
   Send,
   Trash2,
+  Wifi,
   WifiOff,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { submitAttemptAction } from "@/features/exam-room/actions";
 import { ExamHeaderBar } from "@/features/exam-room/components/exam-header-bar";
@@ -299,26 +301,10 @@ export function ExamRoomWorkspace({
     return () => window.clearTimeout(timer);
   }, [attempt.id]);
 
-  useEffect(() => {
-    const onOnline = () => {
-      setIsOnline(true);
-      setSaveMessage("Koneksi kembali. Jawaban tertunda akan disimpan ulang.");
-      sendExamEvent("online");
-    };
-    const onOffline = () => {
-      setIsOnline(false);
-      setSaveMessage("Browser offline. Jawaban disimpan lokal.");
-      sendExamEvent("offline");
-    };
-
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, [sendExamEvent]);
+  const timeWarningTriggeredRef = useRef<{ tenMin: boolean; fiveMin: boolean }>({
+    tenMin: false,
+    fiveMin: false,
+  });
 
   useEffect(() => {
     if (!schedule?.end_at) {
@@ -327,9 +313,23 @@ export function ExamRoomWorkspace({
 
     const serverTimeOffsetMs = Date.now() - new Date(serverNow).getTime();
     const timer = window.setInterval(() => {
-      setRemainingSeconds(
-        getRemainingSeconds(schedule.end_at, Date.now() - serverTimeOffsetMs),
-      );
+      const rem = getRemainingSeconds(schedule.end_at, Date.now() - serverTimeOffsetMs);
+      setRemainingSeconds(rem);
+
+      // Peringatan Waktu Kritis 10 Menit & 5 Menit
+      if (rem <= 600 && rem > 300 && !timeWarningTriggeredRef.current.tenMin) {
+        timeWarningTriggeredRef.current.tenMin = true;
+        toast.warning("⏱️ Peringatan: Sisa Waktu 10 Menit!", {
+          description: "Waktu ujian tersisa 10 menit lagi. Segera periksa kelengkapan jawabanmu.",
+          duration: 6000,
+        });
+      } else if (rem <= 300 && rem > 0 && !timeWarningTriggeredRef.current.fiveMin) {
+        timeWarningTriggeredRef.current.fiveMin = true;
+        toast.error("🚨 Peringatan Kritis: Sisa Waktu 5 Menit!", {
+          description: "Waktu ujian hampir berakhir! Pastikan seluruh nomor soal sudah terjawab.",
+          duration: 8000,
+        });
+      }
     }, 1000);
 
     return () => window.clearInterval(timer);
@@ -551,6 +551,38 @@ export function ExamRoomWorkspace({
     };
   }, [attempt.id, isReadOnly, sendExamEvent]);
 
+  // Screen Wake Lock API to prevent phone screen from going to sleep while student is taking exam
+  useEffect(() => {
+    let wakeLockSentinel: unknown = null;
+
+    async function requestScreenWakeLock() {
+      try {
+        if (typeof navigator !== "undefined" && "wakeLock" in navigator && !isReadOnly) {
+          wakeLockSentinel = await (navigator as unknown as { wakeLock: { request: (type: string) => Promise<unknown> } }).wakeLock.request("screen");
+        }
+      } catch {
+        // Gracefully ignore if wake lock fails or is unsupported
+      }
+    }
+
+    void requestScreenWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void requestScreenWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (wakeLockSentinel && typeof (wakeLockSentinel as { release?: () => Promise<void> }).release === "function") {
+        void (wakeLockSentinel as { release: () => Promise<void> }).release().catch(() => {});
+      }
+    };
+  }, [isReadOnly]);
+
   useEffect(() => {
     const timers = debounceTimers.current;
     const retries = retryTimers.current;
@@ -649,6 +681,32 @@ export function ExamRoomWorkspace({
 
     return results.every(Boolean);
   }, [saveAnswer]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      setIsOnline(true);
+      setSaveMessage("Koneksi kembali normal. Menyinkronkan jawaban...");
+      sendExamEvent("online");
+      toast.success("✅ Koneksi Internet Pulih", {
+        description: "Menyinkronkan seluruh jawaban yang tersimpan di perangkat ke server.",
+        duration: 4000,
+      });
+      void flushPendingAnswersBeforeSubmit();
+    };
+    const onOffline = () => {
+      setIsOnline(false);
+      setSaveMessage("Browser offline. Jawaban disimpan lokal di HP.");
+      sendExamEvent("offline");
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [flushPendingAnswersBeforeSubmit, sendExamEvent]);
 
   const scheduleSave = useCallback(
     (questionId: string, nextAnswer: AnswerState) => {
@@ -798,7 +856,39 @@ export function ExamRoomWorkspace({
       />
 
       {/* Main Workspace Container */}
-      <main className="mx-auto max-w-7xl px-3 py-3 sm:px-5 sm:py-5 space-y-4">
+      <main className="mx-auto max-w-7xl px-3 py-3 sm:px-5 sm:py-5 pb-36 sm:pb-12 space-y-4">
+        {/* Offline Interactive Banner */}
+        {!isOnline && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-500/10 p-3.5 text-xs text-amber-950 shadow-2xs backdrop-blur-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-bold animate-pulse">
+                <WifiOff className="size-4" />
+              </span>
+              <div>
+                <p className="font-bold text-amber-950">Koneksi Internet Terputus (Mode Offline Aktif)</p>
+                <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                  Jawabanmu tetap tersimpan aman di HP. Sistem otomatis mengirimkan ke server saat online.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (navigator.onLine) {
+                  setIsOnline(true);
+                  void flushPendingAnswersBeforeSubmit();
+                  toast.success("✅ Koneksi Pulih", { description: "Menyinkronkan jawaban..." });
+                } else {
+                  toast.info("Belum ada koneksi internet. Jawaban tetap tersimpan aman di HP.");
+                }
+              }}
+              className="shrink-0 inline-flex h-8 items-center justify-center rounded-xl bg-amber-600 px-3 text-xs font-bold text-white shadow-2xs hover:bg-amber-700 active:scale-95 transition"
+            >
+              Coba Sinkronkan
+            </button>
+          </div>
+        )}
+
         {/* Security & Lock Alerts if any */}
         {isLocked && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs sm:text-sm font-medium text-red-800 shadow-2xs">
@@ -1255,26 +1345,42 @@ export function ExamRoomWorkspace({
           )}
         </div>
 
-        {/* Row 2: Navigation & Actions (Big targets) */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Row 2: Navigation & Actions (Big touch targets) */}
+        <div className="flex items-center justify-between gap-1.5">
           {/* Prev button */}
           <button
             type="button"
             disabled={activeIndex === 0}
             onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-            className="inline-flex h-[48px] w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-30 disabled:scale-100"
+            className="inline-flex h-[48px] w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-30 disabled:scale-100"
             aria-label="Soal sebelumnya"
           >
             <ChevronLeft className="size-6" />
+          </button>
+
+          {/* Ragu-Ragu Quick Toggle Button */}
+          <button
+            type="button"
+            onClick={() => toggleFlagQuestion(currentQuestion.id)}
+            className={cn(
+              "inline-flex h-[48px] px-3 shrink-0 items-center justify-center gap-1 rounded-2xl border text-xs font-bold transition-all active:scale-95",
+              isCurrentFlagged
+                ? "border-amber-400 bg-amber-100 text-amber-900 shadow-xs ring-1 ring-amber-400"
+                : "border-slate-200 bg-slate-50 text-slate-600",
+            )}
+            title="Tandai Ragu-Ragu"
+          >
+            <Bookmark className={cn("size-4", isCurrentFlagged && "fill-amber-500 text-amber-600")} />
+            <span className="hidden xs:inline text-[11px]">{isCurrentFlagged ? "Ragu" : "Ragu?"}</span>
           </button>
 
           {/* Question drawer trigger */}
           <button
             type="button"
             onClick={() => setIsPaletteModalOpen(true)}
-            className="flex flex-1 items-center justify-center gap-2 h-[48px] rounded-2xl border-2 border-[#2563EB]/20 bg-blue-50 px-2 text-[14px] font-black text-[#2563EB] shadow-sm transition-all active:scale-95"
+            className="flex flex-1 items-center justify-center gap-1.5 h-[48px] rounded-2xl border-2 border-blue-500/20 bg-blue-50 px-2 text-[13px] font-black text-blue-700 shadow-sm transition-all active:scale-95"
           >
-            <LayoutGrid className="size-5 shrink-0" />
+            <LayoutGrid className="size-4 shrink-0" />
             <span>{activeIndex + 1} / {questions.length}</span>
           </button>
 
@@ -1284,9 +1390,9 @@ export function ExamRoomWorkspace({
               type="button"
               onClick={() => setIsSubmitConfirmOpen(true)}
               disabled={!canSubmitManually}
-              className="inline-flex h-[48px] px-4 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[14px] font-extrabold text-white shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+              className="inline-flex h-[48px] px-3.5 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[13px] font-extrabold text-white shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
-              <CheckCircle2 className="size-5" />
+              <CheckCircle2 className="size-4.5" />
               <span>Selesai</span>
             </button>
           ) : (
@@ -1295,7 +1401,7 @@ export function ExamRoomWorkspace({
               onClick={() =>
                 setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
               }
-              className="inline-flex h-[48px] w-14 shrink-0 items-center justify-center rounded-2xl bg-[#2563EB] text-white shadow-md transition-all active:scale-95"
+              className="inline-flex h-[48px] w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md transition-all active:scale-95"
               aria-label="Soal berikutnya"
             >
               <ChevronRight className="size-6" />
@@ -1361,6 +1467,26 @@ export function ExamRoomWorkspace({
         unansweredCount={unansweredCount}
         isLoading={submitLocked}
         onCancel={() => setIsSubmitConfirmOpen(false)}
+        onJumpToUnanswered={() => {
+          const idx = questions.findIndex(({ question }) => !isAnswered(answers[question.id]));
+          if (idx !== -1) {
+            setActiveIndex(idx);
+            setIsSubmitConfirmOpen(false);
+            toast.info(`Melompat ke Soal ${idx + 1} (Belum Dijawab)`);
+          } else {
+            setIsSubmitConfirmOpen(false);
+          }
+        }}
+        onJumpToFlagged={() => {
+          const idx = questions.findIndex(({ question }) => flaggedQuestions.has(question.id));
+          if (idx !== -1) {
+            setActiveIndex(idx);
+            setIsSubmitConfirmOpen(false);
+            toast.info(`Melompat ke Soal ${idx + 1} (Ragu-Ragu)`);
+          } else {
+            setIsSubmitConfirmOpen(false);
+          }
+        }}
         onConfirm={() => {
           submitConfirmedRef.current = true;
           setIsSubmitConfirmOpen(false);
@@ -1407,6 +1533,8 @@ function SubmitSummaryDialog({
   unansweredCount,
   isLoading,
   onCancel,
+  onJumpToUnanswered,
+  onJumpToFlagged,
   onConfirm,
 }: {
   isOpen: boolean;
@@ -1416,6 +1544,8 @@ function SubmitSummaryDialog({
   unansweredCount: number;
   isLoading: boolean;
   onCancel: () => void;
+  onJumpToUnanswered: () => void;
+  onJumpToFlagged: () => void;
   onConfirm: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -1446,7 +1576,7 @@ function SubmitSummaryDialog({
           </div>
         </div>
 
-        {/* Summary Stat Cards */}
+        {/* Summary Stat Cards - Clickable to Jump */}
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 text-center">
             <span className="block text-2xl font-black text-emerald-700">
@@ -1457,23 +1587,55 @@ function SubmitSummaryDialog({
             </span>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-center">
+          <button
+            type="button"
+            onClick={flaggedCount > 0 ? onJumpToFlagged : undefined}
+            disabled={flaggedCount === 0}
+            className={cn(
+              "rounded-2xl border p-3 text-center transition-all",
+              flaggedCount > 0
+                ? "border-amber-300 bg-amber-50 hover:bg-amber-100/80 hover:border-amber-400 cursor-pointer active:scale-95 shadow-2xs"
+                : "border-slate-200 bg-slate-50 opacity-60 cursor-default",
+            )}
+            title={flaggedCount > 0 ? "Ketuk untuk lompat ke soal ragu-ragu" : undefined}
+          >
             <span className="block text-2xl font-black text-amber-700">
               {flaggedCount}
             </span>
             <span className="block text-xs font-bold text-amber-800 mt-0.5">
               Ragu-Ragu
             </span>
-          </div>
+            {flaggedCount > 0 && (
+              <span className="block text-[9.5px] font-bold text-amber-600 underline mt-0.5">
+                Periksa →
+              </span>
+            )}
+          </button>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-            <span className="block text-2xl font-black text-slate-700">
+          <button
+            type="button"
+            onClick={unansweredCount > 0 ? onJumpToUnanswered : undefined}
+            disabled={unansweredCount === 0}
+            className={cn(
+              "rounded-2xl border p-3 text-center transition-all",
+              unansweredCount > 0
+                ? "border-rose-300 bg-rose-50 hover:bg-rose-100/80 hover:border-rose-400 cursor-pointer active:scale-95 shadow-2xs"
+                : "border-slate-200 bg-slate-50 opacity-60 cursor-default",
+            )}
+            title={unansweredCount > 0 ? "Ketuk untuk lompat ke soal belum dijawab" : undefined}
+          >
+            <span className="block text-2xl font-black text-rose-700">
               {unansweredCount}
             </span>
-            <span className="block text-xs font-bold text-slate-800 mt-0.5">
+            <span className="block text-xs font-bold text-rose-800 mt-0.5">
               Belum Dijawab
             </span>
-          </div>
+            {unansweredCount > 0 && (
+              <span className="block text-[9.5px] font-bold text-rose-600 underline mt-0.5">
+                Periksa →
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Incomplete / Warning Notice */}
@@ -1484,7 +1646,7 @@ function SubmitSummaryDialog({
               <p className="font-bold">Periksa Kembali Jawabanmu!</p>
               <p className="leading-relaxed text-amber-800">
                 Masih ada <strong>{unansweredCount} soal belum dijawab</strong> dan{" "}
-                <strong>{flaggedCount} soal bertanda ragu-ragu</strong>.
+                <strong>{flaggedCount} soal bertanda ragu-ragu</strong>. Ketuk kotak di atas untuk langsung menuju nomor tersebut.
               </p>
             </div>
           </div>

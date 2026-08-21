@@ -86,14 +86,14 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="?action=create"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1D4ED8] active:scale-[0.98]"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white shadow-2xs transition hover:bg-blue-700 active:scale-[0.98]"
           >
-            <Plus className="size-4" />
+            <Plus className="size-3.5" />
             <span>Tambah Soal</span>
           </Link>
           <Link
             href="/dashboard/question-bank/import-word"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100"
             title="Import naskah soal dari Microsoft Word (.docx)"
           >
             <FileText className="size-3.5" />
@@ -101,7 +101,7 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/dashboard/question-bank/import-excel"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-100"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 text-xs font-bold text-emerald-700 shadow-2xs transition hover:bg-emerald-100"
             title="Import template butir soal dari Excel (.xlsx)"
           >
             <FileSpreadsheet className="size-3.5" />
@@ -109,14 +109,14 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/dashboard/question-bank/stimuli"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50"
           >
             <BookOpen className="size-3.5 text-slate-500" />
             <span>Stimulus</span>
           </Link>
           <Link
             href="/dashboard/question-bank/categories"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50"
           >
             <FolderTree className="size-3.5 text-slate-500" />
             <span>Kategori</span>

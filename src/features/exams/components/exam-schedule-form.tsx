@@ -2,7 +2,26 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Loader2, Save, Send } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  Check,
+  Clock,
+  Copy,
+  GraduationCap,
+  Info,
+  KeyRound,
+  Layers,
+  Loader2,
+  RefreshCw,
+  Save,
+  Search,
+  Send,
+  Sparkles,
+  Users,
+} from "lucide-react";
 
 import { saveExamScheduleAction } from "@/features/exams/actions";
 import { cn } from "@/lib/utils";
@@ -42,12 +61,12 @@ type ExamScheduleFormProps = {
   semesters: SelectOption[];
   classes: SelectOption[];
   selectedClassIds: string[];
+  teachers?: SelectOption[];
+  selectedProctorIds?: string[];
   defaultPackageId?: string;
   defaultStartAt?: string;
   defaultEndAt?: string;
 };
-
-const steps = ["Paket", "Waktu", "Peserta", "Token", "Review"] as const;
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -56,7 +75,7 @@ function todayDate() {
 function addMinutes(time: string, minutes: number) {
   if (!time) return "";
   const [hour, minute] = time.split(":").map(Number);
-  const date = new Date(2000, 0, 1, hour, minute);
+  const date = new Date(2000, 0, 1, hour || 0, minute || 0);
   date.setMinutes(date.getMinutes() + minutes);
   return `${String(date.getHours()).padStart(2, "0")}:${String(
     date.getMinutes(),
@@ -116,13 +135,15 @@ export function ExamScheduleForm({
   semesters,
   classes,
   selectedClassIds,
+  teachers = [],
+  selectedProctorIds = [],
   defaultPackageId,
   defaultStartAt,
   defaultEndAt,
 }: ExamScheduleFormProps) {
   const start = splitDatetime(defaultStartAt);
   const end = splitDatetime(defaultEndAt);
-  const [step, setStep] = useState(0);
+
   const [packageId, setPackageId] = useState(
     editable?.exam_package_id ?? defaultPackageId ?? packages[0]?.value ?? "",
   );
@@ -139,11 +160,18 @@ export function ExamScheduleForm({
   const [endTime, setEndTime] = useState(
     end.time || addMinutes("08:00", selectedPackage?.durationMinutes ?? 60),
   );
+
   const [selectedClasses, setSelectedClasses] = useState<string[]>(selectedClassIds);
   const [classQuery, setClassQuery] = useState("");
+
+  const [selectedProctors, setSelectedProctors] = useState<string[]>(selectedProctorIds);
+  const [proctorQuery, setProctorQuery] = useState("");
+
   const [token, setToken] = useState(editable?.access_token ?? "");
   const [tokenRequired, setTokenRequired] = useState(Boolean(editable?.token_required));
   const [isActive, setIsActive] = useState(editable?.is_active ?? true);
+  const [copied, setCopied] = useState(false);
+
   const [status, setStatus] = useState(
     editable?.status === "active" || editable?.status === "scheduled"
       ? editable.status
@@ -152,17 +180,33 @@ export function ExamScheduleForm({
   const [errors, setErrors] = useState<string[]>([]);
   const statusInputRef = useRef<HTMLInputElement>(null);
   const confirmWarningsInputRef = useRef<HTMLInputElement>(null);
+
+  // Filtered Classes
   const filteredClasses = useMemo(() => {
     const normalizedQuery = classQuery.trim().toLowerCase();
-
     return classes.filter((item) =>
       normalizedQuery ? item.label.toLowerCase().includes(normalizedQuery) : true,
     );
   }, [classQuery, classes]);
+
   const selectedClassSet = useMemo(() => new Set(selectedClasses), [selectedClasses]);
   const allFilteredSelected =
     filteredClasses.length > 0 &&
     filteredClasses.every((item) => selectedClassSet.has(item.value));
+
+  // Filtered Teachers / Proctors
+  const filteredTeachers = useMemo(() => {
+    const normalizedQuery = proctorQuery.trim().toLowerCase();
+    return teachers.filter((item) =>
+      normalizedQuery ? item.label.toLowerCase().includes(normalizedQuery) : true,
+    );
+  }, [proctorQuery, teachers]);
+
+  const selectedProctorSet = useMemo(
+    () => new Set(selectedProctors),
+    [selectedProctors],
+  );
+
   const startAt = `${date}T${startTime}`;
   const endAt = `${date}T${endTime}`;
 
@@ -188,6 +232,14 @@ export function ExamScheduleForm({
     });
   }
 
+  function toggleProctor(id: string) {
+    setSelectedProctors((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+  }
+
   function handlePackageChange(nextPackageId: string) {
     const nextPackage = packages.find((item) => item.value === nextPackageId);
     setPackageId(nextPackageId);
@@ -197,16 +249,23 @@ export function ExamScheduleForm({
     }
   }
 
+  function copyToken() {
+    if (!token) return;
+    navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   function validate() {
     const nextErrors: string[] = [];
 
     if (!packageId) nextErrors.push("Paket ujian wajib dipilih.");
     if (!title.trim()) nextErrors.push("Nama jadwal wajib diisi.");
     if (!academicYearId) nextErrors.push("Tahun ajaran wajib dipilih.");
-    if (!date || !startTime || !endTime) nextErrors.push("Tanggal dan waktu wajib diisi.");
-    if (startTime && !isValidTime(startTime)) nextErrors.push("Jam mulai wajib format 24 jam, contoh 08:00 atau 13:30.");
-    if (endTime && !isValidTime(endTime)) nextErrors.push("Jam selesai wajib format 24 jam, contoh 09:00 atau 15:45.");
-    if (selectedClasses.length === 0) nextErrors.push("Pilih minimal satu kelas target.");
+    if (!date || !startTime || !endTime) nextErrors.push("Tanggal dan waktu pelaksanaan wajib diisi.");
+    if (startTime && !isValidTime(startTime)) nextErrors.push("Jam mulai harus format 24 jam (contoh: 08:00).");
+    if (endTime && !isValidTime(endTime)) nextErrors.push("Jam selesai harus format 24 jam (contoh: 09:30).");
+    if (selectedClasses.length === 0) nextErrors.push("Pilih minimal satu kelas target peserta ujian.");
 
     setErrors(nextErrors);
     return nextErrors.length === 0;
@@ -215,7 +274,7 @@ export function ExamScheduleForm({
   return (
     <form
       action={saveExamScheduleAction}
-      className="mx-auto grid w-full max-w-5xl gap-5"
+      className="space-y-6 pb-20"
       onSubmit={(event) => {
         if (!validate()) {
           event.preventDefault();
@@ -226,292 +285,540 @@ export function ExamScheduleForm({
       <input type="hidden" name="school_id" value={schoolId} />
       <input type="hidden" name="start_at" value={startAt} />
       <input type="hidden" name="end_at" value={endAt} />
+      <input type="hidden" name="access_token" value={token} />
+      <input
+        type="hidden"
+        name="token_required"
+        value={tokenRequired ? "true" : "false"}
+      />
+      <input
+        type="hidden"
+        name="is_active"
+        value={isActive ? "true" : "false"}
+      />
       <input ref={statusInputRef} type="hidden" name="status" value={status} />
       <input
         ref={confirmWarningsInputRef}
         type="hidden"
         name="confirm_warnings"
-        value="false"
+        value="true"
       />
+
+      {/* Hidden inputs for selected classes */}
       {selectedClasses.map((classId) => (
         <input key={classId} type="hidden" name="class_ids" value={classId} />
       ))}
 
+      {/* Hidden inputs for selected proctors */}
+      {selectedProctors.map((teacherId) => (
+        <input key={teacherId} type="hidden" name="proctor_ids" value={teacherId} />
+      ))}
+
+      {/* Validation Errors Alert Box */}
       {errors.length > 0 ? (
-        <div className="rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-[#EF4444]">
-          <div className="font-medium">Periksa lagi sebelum menyimpan:</div>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {errors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-xs text-rose-800 shadow-sm animate-in fade-in">
+          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
+          <div>
+            <div className="font-bold text-rose-900">Periksa kembali formulir jadwal:</div>
+            <ul className="mt-1 list-disc space-y-1 pl-4 font-medium">
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-5">
-          {steps.map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setStep(index)}
-              className={cn(
-                "rounded-xl border px-3 py-2 text-left text-sm transition",
-                step === index
-                  ? "border-[#2563EB] bg-[#2563EB] text-white"
-                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:bg-[#F8FAFC]",
+      {/* MAIN 2-COLUMN UNIFIED LAYOUT */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* LEFT COLUMN: IDENTITAS, WAKTU & KELAS */}
+        <div className="space-y-6 lg:col-span-7">
+          {/* SECTION 1: PAKET & IDENTITAS JADWAL */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Layers className="size-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Paket & Identitas Ujian</h2>
+                <p className="text-xs text-slate-500">Pilih paket soal dan tentukan judul jadwal pelaksanaan.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Paket Ujian <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  name="exam_package_id"
+                  value={packageId}
+                  onChange={(event) => handlePackageChange(event.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                >
+                  {packages.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label} ({item.totalQuestions ?? 0} soal • {item.durationMinutes ?? 0} mnt)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedPackage ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-[11px]">
+                  <span className="font-semibold text-slate-700">
+                    Mapel: <strong>{selectedPackage.subjectCode ?? "-"} {selectedPackage.subjectName ?? ""}</strong>
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-semibold text-slate-700">
+                    Jumlah Soal: <strong>{selectedPackage.totalQuestions ?? 0} butir</strong>
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-semibold text-slate-700">
+                    Durasi: <strong>{selectedPackage.durationMinutes ?? 0} menit</strong>
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Nama / Judul Jadwal <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  name="title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Contoh: Sesi 1 - PTS Matematika X IPA"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Tahun Ajaran <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    name="academic_year_id"
+                    value={academicYearId}
+                    onChange={(event) => setAcademicYearId(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none font-medium"
+                  >
+                    {academicYears.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Semester (Opsional)</label>
+                  <select
+                    name="semester_id"
+                    value={semesterId}
+                    onChange={(event) => setSemesterId(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none font-medium"
+                  >
+                    <option value="">Tanpa semester khusus</option>
+                    {semesters.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: WAKTU PELAKSANAAN */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Calendar className="size-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Waktu Pelaksanaan</h2>
+                <p className="text-xs text-slate-500">Tentukan tanggal dan jam sesi ujian berlangsung.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3.5 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Tanggal Ujian <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Jam Mulai <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Clock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="08:00"
+                    value={startTime}
+                    onChange={(event) => {
+                      const nextTime = normalizeTime(event.target.value);
+                      setStartTime(nextTime);
+                      if (selectedPackage?.durationMinutes && isValidTime(nextTime)) {
+                        setEndTime(addMinutes(nextTime, selectedPackage.durationMinutes));
+                      }
+                    }}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none font-medium font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Jam Selesai <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Clock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="09:30"
+                    value={endTime}
+                    onChange={(event) => setEndTime(normalizeTime(event.target.value))}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none font-medium font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: TARGET KELAS PESERTA */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <GraduationCap className="size-4" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">Target Kelas Peserta</h2>
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800">
+                      {selectedClasses.length} Kelas Dipilih
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">Pilih kelas yang berhak mengikuti sesi ujian ini.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleFilteredClasses}
+                className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition self-start sm:self-auto"
+              >
+                {allFilteredSelected ? "Batal Pilih Hasil Filter" : "Pilih Semua Kelas"}
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={classQuery}
+                onChange={(event) => setClassQuery(event.target.value)}
+                placeholder="Cari nama kelas..."
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            </div>
+
+            <div className="grid max-h-60 gap-2 overflow-y-auto rounded-xl border border-slate-200 p-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredClasses.length === 0 ? (
+                <div className="col-span-full py-6 text-center text-xs text-slate-500">
+                  Tidak ada kelas yang cocok dengan pencarian.
+                </div>
+              ) : (
+                filteredClasses.map((item) => {
+                  const isChecked = selectedClassSet.has(item.value);
+                  return (
+                    <label
+                      key={item.value}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border p-2 text-xs font-medium cursor-pointer transition select-none",
+                        isChecked
+                          ? "border-blue-300 bg-blue-50/60 text-blue-900 font-bold"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleClass(item.value)}
+                        className="size-3.5 rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </label>
+                  );
+                })
               )}
-            >
-              <span className="block text-xs opacity-80">Step {index + 1}</span>
-              <span className="font-medium">{label}</span>
-            </button>
-          ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: PENGAWAS, TOKEN & PENGATURAN */}
+        <div className="space-y-6 lg:col-span-5">
+          {/* SECTION 4: GURU PENGAWAS */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <Users className="size-4" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">Guru Pengawas</h2>
+                    {selectedProctors.length > 0 ? (
+                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800">
+                        {selectedProctors.length} Pengawas
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-slate-500">Opsional, bisa ditugaskan sekarang atau nanti.</p>
+                </div>
+              </div>
+
+              {selectedProctors.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedProctors([])}
+                  className="text-xs font-bold text-rose-600 hover:underline"
+                >
+                  Reset
+                </button>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={proctorQuery}
+                onChange={(event) => setProctorQuery(event.target.value)}
+                placeholder="Cari nama guru pengawas..."
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            </div>
+
+            <div className="grid max-h-52 gap-2 overflow-y-auto rounded-xl border border-slate-200 p-2.5">
+              {filteredTeachers.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-500">
+                  {teachers.length === 0
+                    ? "Belum ada akun guru terdaftar."
+                    : "Tidak ada guru yang cocok."}
+                </div>
+              ) : (
+                filteredTeachers.map((teacher) => {
+                  const isChecked = selectedProctorSet.has(teacher.value);
+                  return (
+                    <label
+                      key={teacher.value}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border p-2 text-xs font-medium cursor-pointer transition select-none",
+                        isChecked
+                          ? "border-indigo-300 bg-indigo-50/60 text-indigo-900 font-bold"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleProctor(teacher.value)}
+                        className="size-3.5 rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="truncate">{teacher.label}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl">
+              <Info className="size-3.5 text-slate-400 shrink-0" />
+              <span>
+                Pengawas juga dapat dikelola secara terpusat di menu{" "}
+                <Link
+                  href="/dashboard/exams/proctors"
+                  className="text-blue-600 font-semibold hover:underline"
+                  target="_blank"
+                >
+                  Pengawas Ujian
+                </Link>.
+              </span>
+            </div>
+          </div>
+
+          {/* SECTION 5: TOKEN AKSES & OPSIONAL */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <KeyRound className="size-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Token Masuk & Opsi Ujian</h2>
+                <p className="text-xs text-slate-500">Atur kode token masuk siswa dan status keaktifan.</p>
+              </div>
+            </div>
+
+            {/* Token Generator Box */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+              <label className="text-xs font-bold text-slate-800 block">Kode Token Masuk</label>
+              <div className="flex items-center gap-2">
+                <input
+                  value={token}
+                  onChange={(event) => setToken(event.target.value.toUpperCase())}
+                  placeholder="CONTOH: ABC123"
+                  maxLength={10}
+                  className="h-9 w-32 rounded-xl border border-slate-200 bg-white px-2.5 text-center text-xs font-black tracking-widest text-slate-900 uppercase font-mono focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setToken(randomToken())}
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50"
+                  title="Generate Token Acak"
+                >
+                  <RefreshCw className="size-3" />
+                  <span>Acak</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={copyToken}
+                  disabled={!token}
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40"
+                  title="Salin Token"
+                >
+                  {copied ? (
+                    <span className="text-emerald-600 text-[11px] font-bold">Disalin!</span>
+                  ) : (
+                    <>
+                      <Copy className="size-3" />
+                      <span>Salin</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-2">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 text-xs cursor-pointer hover:bg-slate-50 transition">
+                <div>
+                  <span className="font-bold text-slate-800 block">Wajib Masukkan Token</span>
+                  <span className="text-slate-500 text-[11px]">Siswa wajib mengetik token sebelum mulai ujian</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={tokenRequired}
+                  onChange={(event) => setTokenRequired(event.target.checked)}
+                  className="size-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 text-xs cursor-pointer hover:bg-slate-50 transition">
+                <div>
+                  <span className="font-bold text-slate-800 block">Jadwal Aktif</span>
+                  <span className="text-slate-500 text-[11px]">Siswa dapat mengakses ujian pada jam yang ditentukan</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(event) => setIsActive(event.target.checked)}
+                  className="size-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* SECTION 6: PANEL REKAP & SUBMIT LANGSUNG */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Ringkasan Jadwal
+            </h3>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100">
+                <span className="text-slate-500 block">Target:</span>
+                <strong className="text-slate-900">{selectedClasses.length} Kelas</strong>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100">
+                <span className="text-slate-500 block">Pengawas:</span>
+                <strong className="text-slate-900">{selectedProctors.length} Guru</strong>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2 border border-slate-100 col-span-2">
+                <span className="text-slate-500 block">Jadwal:</span>
+                <strong className="text-slate-900">{date} ({startTime} - {endTime} WIB)</strong>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <SchedulePublishButton
+                onClick={() => {
+                  setStatus("scheduled");
+                  if (statusInputRef.current) statusInputRef.current.value = "scheduled";
+                  if (confirmWarningsInputRef.current) {
+                    confirmWarningsInputRef.current.value = "true";
+                  }
+                }}
+              />
+              <ScheduleDraftButton
+                onClick={() => {
+                  setStatus("draft");
+                  if (statusInputRef.current) statusInputRef.current.value = "draft";
+                  if (confirmWarningsInputRef.current) {
+                    confirmWarningsInputRef.current.value = "false";
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <section className={step === 0 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <h2 className="text-base font-semibold text-[#0F172A]">Pilih Paket</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <select
-            name="exam_package_id"
-            value={packageId}
-            onChange={(event) => handlePackageChange(event.target.value)}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+      {/* STICKY BOTTOM ACTION FOOTER FOR MOBILE / QUICK SAVE */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-3.5 backdrop-blur-md shadow-lg sm:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href="/dashboard/exams/schedules"
+            className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs"
           >
-            {packages.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <input
-            name="title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Nama jadwal"
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          />
-          <select
-            name="academic_year_id"
-            value={academicYearId}
-            onChange={(event) => setAcademicYearId(event.target.value)}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          >
-            {academicYears.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select
-            name="semester_id"
-            value={semesterId}
-            onChange={(event) => setSemesterId(event.target.value)}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          >
-            <option value="">Tanpa semester</option>
-            {semesters.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        {selectedPackage ? (
-          <div className="mt-4 grid gap-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 md:grid-cols-4">
-            <Summary label="Mapel" value={`${selectedPackage.subjectCode ?? "-"} ${selectedPackage.subjectName ?? ""}`} />
-            <Summary label="Soal" value={`${selectedPackage.totalQuestions ?? 0} soal`} />
-            <Summary label="Durasi" value={`${selectedPackage.durationMinutes ?? 0} menit`} />
-            <Summary label="Status" value={selectedPackage.status ?? "-"} />
+            <ArrowLeft className="size-3.5" />
+            <span>Batal</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <ScheduleDraftButton
+              onClick={() => {
+                setStatus("draft");
+                if (statusInputRef.current) statusInputRef.current.value = "draft";
+                if (confirmWarningsInputRef.current) {
+                  confirmWarningsInputRef.current.value = "false";
+                }
+              }}
+            />
+            <SchedulePublishButton
+              onClick={() => {
+                setStatus("scheduled");
+                if (statusInputRef.current) statusInputRef.current.value = "scheduled";
+                if (confirmWarningsInputRef.current) {
+                  confirmWarningsInputRef.current.value = "true";
+                }
+              }}
+            />
           </div>
-        ) : null}
-      </section>
-
-      <section className={step === 1 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <h2 className="text-base font-semibold text-[#0F172A]">Tanggal & Waktu</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <input
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
-            placeholder="08:00"
-            value={startTime}
-            onChange={(event) => {
-              const nextTime = normalizeTime(event.target.value);
-
-              setStartTime(nextTime);
-              if (selectedPackage?.durationMinutes && isValidTime(nextTime)) {
-                setEndTime(addMinutes(nextTime, selectedPackage.durationMinutes));
-              }
-            }}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
-            placeholder="09:00"
-            value={endTime}
-            onChange={(event) => setEndTime(normalizeTime(event.target.value))}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-          />
-        </div>
-      </section>
-
-      <section className={step === 2 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-[#0F172A]">Target Peserta</h2>
-            <p className="mt-1 text-sm text-[#64748B]">
-              {selectedClasses.length} kelas dipilih - peserta akan disinkronkan saat jadwal disimpan.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={toggleFilteredClasses}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-          >
-            {allFilteredSelected ? "Batalkan hasil filter" : "Select all kelas"}
-          </button>
-        </div>
-        <input
-          value={classQuery}
-          onChange={(event) => setClassQuery(event.target.value)}
-          placeholder="Cari kelas"
-          className="mt-4 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-        />
-        <div className="mt-4 grid max-h-72 gap-2 overflow-auto rounded-xl border border-[#E2E8F0] p-3 sm:grid-cols-2 xl:grid-cols-4">
-          {filteredClasses.map((item) => (
-            <label
-              key={item.value}
-              className="flex min-h-10 items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
-            >
-              <input
-                type="checkbox"
-                checked={selectedClassSet.has(item.value)}
-                onChange={() => toggleClass(item.value)}
-              />
-              <span className="line-clamp-1">{item.label}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <section className={step === 3 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <h2 className="text-base font-semibold text-[#0F172A]">Token & Pengaturan</h2>
-        <div className="mt-4 grid gap-4">
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium text-[#0F172A]">Token Ujian</span>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                placeholder="ABC123"
-                className="h-9 min-w-40 rounded-xl border border-[#E2E8F0] px-3 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setToken(randomToken())}
-                className="rounded-xl border border-[#E2E8F0] px-3 text-sm hover:bg-[#F8FAFC]"
-              >
-                Generate
-              </button>
-              <button
-                type="button"
-                onClick={() => token && navigator.clipboard.writeText(token)}
-                className="rounded-xl border border-[#E2E8F0] px-3 text-sm hover:bg-[#F8FAFC]"
-              >
-                Copy
-              </button>
-            </div>
-            {!token ? (
-              <span className="text-xs text-[#F59E0B]">Token belum dibuat.</span>
-            ) : null}
-          </label>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Toggle label="Token wajib" name="token_required" checked={tokenRequired} onChange={setTokenRequired} />
-            <Toggle label="Aktif" name="is_active" checked={isActive} onChange={setIsActive} />
-            <StaticToggle label="Acak soal" />
-            <StaticToggle label="Acak opsi" />
-            <StaticToggle label="Izinkan terlambat masuk" />
-            <label className="grid gap-1.5 rounded-xl border border-[#E2E8F0] p-3 text-sm">
-              <span className="font-medium text-[#0F172A]">Batas terlambat</span>
-              <input
-                type="number"
-                min="0"
-                defaultValue={0}
-                className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section className={step === 4 ? "rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm" : "hidden"}>
-        <h2 className="text-base font-semibold text-[#0F172A]">Review & Simpan</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <Summary label="Paket" value={selectedPackage?.label ?? "-"} />
-          <Summary label="Mapel" value={selectedPackage?.subjectCode ?? "-"} />
-          <Summary label="Tanggal" value={date} />
-          <Summary label="Waktu" value={`${startTime} - ${endTime}`} />
-          <Summary label="Target kelas" value={`${selectedClasses.length} kelas`} />
-          <Summary label="Token" value={token || "Belum dibuat"} />
-        </div>
-      </section>
-
-      <div className="flex flex-col gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setStep((value) => Math.max(0, value - 1))}
-            disabled={step === 0}
-            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm disabled:opacity-50"
-          >
-            Sebelumnya
-          </button>
-          <button
-            type="button"
-            onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}
-            disabled={step === steps.length - 1}
-            className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm disabled:opacity-50"
-          >
-            Berikutnya
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <ScheduleDraftButton
-            onClick={() => {
-              setStatus("draft");
-              if (statusInputRef.current) statusInputRef.current.value = "draft";
-              if (confirmWarningsInputRef.current) {
-                confirmWarningsInputRef.current.value = "false";
-              }
-            }}
-          />
-          <SchedulePublishButton
-            onClick={(event) => {
-              const confirmed = window.confirm(
-                "Tetap publish? Jika hanya warning readiness, jadwal tetap dipublish. Jika ada critical, sistem akan menolak publish.",
-              );
-
-              if (!confirmed) {
-                event.preventDefault();
-                return;
-              }
-
-              setStatus("scheduled");
-              if (statusInputRef.current) statusInputRef.current.value = "scheduled";
-              if (confirmWarningsInputRef.current) {
-                confirmWarningsInputRef.current.value = "true";
-              }
-            }}
-          />
         </div>
       </div>
     </form>
@@ -525,85 +832,43 @@ function ScheduleDraftButton({ onClick }: { onClick: () => void }) {
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm font-medium hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50 transition"
+      className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 transition"
     >
       {pending ? (
         <>
-          <Loader2 className="size-4 animate-spin text-slate-500" />
-          <span>Menyimpan Draft...</span>
+          <Loader2 className="size-3.5 animate-spin text-slate-500" />
+          <span>Menyimpan...</span>
         </>
       ) : (
         <>
-          <Save className="size-4" />
-          <span>Simpan Draft</span>
+          <Save className="size-3.5 text-slate-600" />
+          <span>Simpan Draf</span>
         </>
       )}
     </button>
   );
 }
 
-function SchedulePublishButton({ onClick }: { onClick: (event: React.MouseEvent<HTMLButtonElement>) => void }) {
+function SchedulePublishButton({ onClick }: { onClick: () => void }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50 transition"
+      className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 transition"
     >
       {pending ? (
         <>
-          <Loader2 className="size-4 animate-spin text-white" />
-          <span>Menjadwalkan Ujian...</span>
+          <Loader2 className="size-3.5 animate-spin text-white" />
+          <span>Menjadwalkan...</span>
         </>
       ) : (
         <>
-          <Send className="size-4" />
+          <Send className="size-3.5" />
           <span>Jadwalkan Ujian</span>
         </>
       )}
     </button>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-  name,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  name: string;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] p-3 text-sm">
-      <span className="font-medium text-[#0F172A]">{label}</span>
-      <input
-        name={name}
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-    </label>
-  );
-}
-
-function StaticToggle({ label }: { label: string }) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-xl border border-[#E2E8F0] p-3 text-sm text-[#64748B]">
-      <span>{label}</span>
-      <input type="checkbox" disabled />
-    </label>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-      <div className="text-xs text-[#64748B]">{label}</div>
-      <div className="mt-1 line-clamp-1 font-semibold text-[#0F172A]">{value}</div>
-    </div>
   );
 }

@@ -34,6 +34,8 @@ type QuestionRow = {
   type: string | null;
   status: string | null;
   is_active: boolean | null;
+  point?: number | string | null;
+  explanation?: string | null;
   subjects?: {
     code?: string | null;
     name?: string | null;
@@ -41,6 +43,20 @@ type QuestionRow = {
   question_categories?: {
     name?: string | null;
   } | null;
+  question_stimuli?:
+    | {
+        title?: string | null;
+        content?: string | null;
+        media_url?: string | null;
+        media_type?: string | null;
+      }
+    | Array<{
+        title?: string | null;
+        content?: string | null;
+        media_url?: string | null;
+        media_type?: string | null;
+      }>
+    | null;
   question_options?: Array<{
     option_label: string;
     option_text: string;
@@ -56,6 +72,10 @@ type QuestionRow = {
     order_number: number;
   }> | null;
 };
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 
 type QuestionTableProps = {
   questions: QuestionRow[];
@@ -249,7 +269,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                 key={question.id}
                 className={cn(
                   rowClassName,
-                  "transition hover:bg-[#F8FAFC]",
+                  "transition-colors hover:bg-slate-50/70",
                   selectedSet.has(question.id) && "bg-blue-50/60",
                 )}
               >
@@ -258,39 +278,52 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                     type="checkbox"
                     checked={selectedSet.has(question.id)}
                     onChange={() => toggleOne(question.id)}
+                    className="size-3.5 rounded text-blue-600 focus:ring-blue-500"
                     aria-label={`Pilih soal ${question.id}`}
                   />
                 </td>
                 <td className={cn(cellClassName, "min-w-0")}>
-                  <div className="line-clamp-1 font-medium leading-5 text-[#0F172A]">
-                    {question.content || "-"}
+                  <div className="line-clamp-2 text-xs font-semibold leading-relaxed text-slate-900">
+                    <QuestionMathRenderer content={question.content} />
                   </div>
-                  <div className="mt-1 flex max-w-full flex-wrap gap-1 overflow-hidden">
+                  <div className="mt-1 flex max-w-full flex-wrap items-center gap-1.5 overflow-hidden">
                     {question.question_attachments && question.question_attachments.length > 0 ? (
-                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200">
-                        📸 Ada Foto
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+                        📸 {question.question_attachments.length} Foto/Media
                       </span>
                     ) : null}
                     {question.question_categories?.name ? (
-                      <span className="max-w-44 truncate rounded-md bg-[#F8FAFC] px-1.5 py-0.5 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
+                      <span className="max-w-44 truncate rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                         {question.question_categories.name}
                       </span>
                     ) : null}
+                    <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                      {Number(question.point ?? 1)} Poin
+                    </span>
                     {!question.is_active ? (
-                      <span className="rounded-md bg-[#EF4444]/10 px-1.5 py-0.5 text-[11px] text-[#EF4444]">
+                      <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
                         Nonaktif
                       </span>
                     ) : null}
                   </div>
                 </td>
-                <td className={cn(cellClassName, "truncate text-[#0F172A]")}>
-                  {question.subjects
-                    ? `${question.subjects.code} - ${question.subjects.name}`
-                    : "-"}
+                <td className={cn(cellClassName, "truncate text-slate-700 font-medium text-xs")}>
+                  {question.subjects ? (
+                    <span className="inline-flex items-center rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                      {question.subjects.code}
+                    </span>
+                  ) : (
+                    "-"
+                  )}
                 </td>
                 <td className={cellClassName}>
-                  <span className="rounded-md bg-[#F8FAFC] px-2 py-1 text-xs text-[#64748B] ring-1 ring-[#E2E8F0]">
-                    {question.type === "multiple_choice" ? "PG" : "Essay"}
+                  <span className={cn(
+                    "rounded-md px-2 py-0.5 text-[11px] font-bold",
+                    question.type === "multiple_choice"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-purple-50 text-purple-700"
+                  )}>
+                    {question.type === "multiple_choice" ? "Pilihan Ganda" : "Esai"}
                   </span>
                 </td>
                 <td className={cellClassName}>
@@ -357,7 +390,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         ))}
       </div>
 
-      <Pagination
+      <TablePagination
         currentPage={currentPage}
         pageCount={pageCount}
         rowsPerPage={rowsPerPage}
@@ -434,7 +467,7 @@ function QuestionActions({
   );
 }
 
-function Pagination({
+function TablePagination({
   currentPage,
   pageCount,
   rowsPerPage,
@@ -451,28 +484,30 @@ function Pagination({
   const end = Math.min(total, currentPage * rowsPerPage);
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#64748B] shadow-sm sm:flex-row sm:items-center sm:justify-between">
-      <span>
-        {start}-{end} dari {total} soal
+    <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-xs text-slate-600 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+      <span className="font-medium">
+        Menampilkan <strong className="text-slate-900">{start}</strong> -{" "}
+        <strong className="text-slate-900">{end}</strong> dari{" "}
+        <strong className="text-slate-900">{total}</strong> butir soal
       </span>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage <= 1}
-          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 transition"
         >
           <ChevronLeft className="size-3.5" />
           {UI_LABELS.actions.previous}
         </button>
-        <span className="text-xs">
+        <span className="text-xs font-bold text-slate-700 px-1">
           {currentPage} / {pageCount}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
           disabled={currentPage >= pageCount}
-          className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#E2E8F0] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 transition"
         >
           {UI_LABELS.actions.next}
           <ChevronRight className="size-3.5" />
@@ -492,39 +527,64 @@ function PreviewModal({
   const options = [...(question.question_options ?? [])].sort(
     (a, b) => a.order_number - b.order_number,
   );
+  const stimulus = firstRelation(question.question_stimuli);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-      <div className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
+        <div className="flex items-start justify-between border-b border-slate-100 pb-3 shrink-0">
           <div>
-            <h2 className="text-lg font-semibold text-[#0F172A]">
-              Pratinjau Soal
-            </h2>
-            <div className="mt-1 flex flex-wrap gap-1 text-xs text-[#64748B]">
-              <span>{question.subjects?.code ?? "Mapel"}</span>
-              <span>-</span>
-              <span>{question.type === "multiple_choice" ? "Pilihan ganda" : "Essay"}</span>
-              <span>-</span>
-              <span>{question.question_categories?.name ?? "Tanpa kategori"}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                {question.type === "multiple_choice" ? "Pilihan Ganda" : "Esai"}
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                {Number(question.point ?? 1)} Poin
+              </span>
             </div>
+            <h2 className="mt-1 text-sm font-bold text-slate-900">
+              Pratinjau Butir Soal
+            </h2>
+            <p className="text-xs text-slate-500">
+              {question.subjects?.name ?? "Mata Pelajaran"} • {question.question_categories?.name ?? "Kategori"}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-sm"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
-            Tutup
+            <span className="text-lg font-bold">×</span>
           </button>
         </div>
-        <div className="space-y-4 text-sm">
-          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-            <QuestionMathRenderer content={question.content} className="leading-7 text-[#0F172A]" />
+
+        <div className="space-y-4 overflow-y-auto pr-1 text-xs text-slate-800 leading-relaxed flex-1">
+          {stimulus ? (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5 space-y-2">
+              <div className="font-bold text-blue-900 text-xs">
+                {stimulus.title || "Stimulus Bacaan"}
+              </div>
+              {stimulus.content ? (
+                <QuestionMathRenderer content={stimulus.content} className="text-slate-700" />
+              ) : null}
+              {stimulus.media_url ? (
+                <QuestionMediaPreview
+                  mediaType={stimulus.media_type}
+                  url={stimulus.media_url}
+                  title={stimulus.title}
+                  className="mt-2"
+                />
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <QuestionMathRenderer content={question.content} className="text-xs leading-relaxed text-slate-900 font-medium" />
           </div>
 
           {question.question_attachments && question.question_attachments.length > 0 ? (
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 space-y-2">
-              <div className="text-xs font-bold text-[#0F172A]">Foto / Media Lampiran Soal:</div>
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2">
+              <div className="text-[11px] font-bold text-slate-800">Foto / Media Lampiran Soal:</div>
               <div className="grid gap-2">
                 {question.question_attachments.map((att) => (
                   <QuestionMediaPreview
@@ -540,43 +600,63 @@ function PreviewModal({
           ) : null}
 
           {question.type === "multiple_choice" ? (
-            <div className="grid gap-2">
-              {options.map((option) => (
-                <div
-                  key={option.option_label}
-                  className={cn(
-                    "flex gap-2.5 rounded-xl border px-3.5 py-2.5",
-                    option.is_correct
-                      ? "border-emerald-300 bg-emerald-50/50 text-emerald-950 font-medium ring-1 ring-emerald-300"
-                      : "border-[#E2E8F0] bg-white text-[#0F172A]",
-                  )}
-                >
-                  <span
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-700">Pilihan Jawaban:</div>
+              <div className="grid gap-2">
+                {options.map((option) => (
+                  <div
+                    key={option.option_label}
                     className={cn(
-                      "flex size-6 items-center justify-center rounded-lg text-xs font-bold shrink-0",
+                      "flex items-start gap-2.5 rounded-xl border p-2.5 text-xs transition",
                       option.is_correct
-                        ? "bg-emerald-600 text-white"
-                        : "bg-blue-100 text-blue-800",
+                        ? "border-emerald-300 bg-emerald-50/60 text-emerald-950 font-medium ring-1 ring-emerald-300"
+                        : "border-slate-200 bg-white text-slate-700",
                     )}
                   >
-                    {option.option_label}
-                  </span>
-                  <span className="flex-1 pt-0.5">
-                    <QuestionMathRenderer content={option.option_text} />
-                  </span>
-                  {option.is_correct ? (
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md self-center">
-                      Kunci Benar
+                    <span
+                      className={cn(
+                        "flex size-5.5 items-center justify-center rounded-lg text-[11px] font-bold shrink-0 mt-0.5",
+                        option.is_correct
+                          ? "bg-emerald-600 text-white"
+                          : "bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      {option.option_label}
                     </span>
-                  ) : null}
-                </div>
-              ))}
+                    <div className="flex-1 pt-0.5">
+                      <QuestionMathRenderer content={option.option_text} />
+                    </div>
+                    {option.is_correct ? (
+                      <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 shrink-0">
+                        Kunci Benar
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="rounded-xl bg-[#F8FAFC] p-3 text-xs text-[#64748B]">
-              Soal essay tidak memakai pilihan jawaban.
+            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+              * Soal esai diperiksa dan dinilai secara manual oleh guru.
             </div>
           )}
+
+          {question.explanation ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+              <div className="text-[11px] font-bold text-slate-700">Pembahasan / Penjelasan:</div>
+              <QuestionMathRenderer content={question.explanation} className="text-slate-600 text-xs" />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-slate-100 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-2xs"
+          >
+            Tutup Pratinjau
+          </button>
         </div>
       </div>
     </div>

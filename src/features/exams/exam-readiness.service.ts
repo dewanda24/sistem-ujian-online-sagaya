@@ -637,7 +637,7 @@ export async function getScheduleExamReadiness(
     category: "proctor",
     title: "Jadwal memiliki pengawas",
     description: `${activeProctors.length} assignment pengawas aktif.`,
-    severity: "critical",
+    severity: "warning",
     passed: activeProctors.length > 0,
     href: `/dashboard/exams/proctors?schedule_id=${schedule.id}`,
   });

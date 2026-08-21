@@ -670,6 +670,10 @@ export async function saveExamScheduleAction(formData: FormData) {
   await requirePermission("exam_schedules.manage");
   const scope = await requireSchoolScope();
 
+  const rawAccessToken = formString(formData, "access_token").trim().toUpperCase();
+  const tokenRequired = formBoolean(formData, "token_required");
+  const resolvedToken = rawAccessToken || (tokenRequired ? generateExamToken() : null);
+
   const parsed = examScheduleSchema.safeParse({
     id: scheduleId,
     school_id: formString(formData, "school_id"),
@@ -680,9 +684,11 @@ export async function saveExamScheduleAction(formData: FormData) {
     start_at: toDatetime(formString(formData, "start_at")),
     end_at: toDatetime(formString(formData, "end_at")),
     status: formString(formData, "status"),
-    token_required: formBoolean(formData, "token_required"),
+    token_required: tokenRequired,
+    access_token: resolvedToken,
     is_active: formBoolean(formData, "is_active"),
     class_ids: formStringList(formData, "class_ids"),
+    proctor_ids: formStringList(formData, "proctor_ids"),
   });
 
   if (!parsed.success) {
@@ -694,7 +700,7 @@ export async function saveExamScheduleAction(formData: FormData) {
 
   const supabase = await createClient();
   const dbClient = getServiceRoleClient() ?? supabase;
-  const { id, class_ids, ...payload } = parsed.data;
+  const { id, class_ids, proctor_ids, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
 
   if (id) {
@@ -743,6 +749,7 @@ export async function saveExamScheduleAction(formData: FormData) {
 
   const schedulePayload = {
     ...payload,
+    access_token: payload.access_token || null,
     semester_id: payload.semester_id || null,
   };
 
@@ -779,6 +786,23 @@ export async function saveExamScheduleAction(formData: FormData) {
         class_id: classId,
       })),
     );
+
+  // Sync proctors if selected
+  const proctorList = proctor_ids ?? [];
+  if (proctorList.length > 0) {
+    const proctorInserts = proctorList.map((teacherId: string) => ({
+      exam_schedule_id: savedSchedule.id,
+      teacher_id: teacherId,
+      school_id: payload.school_id,
+      assigned_by: currentUser.id,
+      assigned_at: new Date().toISOString(),
+      is_active: true,
+    }));
+
+    await dbClient.from("exam_proctors").upsert(proctorInserts, {
+      onConflict: "exam_schedule_id,teacher_id",
+    });
+  }
 
   let syncResult: ActionResult | null = null;
 
@@ -819,6 +843,7 @@ export async function saveExamScheduleAction(formData: FormData) {
 
   revalidatePath("/dashboard/exams/schedules");
   revalidatePath("/dashboard/exams");
+  revalidatePath("/dashboard/exams/proctors");
   redirectTo("/dashboard/exams/schedules", {
     ok: !classError,
     message: classError

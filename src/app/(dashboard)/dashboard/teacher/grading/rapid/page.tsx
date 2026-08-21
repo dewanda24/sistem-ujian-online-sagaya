@@ -117,8 +117,9 @@ export default async function RapidGradingPage({ searchParams }: PageProps) {
                 </div>
 
                 {/* Input Nilai */}
-                <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-4 sm:p-6">
-                  <form action={gradeEssayAnswerAction} className="flex flex-col sm:flex-row sm:items-end gap-4">
+                {/* Input Nilai */}
+                <div className="mt-8 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-4 sm:p-6 space-y-4">
+                  <form action={gradeEssayAnswerAction} className="space-y-4">
                     <input type="hidden" name="attempt_id" value={attempt?.id} />
                     <input type="hidden" name="answer_id" value={answer.id} />
                     <input
@@ -128,31 +129,60 @@ export default async function RapidGradingPage({ searchParams }: PageProps) {
                     />
                     <input type="hidden" name="return_to" value={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`} />
                     
-                    <div className="flex-1 sm:max-w-[250px]">
-                      <label className="mb-2 block text-xs font-bold text-blue-800 uppercase tracking-wider">
-                        Beri Skor (Max: {answer.max_score ?? question?.point ?? 0})
-                      </label>
-                      <input
-                        name="awarded_score"
-                        type="number"
-                        min="0"
-                        max={Number(answer.max_score ?? question?.point ?? 0)}
-                        step="0.01"
-                        defaultValue=""
-                        placeholder={`0 - ${answer.max_score ?? question?.point ?? 0}`}
-                        className="h-12 w-full rounded-lg border border-blue-300 px-4 text-lg font-bold text-blue-900 placeholder:text-blue-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 outline-none transition shadow-sm"
-                        required
-                        autoFocus
-                      />
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                      <div className="flex-1 sm:max-w-[280px]">
+                        <label className="mb-2 block text-xs font-bold text-blue-900 uppercase tracking-wider">
+                          Beri Skor (Maks: {answer.max_score ?? question?.point ?? 0})
+                        </label>
+                        <input
+                          id="awarded_score_input"
+                          name="awarded_score"
+                          type="number"
+                          min="0"
+                          max={Number(answer.max_score ?? question?.point ?? 0)}
+                          step="0.01"
+                          defaultValue=""
+                          placeholder={`0 - ${answer.max_score ?? question?.point ?? 0}`}
+                          className="h-12 w-full rounded-xl border border-blue-300 bg-white px-4 text-xl font-black text-blue-950 placeholder:text-blue-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 outline-none transition shadow-2xs"
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      {/* Quick Presets for Mobile */}
+                      <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+                        <span className="text-[11px] font-bold text-blue-800 uppercase mr-1">Cepat:</span>
+                        {[
+                          { label: "0", val: 0 },
+                          { label: "50%", val: Number(((Number(answer.max_score ?? question?.point ?? 0)) * 0.5).toFixed(1)) },
+                          { label: "75%", val: Number(((Number(answer.max_score ?? question?.point ?? 0)) * 0.75).toFixed(1)) },
+                          { label: "Maks", val: Number(answer.max_score ?? question?.point ?? 0) },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                              const input = document.getElementById("awarded_score_input") as HTMLInputElement | null;
+                              if (input) {
+                                input.value = String(preset.val);
+                                input.focus();
+                              }
+                            }}
+                            className="inline-flex h-9 items-center justify-center rounded-lg border border-blue-200 bg-white px-3 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition"
+                          >
+                            {preset.label} ({preset.val})
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <SubmitButton
+                        loadingText="Menyimpan Nilai..."
+                        className="h-12 w-full sm:w-auto rounded-xl bg-blue-600 px-8 font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2"
+                      >
+                        <span>Simpan & Lanjut</span>
+                        <span className="text-blue-200 text-xs font-normal hidden sm:inline">(Enter)</span>
+                      </SubmitButton>
                     </div>
-                    
-                    <SubmitButton
-                      loadingText="Menyimpan Nilai..."
-                      className="h-12 w-full sm:w-auto rounded-lg bg-blue-600 px-8 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2"
-                    >
-                      <span>Simpan & Lanjut</span>
-                      <span className="text-blue-200 text-xs font-normal hidden sm:inline">(Enter)</span>
-                    </SubmitButton>
                   </form>
                 </div>
               </div>

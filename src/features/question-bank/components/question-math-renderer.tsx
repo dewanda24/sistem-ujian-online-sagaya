@@ -22,8 +22,17 @@ export function QuestionMathRenderer({
     return null;
   }
 
+  // FAST-PATH: If text has no math delimiters or commands, render as clean plain text
+  if (!value.includes("$") && !value.includes("\\")) {
+    return (
+      <div className={cn("whitespace-pre-wrap leading-relaxed", className)}>
+        {value}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2 leading-relaxed", className)}>
       {renderBlocks(value)}
     </div>
   );

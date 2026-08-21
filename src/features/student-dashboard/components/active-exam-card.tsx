@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowRight, CheckCircle2, Hourglass, KeyRound, LogIn, XCircle } from "lucide-react";
 
 import { formatJakartaDate, formatJakartaTime } from "@/lib/date-time";
@@ -87,12 +87,14 @@ export function ActiveExamCard({
               <input type="hidden" name="schedule_id" value={exam.id} />
               {exam.tokenRequired && !exam.attemptId ? (
                 <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-blue-200 pointer-events-none" />
+                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-4.5 text-blue-200 pointer-events-none" />
                   <input
                     name="access_token"
-                    placeholder="Masukkan token ujian"
-                    className="h-12 w-full rounded-full border border-white/30 bg-white/15 pl-11 pr-4 text-[14px] font-medium text-white placeholder:text-blue-300/70 outline-none focus:border-white focus:bg-white/20"
+                    placeholder="TOKEN RUANGAN (MISAL: ABCXYZ)"
+                    className="h-12 w-full rounded-2xl border border-white/35 bg-white/20 pl-11 pr-4 font-mono text-base font-black tracking-widest text-white uppercase placeholder:text-blue-200/60 placeholder:font-sans placeholder:tracking-normal placeholder:text-xs placeholder:font-semibold outline-none focus:border-white focus:bg-white/25 focus:ring-2 focus:ring-white/30 transition shadow-inner"
                     autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
                     required
                   />
                 </div>

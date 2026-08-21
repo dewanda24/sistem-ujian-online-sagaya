@@ -160,6 +160,59 @@ export async function toggleTeacherProctorAction(formData: FormData) {
   });
 }
 
+export async function deleteTeacherProctorAction(formData: FormData) {
+  const user = await requirePermission("exam_schedules.manage");
+  const assignmentId = formString(formData, "id");
+
+  if (!assignmentId) {
+    redirectTo({
+      ok: false,
+      message: "Penugasan pengawas tidak valid.",
+    });
+  }
+
+  const scope = await requireSchoolScope();
+  const supabase = await createClient();
+  const { data: assignment } = await supabase
+    .from("exam_proctors")
+    .select("id, school_id, exam_schedule_id, teacher_id")
+    .eq("id", assignmentId)
+    .maybeSingle();
+
+  assertSameSchool(scope, assignment?.school_id);
+
+  if (!assignment) {
+    redirectTo({
+      ok: false,
+      message: "Penugasan pengawas tidak ditemukan.",
+    });
+  }
+
+  const { error } = await supabase
+    .from("exam_proctors")
+    .delete()
+    .eq("id", assignmentId);
+
+  if (!error) {
+    await logAuditEvent({
+      userId: user.id,
+      action: "exam_proctors.delete",
+      entityType: "exam_proctors",
+      entityId: assignmentId,
+      payload: {
+        exam_schedule_id: assignment.exam_schedule_id,
+        teacher_id: assignment.teacher_id,
+      },
+    });
+  }
+
+  revalidateProctorPaths();
+  redirectTo({
+    ok: !error,
+    message: error ? error.message : "Penugasan pengawas berhasil dihapus.",
+  });
+}
+
 function revalidateProctorPaths() {
   revalidatePath("/dashboard/exams/proctors");
   revalidatePath("/dashboard/exams/schedules");

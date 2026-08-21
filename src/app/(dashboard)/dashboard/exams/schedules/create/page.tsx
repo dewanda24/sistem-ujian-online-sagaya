@@ -9,10 +9,12 @@ import {
   getDefaultSchoolId,
   getExamPackages,
   getExamScheduleClassIds,
+  getExamScheduleProctorTeacherIds,
   getExamSchedules,
   getScopedClassOptions,
   getSemesterOptions,
 } from "@/features/exams/queries";
+import { getTeacherOptions } from "@/lib/master-data/queries";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { isoToJakartaDatetimeLocal } from "@/lib/date-time";
 
@@ -43,6 +45,8 @@ export default async function CreateExamSchedulePage({ searchParams }: PageProps
     semesters,
     classes,
     selectedClassIds,
+    teachers,
+    selectedProctorIds,
   ] = await Promise.all([
     getDefaultSchoolId(),
     getExamPackages({}),
@@ -51,6 +55,8 @@ export default async function CreateExamSchedulePage({ searchParams }: PageProps
     getSemesterOptions(),
     getScopedClassOptions(),
     getExamScheduleClassIds(params.edit),
+    getTeacherOptions(),
+    getExamScheduleProctorTeacherIds(params.edit),
   ]);
   const editable = schedules.find((schedule) => schedule.id === params.edit);
   const packageOptions =
@@ -73,8 +79,8 @@ export default async function CreateExamSchedulePage({ searchParams }: PageProps
       <ActionToast status={params.notice} message={params.message} />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <DashboardPageHeader
-          title={isEditing ? "Edit Jadwal" : "Buat Jadwal"}
-          description="Buat jadwal melalui wizard singkat. Target kelas dibuat compact dan detail peserta tetap terpisah dari halaman utama."
+          title={isEditing ? "Edit Jadwal Ujian" : "Buat Jadwal Ujian"}
+          description="Atur paket ujian, waktu pelaksanaan, kelas target, dan guru pengawas dengan cepat."
         />
         <Link
           href="/dashboard/exams/schedules"
@@ -93,6 +99,8 @@ export default async function CreateExamSchedulePage({ searchParams }: PageProps
         semesters={semesters}
         classes={classes}
         selectedClassIds={selectedClassIds}
+        teachers={teachers}
+        selectedProctorIds={selectedProctorIds}
         defaultPackageId={params.package_id}
         defaultStartAt={isoToJakartaDatetimeLocal(editable?.start_at)}
         defaultEndAt={isoToJakartaDatetimeLocal(editable?.end_at)}

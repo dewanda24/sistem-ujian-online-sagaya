@@ -19,6 +19,7 @@ import {
   lockAttemptAction,
   markParticipantAbsentAction,
   resetAttemptAction,
+  resetDeviceSessionAction,
   unlockAttemptAction,
 } from "@/features/monitoring/actions";
 import { cn } from "@/lib/utils";
@@ -329,27 +330,66 @@ function ParticipantCard({
 }) {
   const info = getParticipantInfo(participant);
   const issue = getPrimaryIssue(participant);
+  const attempt = firstRelation(participant.exam_attempts);
 
   return (
     <article
       className={cn(
-        "max-h-[124px] rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm",
-        issue?.severity === "danger" && "bg-red-50/70 border-red-200",
-        issue?.severity === "warning" && "bg-amber-50/70 border-amber-200"
+        "rounded-2xl border bg-white p-4 shadow-2xs transition-all space-y-3",
+        issue?.severity === "danger"
+          ? "border-red-200 bg-red-50/40"
+          : issue?.severity === "warning"
+            ? "border-amber-200 bg-amber-50/40"
+            : "border-slate-200/90",
       )}
     >
-      <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">
-        {info.name}
-      </div>
-      <div className="mt-1 flex items-center gap-1 overflow-hidden text-xs text-[#64748B]">
-        <span className="truncate">{info.className}</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-slate-900 truncate">
+            {info.name}
+          </h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            {info.className} • {info.identity}
+          </p>
+        </div>
         <StatusPill value={info.status} />
+      </div>
+
+      {issue ? <IssueBadge issue={issue} className="mt-1" /> : null}
+
+      <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100/80">
+        <div className="flex-1 min-w-0">
+          <Progress answerCount={info.answerCount} compact />
+        </div>
         <ViolationBadge count={info.eventCount} />
       </div>
-      {issue ? <IssueBadge issue={issue} className="mt-2" /> : null}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <Progress answerCount={info.answerCount} compact />
+
+      {/* Mobile Quick Actions Row */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={onDetail}
+          className="inline-flex h-8 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700 hover:bg-slate-200 transition active:scale-95"
+        >
+          Detail
+        </button>
+
         <div className="flex items-center gap-1.5">
+          {canControlSessions && attempt?.id && (
+            <form action={resetDeviceSessionAction}>
+              <input type="hidden" name="attempt_id" value={attempt.id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <button
+                type="submit"
+                disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
+                className="inline-flex h-8 items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 active:scale-95 transition disabled:opacity-40"
+                title="Reset Sesi Login / Ganti Perangkat"
+              >
+                Reset Sesi
+              </button>
+            </form>
+          )}
+
           <ParticipantActions
             participant={participant}
             canControlSessions={canControlSessions}
@@ -440,6 +480,17 @@ function ActionForms({
             </TableActionSubmit>
           </form>
         )}
+        <form action={resetDeviceSessionAction}>
+          <input type="hidden" name="attempt_id" value={attempt.id} />
+          <input type="hidden" name="return_to" value={returnTo} />
+          <TableActionSubmit
+            icon="refresh-cw"
+            disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
+            confirmMessage="Reset sesi login/perangkat siswa ini? Jawaban yang tersimpan TIDAK akan hilang, dan siswa bisa login kembali pada perangkat baru."
+          >
+            Reset Sesi Login
+          </TableActionSubmit>
+        </form>
         <form action={resetAttemptAction}>
           <input type="hidden" name="attempt_id" value={attempt.id} />
           <input type="hidden" name="return_to" value={returnTo} />

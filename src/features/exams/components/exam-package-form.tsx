@@ -11,6 +11,7 @@ import {
   Clock,
   Dices,
   Eye,
+  Image as ImageIcon,
   Layers,
   ListOrdered,
   Loader2,
@@ -27,11 +28,37 @@ import {
 
 import { saveExamPackageAction } from "@/features/exams/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
+import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import { cn } from "@/lib/utils";
 
 type SubjectOption = {
   value: string;
   label: string;
+};
+
+type QuestionAttachment = {
+  id: string;
+  media_type: string;
+  url: string;
+  file_name?: string | null;
+  caption?: string | null;
+  order_number: number;
+};
+
+type QuestionOptionItem = {
+  id: string;
+  option_label: string;
+  option_text: string;
+  is_correct: boolean;
+  order_number: number;
+};
+
+type QuestionStimulus = {
+  id?: string | null;
+  title?: string | null;
+  content?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
 };
 
 type QuestionOption = {
@@ -40,9 +67,13 @@ type QuestionOption = {
   point: number | string | null;
   type: string | null;
   difficulty?: string | null;
+  explanation?: string | null;
   subject_id: string | null;
   subjects?: { code?: string | null; name?: string | null } | Array<{ code?: string | null; name?: string | null }> | null;
   question_categories?: { id?: string | null; name?: string | null } | Array<{ id?: string | null; name?: string | null }> | null;
+  question_attachments?: QuestionAttachment[] | null;
+  question_options?: QuestionOptionItem[] | null;
+  question_stimuli?: QuestionStimulus | QuestionStimulus[] | null;
 };
 
 type EditablePackage = {
@@ -253,20 +284,12 @@ export function ExamPackageForm({
       />
 
       {/* Hidden Inputs for Selected Questions */}
-      {selectedQuestions.map((question, index) => (
+      {selectedQuestions.map((question) => (
         <input
           key={question.id}
           type="hidden"
-          name={`questions.${index}.question_id`}
+          name="question_ids"
           value={question.id}
-        />
-      ))}
-      {selectedQuestions.map((question, index) => (
-        <input
-          key={`point-${question.id}`}
-          type="hidden"
-          name={`questions.${index}.point`}
-          value={Number(question.point ?? 1)}
         />
       ))}
 
@@ -611,6 +634,12 @@ export function ExamPackageForm({
                       <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                         {Number(question.point ?? 1)} Poin
                       </span>
+                      {question.question_attachments && question.question_attachments.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 font-bold text-amber-700">
+                          <ImageIcon className="size-3" />
+                          <span>{question.question_attachments.length} Media</span>
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="mt-1.5 line-clamp-2 text-xs font-medium text-slate-800">
@@ -680,15 +709,20 @@ export function ExamPackageForm({
 
       {/* Quick Question Preview Modal */}
       {previewQuestion ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl space-y-4">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3 shrink-0">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                  {previewQuestion.type === "multiple_choice" ? "Pilihan Ganda" : "Esai"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    {previewQuestion.type === "multiple_choice" ? "Pilihan Ganda" : "Esai"}
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                    {Number(previewQuestion.point ?? 1)} Poin
+                  </span>
+                </div>
                 <h3 className="mt-1 text-sm font-bold text-slate-900">
-                  Pratinjau Butir Soal ({Number(previewQuestion.point ?? 1)} Poin)
+                  Pratinjau Butir Soal
                 </h3>
               </div>
               <button
@@ -700,17 +734,127 @@ export function ExamPackageForm({
               </button>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-xs text-slate-800 leading-relaxed max-h-72 overflow-y-auto">
-              <QuestionMathRenderer content={previewQuestion.content} />
+            <div className="space-y-4 overflow-y-auto pr-1 text-xs text-slate-800 leading-relaxed flex-1">
+              {/* Stimulus if exists */}
+              {(() => {
+                const stimulus = firstRelation(previewQuestion.question_stimuli);
+                if (!stimulus) return null;
+                return (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5 space-y-2">
+                    <div className="font-bold text-blue-900 text-xs">
+                      {stimulus.title || "Stimulus Bacaan"}
+                    </div>
+                    {stimulus.content ? (
+                      <QuestionMathRenderer
+                        content={stimulus.content}
+                        className="text-slate-700"
+                      />
+                    ) : null}
+                    {stimulus.media_url ? (
+                      <QuestionMediaPreview
+                        mediaType={stimulus.media_type}
+                        url={stimulus.media_url}
+                        title={stimulus.title}
+                        className="mt-2"
+                      />
+                    ) : null}
+                  </div>
+                );
+              })()}
+
+              {/* Question Content */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <QuestionMathRenderer
+                  content={previewQuestion.content}
+                  className="text-xs leading-relaxed text-slate-900 font-medium"
+                />
+              </div>
+
+              {/* Question Attachments (Images / Photos) */}
+              {previewQuestion.question_attachments && previewQuestion.question_attachments.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                    <ImageIcon className="size-3.5 text-blue-600" />
+                    <span>Gambar / Media Lampiran Soal:</span>
+                  </div>
+                  <div className="grid gap-2">
+                    {[...previewQuestion.question_attachments]
+                      .sort((a, b) => a.order_number - b.order_number)
+                      .map((att) => (
+                        <QuestionMediaPreview
+                          key={att.id}
+                          mediaType={att.media_type}
+                          url={att.url}
+                          title={att.file_name}
+                          caption={att.caption}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Multiple Choice Options */}
+              {previewQuestion.type === "multiple_choice" &&
+              previewQuestion.question_options &&
+              previewQuestion.question_options.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-700">Pilihan Jawaban:</div>
+                  <div className="grid gap-2">
+                    {[...previewQuestion.question_options]
+                      .sort((a, b) => a.order_number - b.order_number)
+                      .map((opt) => (
+                        <div
+                          key={opt.id || opt.option_label}
+                          className={cn(
+                            "flex items-start gap-2.5 rounded-xl border p-2.5 text-xs transition",
+                            opt.is_correct
+                              ? "border-emerald-300 bg-emerald-50/60 text-emerald-950 font-medium ring-1 ring-emerald-300"
+                              : "border-slate-200 bg-white text-slate-700",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex size-5.5 items-center justify-center rounded-lg text-[11px] font-bold shrink-0 mt-0.5",
+                              opt.is_correct
+                                ? "bg-emerald-600 text-white"
+                                : "bg-slate-100 text-slate-700",
+                            )}
+                          >
+                            {opt.option_label}
+                          </span>
+                          <div className="flex-1 pt-0.5">
+                            <QuestionMathRenderer content={opt.option_text} />
+                          </div>
+                          {opt.is_correct ? (
+                            <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 shrink-0">
+                              Kunci Benar
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Explanation */}
+              {previewQuestion.explanation ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+                  <div className="text-[11px] font-bold text-slate-700">Pembahasan / Penjelasan:</div>
+                  <QuestionMathRenderer
+                    content={previewQuestion.explanation}
+                    className="text-slate-600 text-xs"
+                  />
+                </div>
+              ) : null}
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setPreviewQuestion(null)}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-2xs"
               >
-                Tutup
+                Tutup Pratinjau
               </button>
             </div>
           </div>

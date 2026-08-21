@@ -405,6 +405,66 @@ export async function unlockAttemptAction(formData: FormData) {
   redirectBack(formData, true, "Pengerjaan ujian berhasil dibuka kembali.");
 }
 
+export async function resetDeviceSessionAction(formData: FormData) {
+  const attemptId = formString(formData, "attempt_id");
+
+  if (!attemptId) {
+    redirectBack(formData, false, "Pengerjaan ujian tidak valid.");
+  }
+
+  const user = await requireMonitoringControlForAttempt(formData, attemptId);
+  if (isDemoUser(user)) {
+    redirectBack(formData, false, DEMO_MUTATION_BLOCKED_MESSAGE);
+  }
+
+  const supabase = await createClient();
+  const { data: attempt } = await supabase
+    .from("exam_attempts")
+    .select("id, exam_schedule_id, active_session_id, active_session_seen_at")
+    .eq("id", attemptId)
+    .maybeSingle();
+
+  if (!attempt) {
+    redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
+  }
+
+  const { error } = await supabase
+    .from("exam_attempts")
+    .update({
+      active_session_id: null,
+      active_session_seen_at: null,
+      locked_at: null,
+      locked_by: null,
+      lock_reason: null,
+    })
+    .eq("id", attempt.id);
+
+  if (error) {
+    redirectBack(formData, false, error.message);
+  }
+
+  await logAuditEvent({
+    userId: user.id,
+    action: "exam_attempts.reset_device_session",
+    entityType: "exam_attempts",
+    entityId: attempt.id,
+    payload: {
+      exam_schedule_id: attempt.exam_schedule_id,
+      previous_active_session_id: attempt.active_session_id,
+    },
+  });
+
+  revalidatePath("/dashboard/proctor/monitoring");
+  revalidatePath("/dashboard/admin/monitoring");
+  revalidatePath("/dashboard/super-admin/monitoring");
+  revalidatePath("/dashboard/teacher/monitoring");
+  redirectBack(
+    formData,
+    true,
+    "Sesi login perangkat siswa berhasil direset. Siswa dapat masuk kembali dan melanjutkan ujian tanpa kehilangan jawaban.",
+  );
+}
+
 export async function markParticipantAbsentAction(formData: FormData) {
   const participantId = formString(formData, "participant_id");
 
