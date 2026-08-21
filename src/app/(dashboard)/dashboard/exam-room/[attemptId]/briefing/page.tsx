@@ -101,10 +101,10 @@ export default async function BriefingPage({ params }: PageProps) {
         <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 sm:p-5 shadow-2xs space-y-2">
           <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
             <ShieldAlert className="size-4.5 text-amber-600" />
-            <h2>Sistem Pengawasan Otomatis (Anti-Curang)</h2>
+            <h2>Sistem Pengawasan & Wajib Layar Penuh (Anti-Curang)</h2>
           </div>
           <p className="text-xs text-amber-900 leading-relaxed font-medium">
-            Sistem mendeteksi dan mencatat perpindahan tab, minimize browser, serta pembukaan aplikasi lain. Pengerjaan akan otomatis terkunci jika batas peringatan terlampaui.
+            Ujian ini mewajibkan <strong>Mode Layar Penuh (Fullscreen)</strong>. Sistem mencatat perpindahan tab, minimize jendela, dan aplikasi lain. Lembar ujian akan terkunci jika Anda keluar dari mode layar penuh atau batas pelanggaran terlampaui.
           </p>
         </div>
       </div>

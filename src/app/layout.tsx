@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
+import { PwaRegister } from "@/components/pwa-register";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -57,7 +58,10 @@ export default function RootLayout({
         {/* Disable phone number detection on Android */}
         <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className="font-sans antialiased select-none">{children}</body>
+      <body className="font-sans antialiased select-none">
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   );
 }

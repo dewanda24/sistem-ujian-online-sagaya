@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, MoreVertical, ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Clock3, MoreVertical, ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Wifi, WifiOff, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ExamHeaderBarProps {
@@ -15,6 +15,8 @@ export interface ExamHeaderBarProps {
   saveStatusText: string;
   onOpenMenu: () => void;
   onOpenPalette: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 function formatRemainingTime(totalSeconds: number) {
@@ -43,6 +45,8 @@ export function ExamHeaderBar({
   saveStatusText,
   onOpenMenu,
   onOpenPalette,
+  isFullscreen,
+  onToggleFullscreen,
 }: ExamHeaderBarProps) {
   const progressPercent = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
@@ -125,6 +129,23 @@ export function ExamHeaderBar({
               <span>{formatRemainingTime(remainingSeconds)}</span>
             </div>
           </div>
+
+          {/* Fullscreen Button */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="hidden sm:flex size-9 items-center justify-center rounded-xl bg-slate-800/90 text-slate-300 border border-slate-700/80 hover:bg-slate-700 hover:text-white active:scale-90 transition-all"
+              title={isFullscreen ? "Layar Penuh Aktif" : "Masuk Layar Penuh"}
+              aria-label="Toggle Fullscreen"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="size-4 text-emerald-400" />
+              ) : (
+                <Maximize2 className="size-4" />
+              )}
+            </button>
+          )}
 
           {/* Three Dots Menu Button (7.4 Menu Opsi) */}
           <button

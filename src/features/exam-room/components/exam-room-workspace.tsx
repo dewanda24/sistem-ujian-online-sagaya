@@ -8,8 +8,11 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  Lock,
+  Maximize2,
   RefreshCw,
   Send,
+  ShieldAlert,
   Trash2,
   Wifi,
   WifiOff,
@@ -22,7 +25,6 @@ import { ExamOptionsMenuDialog } from "@/features/exam-room/components/exam-opti
 import { ExamQuestionPaletteModal } from "@/features/exam-room/components/exam-question-palette-modal";
 import { ExamInfoDetailDialog } from "@/features/exam-room/components/exam-info-detail-dialog";
 import { ExamConnectionDialog } from "@/features/exam-room/components/exam-connection-dialog";
-import { ExamQuickInfoSection } from "@/features/exam-room/components/exam-quick-info-section";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
 import { formatJakartaDateTime } from "@/lib/date-time";
@@ -170,6 +172,25 @@ export function ExamRoomWorkspace({
     title: string;
     message: string;
   } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(() => {
+    if (typeof document === "undefined") return false;
+    return Boolean(document.fullscreenElement);
+  });
+
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as unknown as { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+        await (elem as unknown as { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch {
+      // Gracefully set active if browser policy restricts
+      setIsFullscreen(true);
+    }
+  }, []);
 
   // Dialog & Modal States
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -462,11 +483,13 @@ export function ExamRoomWorkspace({
       sendExamEvent("visibility_visible");
     };
     const onFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const isFull = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFull);
+      if (!isFull) {
         registerViolation(
           "fullscreen_exit",
-          "Keluar layar penuh terdeteksi",
-          "Lanjutkan ujian dengan tertib di halaman ini.",
+          "Keluar Mode Layar Penuh",
+          "Anda keluar dari mode layar penuh. Ujian terkunci sampai Anda kembali ke layar penuh.",
         );
       }
     };
@@ -474,51 +497,59 @@ export function ExamRoomWorkspace({
       event.preventDefault();
       registerViolation(
         "copy_attempt",
-        "Aksi diblokir",
-        "Copy tidak diizinkan selama ujian berlangsung.",
+        "Aksi Diblokir",
+        "Menyalin teks dilarang selama ujian berlangsung.",
       );
     };
     const onPaste = (event: ClipboardEvent) => {
       event.preventDefault();
       registerViolation(
         "paste_attempt",
-        "Aksi diblokir",
-        "Paste tidak diizinkan selama ujian berlangsung.",
+        "Aksi Diblokir",
+        "Menempelkan teks (paste) dilarang selama ujian berlangsung.",
       );
     };
     const onContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       registerViolation(
         "copy_attempt",
-        "Klik kanan diblokir",
-        "Klik kanan tidak diizinkan selama ujian berlangsung.",
+        "Klik Kanan Diblokir",
+        "Klik kanan dilarang selama ujian berlangsung.",
         { blocked_action: "context_menu" },
       );
     };
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      const blockedShortcut =
+      const isF12 = event.key === "F12" || event.keyCode === 123;
+      const isPrintScreen = key === "printscreen";
+      const isDevToolsCombo =
         (event.ctrlKey || event.metaKey) &&
-        ["a", "c", "p", "s", "u", "v", "x"].includes(key);
-      const blockedPrintScreen = key === "printscreen";
+        event.shiftKey &&
+        ["i", "j", "c", "k"].includes(key);
+      const isBlockedCtrlCombo =
+        (event.ctrlKey || event.metaKey) &&
+        ["a", "c", "p", "s", "u", "v", "x", "w"].includes(key);
 
-      if (!blockedShortcut && !blockedPrintScreen) {
-        return;
+      if (isF12 || isPrintScreen || isDevToolsCombo || isBlockedCtrlCombo) {
+        event.preventDefault();
+        event.stopPropagation();
+        registerViolation(
+          isPrintScreen || key === "c"
+            ? "copy_attempt"
+            : key === "v"
+            ? "paste_attempt"
+            : "tab_blur",
+          "Pintasan Keyboard Diblokir",
+          "Pintasan keyboard atau developer tools dilarang selama ujian.",
+          { blocked_key: event.key },
+        );
       }
-
-      event.preventDefault();
-      registerViolation(
-        key === "v" ? "paste_attempt" : "copy_attempt",
-        "Shortcut diblokir",
-        "Shortcut browser umum tidak diizinkan selama ujian berlangsung.",
-        { blocked_action: event.key },
-      );
     };
     const onBeforePrint = () =>
       registerViolation(
         "copy_attempt",
-        "Print diblokir",
-        "Print tidak diizinkan selama ujian berlangsung.",
+        "Print Diblokir",
+        "Mencetak halaman tidak diizinkan selama ujian berlangsung.",
         { blocked_action: "print" },
       );
     const onBeforeUnload = () => {
@@ -734,7 +765,11 @@ export function ExamRoomWorkspace({
       selected_option_id: optionId,
     };
     setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
-    scheduleSave(questionId, nextAnswer);
+    dirtyAnswerIdsRef.current.add(questionId);
+    persistAnswerDraft(attempt.id, questionId, nextAnswer);
+    window.clearTimeout(debounceTimers.current[questionId]);
+    window.clearTimeout(retryTimers.current[questionId]);
+    void saveAnswer(questionId, nextAnswer);
   };
 
   const handleClearAnswer = (questionId: string) => {
@@ -744,7 +779,11 @@ export function ExamRoomWorkspace({
       essay_answer: "",
     };
     setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
-    scheduleSave(questionId, nextAnswer);
+    dirtyAnswerIdsRef.current.add(questionId);
+    persistAnswerDraft(attempt.id, questionId, nextAnswer);
+    window.clearTimeout(debounceTimers.current[questionId]);
+    window.clearTimeout(retryTimers.current[questionId]);
+    void saveAnswer(questionId, nextAnswer);
   };
 
   const handleEssayChange = (questionId: string, value: string) => {
@@ -851,6 +890,8 @@ export function ExamRoomWorkspace({
         isOnline={isOnline}
         saveSummary={saveSummary}
         saveStatusText={saveStatusText}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={isFullscreen ? undefined : enterFullscreen}
         onOpenMenu={() => setIsOptionsMenuOpen(true)}
         onOpenPalette={() => setIsPaletteModalOpen(true)}
       />
@@ -1306,13 +1347,6 @@ export function ExamRoomWorkspace({
             </form>
           </aside>
         </div>
-
-        {/* 7.8, 7.9, 7.10 Informasi Cepat & Tips Sukses */}
-        <ExamQuickInfoSection
-          remainingSeconds={remainingSeconds}
-          isOnline={isOnline}
-          onOpenSubmitConfirm={() => setIsSubmitConfirmOpen(true)}
-        />
       </main>
 
       {/* MOBILE FLOATING BOTTOM BAR */}
@@ -1517,6 +1551,44 @@ export function ExamRoomWorkspace({
               {warning.count >= maxAntiCheatViolations
                 ? "Mengumpulkan Ujian..."
                 : "Saya Mengerti & Lanjutkan Ujian"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MANDATORY FULLSCREEN LOCKDOWN / ENTRY OVERLAY */}
+      {!isFullscreen && !isReadOnly && !submitLocked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6 text-center text-white shadow-2xl space-y-4">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <Maximize2 className="size-7" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-blue-400 border border-blue-500/30 mb-2">
+                <ShieldAlert className="size-3.5" />
+                <span>Keamanan Ujian CBT</span>
+              </div>
+              <h2 className="text-xl font-black tracking-tight text-white">
+                Wajib Mode Layar Penuh
+              </h2>
+              <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                Untuk mencegah kecurangan dan menjaga integritas ujian, Anda wajib mengerjakan dalam mode Layar Penuh (Fullscreen). Lembar soal terkunci jika Anda keluar dari mode ini.
+              </p>
+            </div>
+
+            {violationCount > 0 && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-300 font-bold">
+                ⚠️ Catatan Pelanggaran: {violationCount} dari {maxAntiCheatViolations}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={enterFullscreen}
+              className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 font-black text-sm text-white shadow-lg hover:bg-blue-500 active:scale-95 transition-all cursor-pointer"
+            >
+              <Maximize2 className="size-4" />
+              <span>Masuk Layar Penuh & Lanjutkan Ujian</span>
             </button>
           </div>
         </div>

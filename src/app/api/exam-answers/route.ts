@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { hasPermission } from "@/lib/auth/has-permission";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 import { saveAnswerSchema } from "@/lib/validations/exam-room";
 import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 
@@ -40,7 +41,8 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data: attempt } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+  const { data: attempt } = await dbClient
     .from("exam_attempts")
     .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_package_id)")
     .eq("id", parsed.data.attempt_id)
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
-  const { error } = await supabase.from("exam_answers").upsert(
+  const { error } = await dbClient.from("exam_answers").upsert(
     {
       exam_attempt_id: parsed.data.attempt_id,
       question_id: parsed.data.question_id,
@@ -106,7 +108,7 @@ export async function POST(request: Request) {
     );
   }
 
-  await supabase
+  await dbClient
     .from("exam_attempts")
     .update({
       active_session_id:
