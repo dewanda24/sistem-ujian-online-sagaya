@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
 
 type ScoredQuestion = {
   question_id: string;
@@ -26,6 +27,8 @@ export async function calculateAndPersistAttemptScore(
   options: { packageId?: string | null; finalize?: boolean } = {},
 ): Promise<AttemptScoreResult> {
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
+
   const packageId =
     options.packageId ?? (await getAttemptPackageId(attemptId)) ?? null;
 
@@ -39,7 +42,7 @@ export async function calculateAndPersistAttemptScore(
     return emptyResult(false, "Paket ujian belum memiliki soal.");
   }
 
-  const { data: answers, error } = await supabase
+  const { data: answers, error } = await dbClient
     .from("exam_answers")
     .select("id, question_id, selected_option_id, essay_answer, awarded_score, needs_manual_grading")
     .eq("exam_attempt_id", attemptId);
@@ -51,6 +54,7 @@ export async function calculateAndPersistAttemptScore(
   const answerMap = new Map(
     (answers ?? []).map((answer) => [answer.question_id as string, answer]),
   );
+
   let autoScore = 0;
   let essayScore = 0;
   let answeredQuestions = 0;
@@ -58,66 +62,80 @@ export async function calculateAndPersistAttemptScore(
   let hasEssay = false;
   let pendingEssay = false;
 
-  await Promise.all(
-    questions.map(async (question) => {
-      const answer = answerMap.get(question.question_id);
-      const isEssay = question.type === "essay";
-      const hasManualScore =
-        answer?.awarded_score !== null && answer?.awarded_score !== undefined;
-      const needsManualGrading =
-        isEssay && Boolean(answer?.id) && !hasManualScore;
-      const answered = Boolean(
-        answer?.selected_option_id || answer?.essay_answer?.trim(),
-      );
+  const answerUpdates: Array<{
+    id: string;
+    is_correct: boolean | null;
+    max_score: number;
+    awarded_score: number | null;
+    needs_manual_grading: boolean;
+  }> = [];
 
-      if (answered) {
-        answeredQuestions += 1;
+  for (const question of questions) {
+    const answer = answerMap.get(question.question_id);
+    const isEssay = question.type === "essay";
+    const hasManualScore =
+      answer?.awarded_score !== null && answer?.awarded_score !== undefined;
+    const needsManualGrading =
+      isEssay && Boolean(answer?.id) && !hasManualScore;
+    const answered = Boolean(
+      answer?.selected_option_id || answer?.essay_answer?.trim(),
+    );
+
+    if (answered) {
+      answeredQuestions += 1;
+    }
+
+    if (isEssay) {
+      hasEssay = true;
+
+      if (needsManualGrading) {
+        pendingEssay = true;
       }
 
-      if (isEssay) {
-        hasEssay = true;
+      essayScore += Number(answer?.awarded_score ?? 0);
 
-        if (needsManualGrading) {
-          pendingEssay = true;
-        }
+      if (answer?.id) {
+        answerUpdates.push({
+          id: answer.id,
+          is_correct: null,
+          max_score: question.point,
+          awarded_score: hasManualScore ? Number(answer.awarded_score) : null,
+          needs_manual_grading: needsManualGrading,
+        });
+      }
+    } else {
+      const isCorrect =
+        Boolean(answer?.selected_option_id) &&
+        answer?.selected_option_id === question.correct_option_id;
+      const awardedScore = isCorrect ? question.point : 0;
 
-        essayScore += Number(answer?.awarded_score ?? 0);
-      } else {
-        const isCorrect =
-          Boolean(answer?.selected_option_id) &&
-          answer?.selected_option_id === question.correct_option_id;
-        const awardedScore = isCorrect ? question.point : 0;
-
-        if (isCorrect) {
-          correctAnswers += 1;
-          autoScore += awardedScore;
-        }
-
-        if (answer?.id) {
-          await supabase
-            .from("exam_answers")
-            .update({
-              is_correct: isCorrect,
-              max_score: question.point,
-              awarded_score: awardedScore,
-              needs_manual_grading: false,
-            })
-            .eq("id", answer.id);
-        }
+      if (isCorrect) {
+        correctAnswers += 1;
+        autoScore += awardedScore;
       }
 
-      if (isEssay && answer?.id) {
-        await supabase
-          .from("exam_answers")
-          .update({
-            is_correct: null,
-            max_score: question.point,
-            needs_manual_grading: needsManualGrading,
-          })
-          .eq("id", answer.id);
+      if (answer?.id) {
+        answerUpdates.push({
+          id: answer.id,
+          is_correct: isCorrect,
+          max_score: question.point,
+          awarded_score: awardedScore,
+          needs_manual_grading: false,
+        });
       }
-    }),
-  );
+    }
+  }
+
+  // Optimize: 1 Single Batch Upsert for all scored answers instead of N individual updates
+  if (answerUpdates.length > 0) {
+    const { error: batchError } = await dbClient
+      .from("exam_answers")
+      .upsert(answerUpdates, { onConflict: "id" });
+
+    if (batchError) {
+      return emptyResult(false, `Gagal menyimpan hasil penilaian: ${batchError.message}`);
+    }
+  }
 
   if (options.finalize && pendingEssay) {
     return {
@@ -141,7 +159,8 @@ export async function calculateAndPersistAttemptScore(
       : "auto_scored";
   const maxScore = sumMaxScore(questions);
   const score = autoScore + essayScore;
-  const { error: updateError } = await supabase
+
+  const { error: updateError } = await dbClient
     .from("exam_attempts")
     .update({
       score,
@@ -172,11 +191,14 @@ export async function calculateAndPersistAttemptScore(
 
 async function getAttemptPackageId(attemptId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+
+  const { data } = await dbClient
     .from("exam_attempts")
     .select("exam_schedules(exam_package_id)")
     .eq("id", attemptId)
     .maybeSingle();
+
   const schedule = Array.isArray(data?.exam_schedules)
     ? data?.exam_schedules[0]
     : data?.exam_schedules;
@@ -186,7 +208,9 @@ async function getAttemptPackageId(attemptId: string) {
 
 async function getPackageQuestions(packageId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const dbClient = getServiceRoleClient() ?? supabase;
+
+  const { data } = await dbClient
     .from("exam_package_questions")
     .select(
       "question_id, point_override, questions(id, type, point, question_options(id, is_correct))",

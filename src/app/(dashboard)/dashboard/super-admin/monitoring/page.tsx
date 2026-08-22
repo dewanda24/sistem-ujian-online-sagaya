@@ -5,7 +5,11 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { getLiveSuperAdminMonitoringData } from "@/features/super-admin/advanced";
+import {
+  getLiveSuperAdminMonitoringData,
+  getSchoolOptionsForSuperAdmin,
+} from "@/features/super-admin/advanced";
+import { LiveMonitoringRefresher } from "@/features/super-admin/components/live-monitoring-refresher";
 import {
   getSuperAdminDashboardData,
   getSuperAdminSchoolRows,
@@ -16,6 +20,8 @@ type PageProps = {
   searchParams: Promise<{
     q?: string;
     status_filter?: string;
+    school_id?: string;
+    exam_q?: string;
   }>;
 };
 
@@ -24,13 +30,17 @@ export default async function SuperAdminMonitoringPage({
 }: PageProps) {
   await requireRole("super_admin");
   const params = await searchParams;
-  const [schools, dashboard, live] = await Promise.all([
+  const [schools, dashboard, live, schoolOptions] = await Promise.all([
     getSuperAdminSchoolRows({
       q: params.q,
       status: params.status_filter,
     }),
     getSuperAdminDashboardData(),
-    getLiveSuperAdminMonitoringData(),
+    getLiveSuperAdminMonitoringData({
+      q: params.exam_q,
+      school_id: params.school_id,
+    }),
+    getSchoolOptionsForSuperAdmin(),
   ]);
   const activeSchools = schools.filter((school) => school.is_active).length;
   const inactiveSchools = schools.length - activeSchools;
@@ -50,83 +60,122 @@ export default async function SuperAdminMonitoringPage({
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Pemantauan Sekolah"
-        description="Pantau status sekolah, jumlah pengguna, aktivitas ujian, dan aktivitas sistem."
+        title="Pemantauan Sistem & Ujian Live"
+        description="Pantau lalu lintas ujian CBT real-time lintas sekolah, peserta online, gangguan sesi, dan status sekolah."
       />
+
+      {/* Auto-Refresh Controller */}
+      <LiveMonitoringRefresher />
 
       <section className="grid gap-4 md:grid-cols-5">
         <DashboardCard
           title="Sekolah Aktif"
           value={String(activeSchools)}
-          description="Sekolah yang dapat menggunakan layanan."
+          description="Dapat menyelenggarakan ujian."
         />
         <DashboardCard
           title="Sekolah Nonaktif"
           value={String(inactiveSchools)}
-          description="Sekolah yang sedang ditangguhkan."
+          description="Layanan ditangguhkan."
         />
         <DashboardCard
-          title="Guru"
+          title="Total Guru"
           value={String(teacherCount)}
           description="Guru lintas sekolah."
         />
         <DashboardCard
-          title="Siswa"
+          title="Total Siswa"
           value={String(studentCount)}
           description="Siswa lintas sekolah."
         />
         <DashboardCard
-          title="Ujian"
+          title="Total Jadwal"
           value={String(examCount)}
-          description="Jadwal ujian lintas sekolah."
+          description="Jadwal ujian terdaftar."
         />
       </section>
 
       <section className="space-y-4">
-        <div>
-          <h2 className="text-base font-semibold">Pemantauan Ujian Langsung</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tampilan baca saja untuk bantuan lintas sekolah. Kontrol peserta tetap dilakukan oleh petugas operasional.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Pemantauan Ujian Langsung (Live CBT Stream)</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Data sesi pengerjaan ujian real-time di seluruh sekolah.
+            </p>
+          </div>
         </div>
+
         <div className="grid gap-4 md:grid-cols-5">
           <DashboardCard
             title="Ujian Berjalan"
             value={String(live.summary.runningExams)}
-            description="Jadwal yang sedang aktif."
+            description="Jadwal aktif saat ini."
           />
           <DashboardCard
             title="Peserta Online"
             value={String(live.summary.onlineParticipants)}
-            description="Terhubung dalam 5 menit terakhir."
+            description="Aktif 5 menit terakhir."
           />
           <DashboardCard
-            title="Peserta Bermasalah"
+            title="Peserta Terkunci"
             value={String(live.summary.problematicParticipants)}
-            description="Waktu habis atau dikunci."
+            description="Melanggar layar / expired."
           />
           <DashboardCard
             title="Gagal Mengumpulkan"
             value={String(live.summary.failedSubmits)}
-            description="Pengerjaan waktu habis atau dibatalkan."
+            description="Waktu habis atau dibatalkan."
           />
           <DashboardCard
-            title="Error Sistem"
+            title="Kejadian Error"
             value={String(live.summary.systemErrors)}
-            description="Kejadian bermasalah."
+            description="Event kendala teknis."
           />
         </div>
+
+        {/* Live Filter Form */}
+        <form className="grid gap-3 rounded-lg border bg-card p-3.5 sm:grid-cols-3">
+          <input
+            name="exam_q"
+            defaultValue={params.exam_q ?? ""}
+            placeholder="Cari judul ujian..."
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs"
+          />
+          <select
+            name="school_id"
+            defaultValue={params.school_id ?? ""}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs"
+          >
+            <option value="">Semua Sekolah</option>
+            {schoolOptions.map((school) => (
+              <option key={school.value} value={school.value}>
+                {school.label}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+              Filter Ujian
+            </button>
+            <Link
+              href="/dashboard/super-admin/monitoring"
+              className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+            >
+              Reset
+            </Link>
+          </div>
+        </form>
+
         <DataTable
           columns={[
             "Sekolah",
             "Ujian",
             "Status",
-            "Peserta",
-            "Online",
-            "Bermasalah",
-            "Gagal Mengumpulkan",
+            "Peserta Terdaftar",
+            "Online (5m)",
+            "Terkunci/Bermasalah",
+            "Gagal Submit",
             "Error",
-            "Kejadian",
           ]}
           isEmpty={live.rows.length === 0}
           empty={
@@ -139,14 +188,14 @@ export default async function SuperAdminMonitoringPage({
               description={
                 live.unavailable
                   ? "Data jadwal, pengerjaan, atau kejadian belum dapat dibaca."
-                  : "Ujian aktif lintas sekolah akan muncul di sini."
+                  : "Ujian aktif lintas sekolah akan muncul secara otomatis di sini."
               }
             />
           }
         >
           {live.rows.map((row) => (
             <tr key={row.id}>
-              <td className="px-4 py-3">{row.schoolName}</td>
+              <td className="px-4 py-3 font-medium text-foreground">{row.schoolName}</td>
               <td className="px-4 py-3">
                 <div className="font-medium">{row.title}</div>
                 <div className="text-xs text-muted-foreground">
@@ -158,13 +207,36 @@ export default async function SuperAdminMonitoringPage({
                     : "-"}
                 </div>
               </td>
-              <td className="px-4 py-3">{row.status}</td>
-              <td className="px-4 py-3">{row.participantCount}</td>
-              <td className="px-4 py-3">{row.onlineParticipants}</td>
-              <td className="px-4 py-3">{row.problematicParticipants}</td>
-              <td className="px-4 py-3">{row.failedSubmits}</td>
-              <td className="px-4 py-3">{row.systemErrors}</td>
-              <td className="px-4 py-3">{row.eventCount}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    row.status === "active" || row.status === "in_progress"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {row.status === "active" ? "Aktif" : row.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 font-semibold">{row.participantCount}</td>
+              <td className="px-4 py-3">
+                <span className="font-semibold text-emerald-600">{row.onlineParticipants}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={row.problematicParticipants > 0 ? "font-semibold text-red-600" : "text-muted-foreground"}>
+                  {row.problematicParticipants}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={row.failedSubmits > 0 ? "font-semibold text-amber-600" : "text-muted-foreground"}>
+                  {row.failedSubmits}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={row.systemErrors > 0 ? "font-semibold text-red-600" : "text-muted-foreground"}>
+                  {row.systemErrors}
+                </span>
+              </td>
             </tr>
           ))}
         </DataTable>

@@ -9,7 +9,7 @@ import {
   isDemoModeEnabled,
 } from "@/lib/auth/demo-mode";
 import { formatJakartaDateTime } from "@/lib/date-time";
-import { loginSchema } from "@/validations/auth";
+import { loginSchema } from "@/lib/validations/auth";
 
 const demoRoles = [
   "admin",

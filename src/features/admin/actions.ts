@@ -43,6 +43,7 @@ function redirectTo(path: string, result: ActionResult): never {
 
 function getOperationalUserRedirectPath(formData: FormData) {
   const path = formString(formData, "redirect_path");
+  const basePath = path.split("?")[0].split("#")[0];
   const allowedPaths = new Set([
     "/dashboard/admin/users",
     "/dashboard/master-data/admins",
@@ -53,8 +54,8 @@ function getOperationalUserRedirectPath(formData: FormData) {
   ]);
 
   if (
-    allowedPaths.has(path) ||
-    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(path)
+    allowedPaths.has(basePath) ||
+    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(basePath)
   ) {
     return path;
   }

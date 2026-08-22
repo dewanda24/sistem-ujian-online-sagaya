@@ -37,7 +37,7 @@ type PageProps = {
 
 export default async function UsersPage({
   searchParams,
-  basePath = "/dashboard/admin/users",
+  basePath = "/dashboard/super-admin/users",
 }: PageProps) {
   const currentUser = await requirePermission("users.view");
   const params = await searchParams;

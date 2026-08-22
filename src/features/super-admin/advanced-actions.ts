@@ -4,11 +4,77 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+import * as XLSX from "xlsx";
+
 import { getFriendlyErrorMessage } from "@/lib/actions/action-result";
 import { logAuditEvent } from "@/lib/audit/log-audit-event";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { getMissingCsvHeaders, parseCsvText } from "@/lib/import/csv";
+
+async function parseUploadedTableFile(file: File): Promise<{ headers: string[]; rows: Array<Record<string, string>> }> {
+  const filename = file.name.toLowerCase();
+  if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) return { headers: [], rows: [] };
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
+    if (rawData.length === 0) return { headers: [], rows: [] };
+    const headers = Object.keys(rawData[0] ?? {});
+    const rows = rawData.map((item) => {
+      const row: Record<string, string> = {};
+      for (const key of headers) {
+        row[key] = String(item[key] ?? "").trim();
+      }
+      return row;
+    });
+    return { headers, rows };
+  }
+
+  const text = await file.text();
+  return parseCsvText(text);
+}
+
+export async function saveGlobalAnnouncementAction(formData: FormData) {
+  const currentUser = await requireRole("super_admin");
+  const supabase = await createClient();
+  const announcement = {
+    enabled: formString(formData, "enabled") === "true",
+    title: formString(formData, "title"),
+    message: formString(formData, "message"),
+    type: formString(formData, "type") || "info",
+  };
+
+  const { error } = await supabase.from("system_settings").upsert(
+    [
+      {
+        key: "announcement",
+        value: announcement,
+        description: "Pengumuman darurat / banner global.",
+        updated_by: currentUser.id,
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    { onConflict: "key" },
+  );
+
+  if (!error) {
+    await logAuditEvent({
+      userId: currentUser.id,
+      action: "system_settings.announcement_update",
+      entityType: "system_settings",
+      payload: announcement,
+    });
+  }
+
+  revalidatePath("/dashboard/super-admin/settings");
+  redirectTo("/dashboard/super-admin/settings", {
+    ok: !error,
+    message: error ? getFriendlyErrorMessage(error) : "Pengumuman global berhasil disimpan.",
+  });
+}
 
 type ActionResult = {
   ok: boolean;
@@ -162,19 +228,18 @@ export async function previewGlobalImportAction(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     redirectTo(redirectPath, {
       ok: false,
-      message: "File CSV wajib diunggah.",
+      message: "File Excel (.xlsx) atau CSV wajib diunggah.",
     });
   }
 
-  const text = await file.text();
-  const parsed = parseCsvText(text);
+  const parsed = await parseUploadedTableFile(file);
   const requiredHeaders = type === "schools" ? schoolHeaders : adminHeaders;
   const missingHeaders = getMissingCsvHeaders(parsed.headers, requiredHeaders);
 
   if (missingHeaders.length > 0) {
     redirectTo(redirectPath, {
       ok: false,
-      message: `Header wajib belum lengkap: ${missingHeaders.join(", ")}.`,
+      message: `Header wajib belum lengkap: ${missingHeaders.join(", ")}. Gunakan template yang disediakan.`,
     });
   }
 

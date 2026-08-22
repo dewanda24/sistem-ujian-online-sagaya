@@ -4,7 +4,10 @@ import { hasPermission } from "@/lib/auth/has-permission";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceRoleClient } from "@/lib/supabase/admin";
-import { saveAnswerSchema } from "@/lib/validations/exam-room";
+import {
+  saveAnswerSchema,
+  saveBatchAnswersSchema,
+} from "@/lib/validations/exam-room";
 import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 
 type AttemptTiming = {
@@ -14,7 +17,17 @@ type AttemptTiming = {
   locked_at?: string | null;
   active_session_id?: string | null;
   active_session_seen_at?: string | null;
-  exam_schedules?: { end_at?: string | null } | Array<{ end_at?: string | null }> | null;
+  exam_schedules?: { end_at?: string | null; exam_package_id?: string | null } | Array<{ end_at?: string | null; exam_package_id?: string | null }> | null;
+};
+
+type NormalizedAnswerPayload = {
+  attempt_id: string;
+  session_id?: string;
+  answers: Array<{
+    question_id: string;
+    selected_option_id?: string;
+    essay_answer?: string;
+  }>;
 };
 
 export async function POST(request: Request) {
@@ -28,13 +41,40 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const parsed = saveAnswerSchema.safeParse(body);
 
-  if (!parsed.success) {
+  let normalized: NormalizedAnswerPayload | null = null;
+
+  // Try batch schema first
+  const batchParsed = saveBatchAnswersSchema.safeParse(body);
+  if (batchParsed.success) {
+    normalized = {
+      attempt_id: batchParsed.data.attempt_id,
+      session_id: batchParsed.data.session_id,
+      answers: batchParsed.data.answers,
+    };
+  } else {
+    // Fallback to single answer schema
+    const singleParsed = saveAnswerSchema.safeParse(body);
+    if (singleParsed.success) {
+      normalized = {
+        attempt_id: singleParsed.data.attempt_id,
+        session_id: singleParsed.data.session_id,
+        answers: [
+          {
+            question_id: singleParsed.data.question_id,
+            selected_option_id: singleParsed.data.selected_option_id,
+            essay_answer: singleParsed.data.essay_answer,
+          },
+        ],
+      };
+    }
+  }
+
+  if (!normalized) {
     return NextResponse.json(
       {
         ok: false,
-        message: parsed.error.issues[0]?.message ?? "Jawaban tidak valid.",
+        message: "Format payload jawaban tidak valid.",
       },
       { status: 400 },
     );
@@ -45,14 +85,14 @@ export async function POST(request: Request) {
   const { data: attempt } = await dbClient
     .from("exam_attempts")
     .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_package_id)")
-    .eq("id", parsed.data.attempt_id)
+    .eq("id", normalized.attempt_id)
     .eq("student_id", user!.id)
     .eq("status", "in_progress")
     .maybeSingle();
 
   if (!attempt) {
     return NextResponse.json(
-      { ok: false, message: "Pengerjaan tidak aktif." },
+      { ok: false, message: "Pengerjaan tidak aktif atau sudah selesai." },
       { status: 409 },
     );
   }
@@ -64,7 +104,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (hasActiveSessionConflict(attempt as AttemptTiming, parsed.data.session_id)) {
+  if (hasActiveSessionConflict(attempt as AttemptTiming, normalized.session_id)) {
     return NextResponse.json(
       { ok: false, message: "Pengerjaan sedang aktif di perangkat atau tab lain." },
       { status: 409 },
@@ -72,7 +112,10 @@ export async function POST(request: Request) {
   }
 
   if (isAttemptExpired(attempt as AttemptTiming)) {
-    const scheduleRelation = attempt.exam_schedules as any;
+    const scheduleRelation = attempt.exam_schedules as
+      | { exam_package_id?: string | null }
+      | Array<{ exam_package_id?: string | null }>
+      | null;
     const packageId = Array.isArray(scheduleRelation)
       ? scheduleRelation[0]?.exam_package_id
       : scheduleRelation?.exam_package_id;
@@ -87,19 +130,18 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
-  const { error } = await dbClient.from("exam_answers").upsert(
-    {
-      exam_attempt_id: parsed.data.attempt_id,
-      question_id: parsed.data.question_id,
-      selected_option_id: parsed.data.selected_option_id ?? null,
-      essay_answer: parsed.data.essay_answer || null,
-      answered_at: now,
-      saved_at: now,
-    },
-    {
-      onConflict: "exam_attempt_id,question_id",
-    },
-  );
+  const rows = normalized.answers.map((ans) => ({
+    exam_attempt_id: normalized.attempt_id,
+    question_id: ans.question_id,
+    selected_option_id: ans.selected_option_id ?? null,
+    essay_answer: ans.essay_answer || null,
+    answered_at: now,
+    saved_at: now,
+  }));
+
+  const { error } = await dbClient.from("exam_answers").upsert(rows, {
+    onConflict: "exam_attempt_id,question_id",
+  });
 
   if (error) {
     return NextResponse.json(
@@ -112,17 +154,18 @@ export async function POST(request: Request) {
     .from("exam_attempts")
     .update({
       active_session_id:
-        parsed.data.session_id ?? (attempt as AttemptTiming).active_session_id,
-      active_session_seen_at: parsed.data.session_id
+        normalized.session_id ?? (attempt as AttemptTiming).active_session_id,
+      active_session_seen_at: normalized.session_id
         ? now
         : (attempt as AttemptTiming).active_session_seen_at,
       last_saved_at: now,
       last_activity_at: now,
     })
-    .eq("id", parsed.data.attempt_id);
+    .eq("id", normalized.attempt_id);
 
   return NextResponse.json({
     ok: true,
+    saved_count: rows.length,
     saved_at: now,
   });
 }
@@ -163,9 +206,10 @@ function isAttemptExpired(attempt: AttemptTiming) {
 
 async function expireAttempt(attemptId: string, participantId: string) {
   const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
   const now = new Date().toISOString();
 
-  await supabase
+  await dbClient
     .from("exam_attempts")
     .update({
       status: "expired",
@@ -175,7 +219,7 @@ async function expireAttempt(attemptId: string, participantId: string) {
     .eq("id", attemptId)
     .eq("status", "in_progress");
 
-  await supabase
+  await dbClient
     .from("exam_participants")
     .update({
       status: "expired",

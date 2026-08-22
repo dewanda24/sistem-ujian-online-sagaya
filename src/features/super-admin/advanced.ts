@@ -76,6 +76,13 @@ export type CbtDefaultSettings = {
   fullscreen_violation_limit: number;
 };
 
+export type GlobalAnnouncementSettings = {
+  enabled: boolean;
+  title: string;
+  message: string;
+  type: "info" | "warning" | "danger" | "success";
+};
+
 function firstRelation<T>(value: Relation<T>): T | null {
   if (Array.isArray(value)) {
     return value[0] ?? null;
@@ -119,18 +126,28 @@ function cbtDefaults(): CbtDefaultSettings {
   };
 }
 
+function announcementDefaults(): GlobalAnnouncementSettings {
+  return {
+    enabled: false,
+    title: "",
+    message: "",
+    type: "info",
+  };
+}
+
 export async function getSystemSettings() {
   await requireRole("super_admin");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("system_settings")
     .select("key, value, description, updated_at")
-    .in("key", ["platform", "cbt_defaults"]);
+    .in("key", ["platform", "cbt_defaults", "announcement"]);
 
   if (error || !data) {
     return {
       platform: platformDefaults(),
       cbt: cbtDefaults(),
+      announcement: announcementDefaults(),
       unavailable: true,
       updatedAt: null as string | null,
     };
@@ -139,6 +156,7 @@ export async function getSystemSettings() {
   const rows = data as SystemSettingRow[];
   const platform = rows.find((row) => row.key === "platform")?.value ?? {};
   const cbt = rows.find((row) => row.key === "cbt_defaults")?.value ?? {};
+  const announcement = rows.find((row) => row.key === "announcement")?.value ?? {};
 
   return {
     platform: {
@@ -149,6 +167,10 @@ export async function getSystemSettings() {
       ...cbtDefaults(),
       ...cbt,
     } as CbtDefaultSettings,
+    announcement: {
+      ...announcementDefaults(),
+      ...announcement,
+    } as GlobalAnnouncementSettings,
     unavailable: false,
     updatedAt: rows
       .map((row) => row.updated_at)
@@ -232,18 +254,35 @@ export async function getSchoolOptionsForSuperAdmin() {
   }));
 }
 
-export async function getLiveSuperAdminMonitoringData() {
+export async function getLiveSuperAdminMonitoringData(
+  filters: { q?: string; school_id?: string; status?: string } = {},
+) {
   await requireRole("super_admin");
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("exam_schedules")
     .select(
       "id, title, status, start_at, end_at, school_id, schools(name), exam_attempts(id, status, last_activity_at, locked_at), exam_events(id, type, event_type, created_at)",
     )
-    .in("status", ["active", "in_progress", "scheduled"])
     .is("deleted_at", null)
     .order("start_at", { ascending: false })
-    .limit(50);
+    .limit(100);
+
+  if (filters.status) {
+    query = query.eq("status", filters.status);
+  } else {
+    query = query.in("status", ["active", "in_progress", "scheduled"]);
+  }
+
+  if (filters.school_id) {
+    query = query.eq("school_id", filters.school_id);
+  }
+
+  if (filters.q?.trim()) {
+    query = query.ilike("title", `%${filters.q.trim()}%`);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return {

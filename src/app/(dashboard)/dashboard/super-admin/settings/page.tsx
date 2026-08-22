@@ -5,6 +5,7 @@ import { ActionToast } from "@/components/master-data/action-toast";
 import { OperationalResetCard } from "@/features/operational-reset/components/operational-reset-card";
 import { saveSystemSettingsAction } from "@/features/super-admin/advanced-actions";
 import { getSystemSettings } from "@/features/super-admin/advanced";
+import { GlobalAnnouncementCard } from "@/features/super-admin/components/global-announcement-card";
 import { getEnvStatus } from "@/lib/env";
 import { requireRole } from "@/lib/auth/require-role";
 
@@ -30,9 +31,11 @@ export default async function SystemSettingsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
       <DashboardPageHeader
-        title="Pengaturan Sistem"
-        description="Konfigurasi runtime dan kesiapan produksi. Nilai rahasia tidak ditampilkan."
+        title="Pengaturan Sistem & Keamanan Global"
+        description="Konfigurasi runtime, kebijakan default CBT, branding aplikasi, dan pengumuman darurat."
       />
+
+      <GlobalAnnouncementCard announcement={settings.announcement} />
 
       <form action={saveSystemSettingsAction} className="space-y-4">
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

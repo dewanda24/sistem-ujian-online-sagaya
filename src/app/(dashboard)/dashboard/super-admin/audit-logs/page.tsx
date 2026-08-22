@@ -69,6 +69,8 @@ function summarizePayload(value: unknown) {
   return parts.length > 0 ? parts.join(" - ") : "Perubahan tersimpan";
 }
 
+import { AuditLogDetailButton } from "@/features/super-admin/components/audit-log-detail-modal";
+
 export default async function AuditLogsPage({
   searchParams,
   basePath = "/dashboard/super-admin/audit-logs",
@@ -100,25 +102,25 @@ export default async function AuditLogsPage({
   return (
     <div className="space-y-6">
       <DashboardPageHeader
-        title="Audit Logs"
-        description="Lihat jejak aktivitas sistem dan perubahan data sensitif."
+        title="Audit Logs & Jejak Keamanan"
+        description="Lihat jejak aktivitas sensitif seluruh sistem, identitas pengguna, dan detail payload perubahan."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
-          title="Kejadian"
+          title="Kejadian Tercatat"
           value={String(auditLogs.rows.length)}
           description="Jumlah event sesuai filter."
         />
         <DashboardCard
-          title="Pengguna"
+          title="Pengguna Aktif"
           value={String(uniqueUsers)}
-          description="Pengguna unik yang tercatat."
+          description="Pengguna unik yang melakukan aktivitas."
         />
         <DashboardCard
-          title="Kejadian Terbaru"
+          title="Aktivitas Terkini"
           value={latestEvent}
-          description="Aktivitas terbaru pada hasil filter."
+          description="Waktu rekaman log terbaru."
         />
       </section>
 
@@ -162,7 +164,7 @@ export default async function AuditLogsPage({
           <option value="100">100 data</option>
           <option value="200">200 data</option>
           <option value="300">300 data</option>
-          </select>
+        </select>
         <input
           name="date_from"
           type="date"
@@ -187,25 +189,25 @@ export default async function AuditLogsPage({
               href={`data:application/json;charset=utf-8,${encodeURIComponent(
                 JSON.stringify(auditLogs.rows, null, 2),
               )}`}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              className="rounded-md border px-3.5 py-2 text-xs font-medium hover:bg-muted"
             >
-              Unduh
+              Unduh JSON
             </a>
             <a
               href={basePath}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              className="rounded-md border px-3.5 py-2 text-xs font-medium hover:bg-muted"
             >
               Reset
             </a>
-            <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
-              Filter
+            <button className="rounded-md bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+              Filter Log
             </button>
           </div>
         </div>
       </form>
 
       <DataTable
-        columns={["Waktu", "Aktivitas", "Data", "Pengguna", "Ringkasan"]}
+        columns={["Waktu", "Aktivitas", "Data", "Pengguna", "Ringkasan", "Aksi"]}
         isEmpty={auditLogs.rows.length === 0}
         empty={
           <EmptyState
@@ -232,11 +234,14 @@ export default async function AuditLogsPage({
               {formatAuditAction(item.action)}
             </td>
             <td className="px-4 py-3">{formatEntityType(item.entity_type)}</td>
-            <td className="px-4 py-3 font-mono text-xs">
+            <td className="px-4 py-3 font-mono text-xs text-muted-foreground truncate max-w-28">
               {item.user_id ?? "-"}
             </td>
-            <td className="max-w-md px-4 py-3 text-sm text-muted-foreground">
+            <td className="max-w-md px-4 py-3 text-xs text-muted-foreground">
               {summarizePayload(item.payload)}
+            </td>
+            <td className="px-4 py-3">
+              <AuditLogDetailButton item={item} />
             </td>
           </tr>
         ))}

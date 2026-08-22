@@ -21,6 +21,27 @@ export const saveAnswerSchema = z.object({
   essay_answer: z.string().optional(),
 });
 
+export const saveBatchAnswersSchema = z.object({
+  attempt_id: uuidField,
+  session_id: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(12).max(128).optional(),
+  ),
+  answers: z
+    .array(
+      z.object({
+        question_id: uuidField,
+        selected_option_id: z.preprocess(
+          (value) => (value === "" ? undefined : value),
+          uuidField.optional(),
+        ),
+        essay_answer: z.string().optional(),
+      }),
+    )
+    .min(1)
+    .max(250),
+});
+
 export const submitAttemptSchema = z.object({
   attempt_id: uuidField,
   session_id: z.preprocess(

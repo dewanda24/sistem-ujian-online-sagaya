@@ -76,11 +76,12 @@ function redirectTo(path: string, result: ActionResult): never {
 
 function getSchoolRedirectPath(formData: FormData) {
   const path = formString(formData, "redirect_path");
+  const basePath = path.split("?")[0].split("#")[0];
 
   if (
-    path === SUPER_ADMIN_SCHOOLS_PATH ||
-    path === `${SUPER_ADMIN_SCHOOLS_PATH}/new` ||
-    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(path)
+    basePath === SUPER_ADMIN_SCHOOLS_PATH ||
+    basePath === `${SUPER_ADMIN_SCHOOLS_PATH}/new` ||
+    /^\/dashboard\/super-admin\/schools\/[0-9a-f-]{36}$/i.test(basePath)
   ) {
     return path;
   }

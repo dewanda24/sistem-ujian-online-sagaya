@@ -177,7 +177,7 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
       </section>
 
       <DataTable
-        columns={["Waktu", "Jenis", "Status", "Operator", "Restore"]}
+        columns={["Waktu", "Jenis", "Status", "Rincian Data", "Unduh", "Pemulihan"]}
         isEmpty={backupJobs.rows.length === 0}
         empty={
           <EmptyState
@@ -223,6 +223,19 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
                 .join(", ") || "-"}
             </td>
             <td className="px-4 py-3">
+              {job.status === "completed" || job.status === "restored" ? (
+                <a
+                  href={`/api/super-admin/backup/${job.id}/download`}
+                  download
+                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted"
+                >
+                  Unduh JSON
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground">-</span>
+              )}
+            </td>
+            <td className="px-4 py-3">
               {job.status === "completed" ? (
                 <form action={restoreBackupAction}>
                   <input type="hidden" name="backup_id" value={job.id} />
@@ -230,6 +243,7 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
                     confirmMessage="Restore terbatas akan memulihkan pengaturan global dan metadata sekolah bila backup per sekolah. Lanjutkan?"
                     confirmTitle="Konfirmasi Restore Terbatas"
                     variant="danger"
+                    className="text-xs"
                   >
                     Restore Terbatas
                   </ConfirmSubmitButton>

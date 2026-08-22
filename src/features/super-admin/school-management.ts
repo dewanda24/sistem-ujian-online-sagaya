@@ -345,6 +345,7 @@ export async function getSuperAdminSchoolDetail(id: string) {
     { data: schedules },
     backupJobs,
     importJobs,
+    { data: auditLogs },
   ] = await Promise.all([
     supabase
       .from("schools")
@@ -359,13 +360,22 @@ export async function getSuperAdminSchoolDetail(id: string) {
         "id, auth_user_id, username, email, status, school_id, roles(name, label), user_profiles(full_name, phone)",
       )
       .eq("school_id", id),
-    supabase.from("classes").select("id, school_id").eq("school_id", id),
-    supabase.from("subjects").select("id, school_id").eq("school_id", id),
+    supabase
+      .from("classes")
+      .select("id, name, level, school_id")
+      .eq("school_id", id)
+      .order("name"),
+    supabase
+      .from("subjects")
+      .select("id, name, code, school_id")
+      .eq("school_id", id)
+      .order("name"),
     supabase
       .from("exam_schedules")
-      .select("id, school_id, status")
+      .select("id, school_id, title, status, start_at, end_at, duration_minutes, created_at")
       .eq("school_id", id)
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .order("start_at", { ascending: false }),
     supabase
       .from("super_admin_backup_jobs")
       .select("school_id, status")
@@ -377,6 +387,11 @@ export async function getSuperAdminSchoolDetail(id: string) {
       .select("id, status")
       .eq("status", "failed")
       .limit(1),
+    supabase
+      .from("audit_logs")
+      .select("id, action, entity_type, entity_id, user_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(15),
   ]);
 
   if (!school) {
@@ -385,12 +400,25 @@ export async function getSuperAdminSchoolDetail(id: string) {
 
   const schoolRow = school as SchoolRow;
   const userRows = (users ?? []) as UserRow[];
+  const classRows = (classes ?? []) as Array<{ id: string; name: string; level?: string | null; school_id: string | null }>;
+  const subjectRows = (subjects ?? []) as Array<{ id: string; name: string; code?: string | null; school_id: string | null }>;
+  const scheduleRows = (schedules ?? []) as Array<{
+    id: string;
+    school_id: string | null;
+    title?: string | null;
+    status?: string | null;
+    start_at?: string | null;
+    end_at?: string | null;
+    duration_minutes?: number | null;
+    created_at?: string | null;
+  }>;
+
   const statsBySchool = applyCounts(
     [schoolRow],
     userRows,
-    (classes ?? []) as SchoolScopedIdRow[],
-    (subjects ?? []) as SchoolScopedIdRow[],
-    (schedules ?? []) as Array<SchoolScopedIdRow & { status?: string | null }>,
+    classRows,
+    subjectRows,
+    scheduleRows,
   );
   const stats = statsBySchool.get(schoolRow.id) ?? emptyStats();
   const operational = buildSchoolOperationalRow({
@@ -404,18 +432,24 @@ export async function getSuperAdminSchoolDetail(id: string) {
     importFailed: Boolean(importJobs.data?.length),
   });
 
+  const formattedUsers = userRows.map((user) => ({
+    ...user,
+    role: firstRelation(user.roles),
+    profile: firstRelation(user.user_profiles),
+  }));
+
   return {
     school: schoolRow,
     stats,
     readiness: operational.readiness,
     health: operational.health,
-    admins: userRows
-      .filter((user) => firstRelation(user.roles)?.name === "admin")
-      .map((user) => ({
-        ...user,
-        role: firstRelation(user.roles),
-        profile: firstRelation(user.user_profiles),
-      })),
+    admins: formattedUsers.filter((user) => user.role?.name === "admin"),
+    teachers: formattedUsers.filter((user) => user.role?.name === "teacher"),
+    students: formattedUsers.filter((user) => user.role?.name === "student"),
+    classes: classRows,
+    subjects: subjectRows,
+    schedules: scheduleRows,
+    auditLogs: ((auditLogs ?? []) as AuditLogRow[]),
   };
 }
 

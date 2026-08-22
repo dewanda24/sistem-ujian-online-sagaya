@@ -83,8 +83,8 @@ export default async function SuperAdminImportExportPage({
         <div className="space-y-6">
           <section className="grid gap-4 lg:grid-cols-2">
             <DashboardCard
-              title="Pratinjau Import"
-              description="Upload CSV untuk validasi template sebelum data diproses."
+              title="Pratinjau Import (Excel / CSV)"
+              description="Unggah berkas Excel (.xlsx) atau CSV untuk validasi template sebelum data diproses."
             >
               <form action={previewGlobalImportAction} className="space-y-3 text-sm">
                 <label className="grid gap-1">
@@ -94,32 +94,32 @@ export default async function SuperAdminImportExportPage({
                   <select
                     name="type"
                     defaultValue={activeType}
-                    className="rounded-md border px-3 py-2"
+                    className="rounded-md border px-3 py-2 text-sm"
                   >
-                    <option value="schools">Sekolah</option>
-                    <option value="school_admins">Admin Sekolah</option>
+                    <option value="schools">Data Sekolah</option>
+                    <option value="school_admins">Akun Admin Sekolah</option>
                   </select>
                 </label>
                 <input
                   name="file"
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   className="block w-full rounded-md border px-3 py-2 text-sm"
                   required
                 />
                 <ConfirmSubmitButton
-                  confirmMessage="Validasi file dan buat pratinjau import?"
+                  confirmMessage="Validasi berkas dan buat pratinjau import?"
                   confirmTitle="Konfirmasi Pratinjau Import"
                   variant="default"
                 >
-                  Pratinjau Import
+                  Validasi & Pratinjau
                 </ConfirmSubmitButton>
               </form>
             </DashboardCard>
 
             <DashboardCard
-              title="Template CSV"
-              description="Gunakan header persis seperti template."
+              title="Template Format Data"
+              description="Gunakan susunan header persis seperti template di bawah ini."
             >
               <pre className="max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs leading-5">
                 {templates[activeType]}
@@ -127,9 +127,9 @@ export default async function SuperAdminImportExportPage({
               <a
                 download={`template-${activeType}.csv`}
                 href={`data:text/csv;charset=utf-8,${encodeURIComponent(templates[activeType])}`}
-                className="mt-3 inline-flex rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+                className="mt-3 inline-flex rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted"
               >
-                Unduh Template
+                Unduh Template (.CSV)
               </a>
             </DashboardCard>
           </section>

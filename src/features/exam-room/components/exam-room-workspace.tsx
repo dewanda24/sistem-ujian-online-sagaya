@@ -232,18 +232,21 @@ export function ExamRoomWorkspace({
   const currentItem = questions[activeIndex];
   const currentQuestion = currentItem?.question;
 
-  const toggleFlagQuestion = (questionId: string) => {
-    setFlaggedQuestions((prev) => {
-      const next = new Set(prev);
-      if (next.has(questionId)) {
-        next.delete(questionId);
-      } else {
-        next.add(questionId);
-      }
-      persistFlaggedQuestions(attempt.id, next);
-      return next;
-    });
-  };
+  const toggleFlagQuestion = useCallback(
+    (questionId: string) => {
+      setFlaggedQuestions((prev) => {
+        const next = new Set(prev);
+        if (next.has(questionId)) {
+          next.delete(questionId);
+        } else {
+          next.add(questionId);
+        }
+        persistFlaggedQuestions(attempt.id, next);
+        return next;
+      });
+    },
+    [attempt.id],
+  );
 
   const handleFontSizeChange = (size: FontSizeOption) => {
     setFontSize(size);
@@ -702,16 +705,67 @@ export function ExamRoomWorkspace({
       return true;
     }
 
-    const results = await Promise.all(
-      dirtyIds.map((questionId) => {
-        const answer = answersRef.current[questionId];
-        if (!answer) return Promise.resolve(true);
-        return saveAnswer(questionId, answer);
-      }),
-    );
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      return false;
+    }
 
-    return results.every(Boolean);
-  }, [saveAnswer]);
+    if (dirtyIds.length === 1) {
+      const qId = dirtyIds[0];
+      const ans = answersRef.current[qId];
+      if (!ans) return true;
+      return saveAnswer(qId, ans);
+    }
+
+    try {
+      dirtyIds.forEach((id) => {
+        setSaveStatus((current) => ({ ...current, [id]: "saving" }));
+      });
+
+      const batchPayload = {
+        attempt_id: attempt.id,
+        session_id: examSessionId,
+        answers: dirtyIds
+          .map((id) => {
+            const a = answersRef.current[id];
+            if (!a) return null;
+            return {
+              question_id: id,
+              selected_option_id: a.selected_option_id ?? undefined,
+              essay_answer: a.essay_answer ?? undefined,
+            };
+          })
+          .filter(Boolean),
+      };
+
+      const response = await fetch("/api/exam-answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(batchPayload),
+      });
+
+      if (!response.ok) {
+        dirtyIds.forEach((id) => {
+          setSaveStatus((current) => ({ ...current, [id]: "error" }));
+        });
+        return false;
+      }
+
+      dirtyIds.forEach((id) => {
+        dirtyAnswerIdsRef.current.delete(id);
+        clearAnswerDraft(attempt.id, id);
+        setSaveStatus((current) => ({ ...current, [id]: "saved" }));
+      });
+
+      setLastSavedAt(new Date().toLocaleTimeString("id-ID"));
+      return true;
+    } catch {
+      dirtyIds.forEach((id) => {
+        setSaveStatus((current) => ({ ...current, [id]: "error" }));
+      });
+      return false;
+    }
+  }, [attempt.id, examSessionId, saveAnswer]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -758,19 +812,22 @@ export function ExamRoomWorkspace({
     [attempt.id, isReadOnly, saveAnswer],
   );
 
-  const handleOptionChange = (questionId: string, optionId: string) => {
-    if (isReadOnly) return;
-    const nextAnswer: AnswerState = {
-      ...answers[questionId],
-      selected_option_id: optionId,
-    };
-    setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
-    dirtyAnswerIdsRef.current.add(questionId);
-    persistAnswerDraft(attempt.id, questionId, nextAnswer);
-    window.clearTimeout(debounceTimers.current[questionId]);
-    window.clearTimeout(retryTimers.current[questionId]);
-    void saveAnswer(questionId, nextAnswer);
-  };
+  const handleOptionChange = useCallback(
+    (questionId: string, optionId: string) => {
+      if (isReadOnly) return;
+      const nextAnswer: AnswerState = {
+        ...answersRef.current[questionId],
+        selected_option_id: optionId,
+      };
+      setAnswers((current) => ({ ...current, [questionId]: nextAnswer }));
+      dirtyAnswerIdsRef.current.add(questionId);
+      persistAnswerDraft(attempt.id, questionId, nextAnswer);
+      window.clearTimeout(debounceTimers.current[questionId]);
+      window.clearTimeout(retryTimers.current[questionId]);
+      void saveAnswer(questionId, nextAnswer);
+    },
+    [attempt.id, isReadOnly, saveAnswer],
+  );
 
   const handleClearAnswer = (questionId: string) => {
     if (isReadOnly) return;
@@ -808,11 +865,102 @@ export function ExamRoomWorkspace({
       .filter(([, st]) => st === "error")
       .map(([id]) => id);
 
-    failedIds.forEach((id) => {
-      const ans = answers[id];
-      if (ans) void saveAnswer(id, ans);
-    });
+    if (failedIds.length === 0) return;
+
+    failedIds.forEach((id) => dirtyAnswerIdsRef.current.add(id));
+    void flushPendingAnswersBeforeSubmit();
   };
+
+  // Auto-scroll smoothly to top of question on question change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeIndex]);
+
+  // Keyboard navigation for students (ANBK / CBT Standard: A-E, 1-5, Arrows, R)
+  useEffect(() => {
+    if (
+      isReadOnly ||
+      isSubmitConfirmOpen ||
+      isOptionsMenuOpen ||
+      isPaletteModalOpen ||
+      isInfoDialogOpen ||
+      isConnectionDialogOpen ||
+      warning
+    ) {
+      return;
+    }
+
+    const handleStudentKeyboardNav = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === "textarea" || tagName === "input" || target?.isContentEditable) {
+        return;
+      }
+
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      // Navigate Prev / Next
+      if (key === "arrowleft" || key === "p") {
+        event.preventDefault();
+        setActiveIndex((prev) => Math.max(0, prev - 1));
+        return;
+      }
+
+      if (key === "arrowright" || key === "n") {
+        event.preventDefault();
+        setActiveIndex((prev) => Math.min(questions.length - 1, prev + 1));
+        return;
+      }
+
+      // Toggle Ragu-Ragu
+      if (key === "r" && currentQuestion) {
+        event.preventDefault();
+        toggleFlagQuestion(currentQuestion.id);
+        return;
+      }
+
+      // Quick select options A-E or 1-5
+      if (currentQuestion?.type === "multiple_choice" && currentQuestion.question_options) {
+        const sortedOptions = [...currentQuestion.question_options].sort(
+          (a, b) => a.order_number - b.order_number,
+        );
+
+        let targetOptionIndex = -1;
+        if (key === "a" || key === "1") targetOptionIndex = 0;
+        else if (key === "b" || key === "2") targetOptionIndex = 1;
+        else if (key === "c" || key === "3") targetOptionIndex = 2;
+        else if (key === "d" || key === "4") targetOptionIndex = 3;
+        else if (key === "e" || key === "5") targetOptionIndex = 4;
+
+        if (targetOptionIndex >= 0 && targetOptionIndex < sortedOptions.length) {
+          const selectedOpt = sortedOptions[targetOptionIndex];
+          if (selectedOpt) {
+            event.preventDefault();
+            handleOptionChange(currentQuestion.id, selectedOpt.id);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleStudentKeyboardNav);
+    return () => window.removeEventListener("keydown", handleStudentKeyboardNav);
+  }, [
+    isReadOnly,
+    isSubmitConfirmOpen,
+    isOptionsMenuOpen,
+    isPaletteModalOpen,
+    isInfoDialogOpen,
+    isConnectionDialogOpen,
+    warning,
+    questions.length,
+    currentQuestion,
+    toggleFlagQuestion,
+    handleOptionChange,
+  ]);
 
   useEffect(() => {
     if (restoredDraftRef.current || isReadOnly) {
@@ -877,7 +1025,7 @@ export function ExamRoomWorkspace({
   return (
     <div
       ref={examRoomRef}
-      className="min-h-screen bg-[#F8FAFC] pb-24 select-none md:pb-8"
+      className="min-h-screen bg-[#F8FAFC] pb-24 select-none md:pb-8 touch-pan-y overscroll-y-contain"
     >
       {/* 7.7 STATUS UJIAN (SELALU TERLIHAT) Header Bar */}
       <ExamHeaderBar
@@ -1136,8 +1284,8 @@ export function ExamRoomWorkspace({
               </div>
             </div>
 
-            {/* 7.6 DAFTAR SOAL (TENGAH LAYAR) In-Page Navigation Bar */}
-            <div className="mt-8 border-t border-slate-100 pt-5 flex items-center justify-between gap-3">
+            {/* 7.6 DAFTAR SOAL (TENGAH LAYAR) In-Page Navigation Bar (Hidden on Mobile to prevent double navigation) */}
+            <div className="mt-8 border-t border-slate-100 pt-5 hidden md:flex items-center justify-between gap-3">
               {/* Prev Button */}
               <button
                 type="button"
@@ -1829,6 +1977,54 @@ function firstRelation<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
+function QuestionImageWithRetry({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const handleRetry = () => {
+    setHasError(false);
+    setRetryCount((prev) => prev + 1);
+  };
+
+  const imageSrc =
+    retryCount > 0
+      ? `${src}${src.includes("?") ? "&" : "?"}_retry=${retryCount}`
+      : src;
+
+  if (hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-5 text-center text-amber-900">
+        <AlertTriangle className="size-5 text-amber-600" />
+        <div>
+          <p className="text-xs font-bold">Gambar belum berhasil dimuat</p>
+          <p className="text-[11px] text-amber-800 mt-0.5">
+            Kendala koneksi jaringan. Ketuk tombol di bawah untuk memuat ulang.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRetry}
+          className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-amber-700 active:scale-95 transition-all"
+        >
+          <RefreshCw className="size-3.5" />
+          <span>Muat Ulang Gambar</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageSrc}
+      alt={alt}
+      onError={() => setHasError(true)}
+      loading="eager"
+      className="max-h-80 w-full rounded-2xl border border-slate-200 object-contain shadow-2xs bg-white"
+    />
+  );
+}
+
 function QuestionContent({ content }: { content: string }) {
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
 
@@ -1839,12 +2035,10 @@ function QuestionContent({ content }: { content: string }) {
 
         if (isImageUrl(trimmed)) {
           return (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <QuestionImageWithRetry
               key={`${trimmed}-${index}`}
               src={trimmed}
               alt={`Media soal ${index + 1}`}
-              className="max-h-80 w-full rounded-2xl border border-slate-200 object-contain shadow-2xs"
             />
           );
         }

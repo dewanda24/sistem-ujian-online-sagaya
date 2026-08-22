@@ -7,47 +7,81 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
-import { getBackupStatusSummary } from "@/features/super-admin/advanced";
+import {
+  getBackupStatusSummary,
+  getLiveSuperAdminMonitoringData,
+  getSystemSettings,
+} from "@/features/super-admin/advanced";
 import { getSuperAdminDashboardData } from "@/features/super-admin/school-management";
 import { requireRole } from "@/lib/auth/require-role";
 
 export default async function SuperAdminDashboardPage() {
   await requireRole("super_admin");
-  const [{ summary, schools, attentionSchools, notifications }, backupStatus] =
-    await Promise.all([
-      getSuperAdminDashboardData(),
-      getBackupStatusSummary(),
-    ]);
+  const [
+    { summary, schools, attentionSchools, notifications },
+    backupStatus,
+    liveMonitoring,
+    systemSettings,
+  ] = await Promise.all([
+    getSuperAdminDashboardData(),
+    getBackupStatusSummary(),
+    getLiveSuperAdminMonitoringData(),
+    getSystemSettings(),
+  ]);
   const totalUsers =
     summary.totalAdmins + summary.totalTeachers + summary.totalStudents;
 
   return (
     <div className="space-y-6">
+      {systemSettings.announcement?.enabled && systemSettings.announcement.message ? (
+        <div
+          className={`flex items-start gap-3 rounded-xl border p-4 text-sm font-medium ${
+            systemSettings.announcement.type === "danger"
+              ? "border-red-200 bg-red-50 text-red-800"
+              : systemSettings.announcement.type === "warning"
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : systemSettings.announcement.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-blue-200 bg-blue-50 text-blue-800"
+          }`}
+        >
+          <div className="flex-1">
+            {systemSettings.announcement.title && (
+              <div className="font-semibold">{systemSettings.announcement.title}</div>
+            )}
+            <div className="text-xs opacity-90">{systemSettings.announcement.message}</div>
+          </div>
+          <span className="rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+            Siaran Aktif
+          </span>
+        </div>
+      ) : null}
+
       <DashboardPageHeader
         title="Dashboard Pusat"
-        description="Ringkasan kondisi seluruh sekolah dan aktivitas sistem."
+        description="Ringkasan ekosistem multi-sekolah, operasional CBT langsung, dan kontrol platform Sagaya."
       />
 
       <section className="grid gap-4 md:grid-cols-4">
         <DashboardCard
           title="Total Sekolah"
           value={String(summary.totalSchools)}
-          description="Sekolah yang sudah terdaftar di sistem."
-        />
-        <DashboardCard
-          title="Sekolah Aktif"
-          value={String(summary.activeSchools)}
-          description="Sekolah yang aktif menggunakan sistem."
+          description={`${summary.activeSchools} aktif, ${summary.inactiveSchools} nonaktif.`}
         />
         <DashboardCard
           title="Total Pengguna"
           value={String(totalUsers)}
-          description="Akun admin sekolah, guru, dan siswa."
+          description={`${summary.totalAdmins} admin, ${summary.totalTeachers} guru, ${summary.totalStudents} siswa.`}
         />
         <DashboardCard
-          title="Ujian Berjalan"
-          value={String(summary.totalActiveExams)}
-          description="Ujian yang sedang berlangsung di sekolah."
+          title="Peserta CBT Online"
+          value={String(liveMonitoring.summary.onlineParticipants)}
+          description={`${liveMonitoring.summary.runningExams} jadwal ujian sedang berjalan.`}
+        />
+        <DashboardCard
+          title="Kendala Operasional"
+          value={String(summary.attentionSchools)}
+          description={`${liveMonitoring.summary.problematicParticipants} peserta butuh perhatian.`}
         />
       </section>
 
