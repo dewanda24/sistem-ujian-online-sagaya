@@ -176,6 +176,7 @@ export default async function SuperAdminMonitoringPage({
             "Terkunci/Bermasalah",
             "Gagal Submit",
             "Error",
+            "Aksi Intervensi",
           ]}
           isEmpty={live.rows.length === 0}
           empty={
@@ -236,6 +237,26 @@ export default async function SuperAdminMonitoringPage({
                 <span className={row.systemErrors > 0 ? "font-semibold text-red-600" : "text-muted-foreground"}>
                   {row.systemErrors}
                 </span>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <Link
+                    href="/dashboard/recovery-center"
+                    className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+                    title="Buka Pusat Pemulihan untuk intervensi peserta"
+                  >
+                    Pemulihan
+                  </Link>
+                  {row.schoolId && (
+                    <Link
+                      href={`/dashboard/super-admin/schools/${row.schoolId}`}
+                      className="inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                      title="Lihat profil dan kendala sekolah"
+                    >
+                      Sekolah
+                    </Link>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

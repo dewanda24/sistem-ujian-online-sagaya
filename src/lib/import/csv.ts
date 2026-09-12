@@ -81,8 +81,13 @@ export function rowsToCsv(rows: Array<Record<string, string | number | boolean |
     return "";
   }
 
-  const escape = (value: unknown) =>
-    `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const escape = (value: unknown) => {
+    let str = String(value ?? "").replaceAll('"', '""');
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = "'" + str;
+    }
+    return `"${str}"`;
+  };
 
   return [
     headers.map(escape).join(","),

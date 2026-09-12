@@ -35,10 +35,12 @@ export type ReportAttempt = {
         id: string;
         code: string;
         name: string;
+        kkm?: number | null;
       } | Array<{
         id: string;
         code: string;
         name: string;
+        kkm?: number | null;
       }> | null;
     } | Array<{
       id: string;
@@ -47,10 +49,12 @@ export type ReportAttempt = {
         id: string;
         code: string;
         name: string;
+        kkm?: number | null;
       } | Array<{
         id: string;
         code: string;
         name: string;
+        kkm?: number | null;
       }> | null;
     }> | null;
   } | Array<{
@@ -99,6 +103,7 @@ export type ReportFilters = {
   subject_id?: string | null;
   academic_year_id?: string | null;
   semester_id?: string | null;
+  passing_status?: string | null;
 };
 
 export type ReportParticipant = {
@@ -115,7 +120,7 @@ export type ReportParticipant = {
     exam_packages?: Relation<{
       id: string;
       title: string;
-      subjects?: Relation<{ id: string; code: string; name: string }>;
+      subjects?: Relation<{ id: string; code: string; name: string; kkm?: number | null }>;
     }>;
   }>;
 };
@@ -149,7 +154,7 @@ export async function getReportAttempts(
   let query = supabase
     .from("exam_attempts")
     .select(
-      "id, exam_schedule_id, status, score, max_score, grading_status, submitted_at, users(id, username, email, user_profiles(full_name, nis)), exam_participants(class_id, classes(id, name)), exam_schedules(id, title, academic_year_id, semester_id, exam_packages(id, title, subjects(id, code, name)))",
+      "id, exam_schedule_id, status, score, max_score, grading_status, submitted_at, users(id, username, email, user_profiles(full_name, nis)), exam_participants(class_id, classes(id, name)), exam_schedules(id, title, academic_year_id, semester_id, exam_packages(id, title, subjects(*)))",
     )
     .in("status", ["submitted", "expired"])
     .order("submitted_at", { ascending: false });
@@ -420,10 +425,12 @@ export async function getReportsByStudent(filters: ReportFilters = {}) {
     const student = firstRelation(attempt.users);
     const profile = firstRelation(student?.user_profiles as Relation<{ full_name?: string | null; nis?: string | null }>);
     const schedule = firstRelation(attempt.exam_schedules);
-    const examPackage = firstRelation(schedule?.exam_packages as Relation<{ subjects?: Relation<{ code: string; name: string }> }>);
+    const examPackage = firstRelation(schedule?.exam_packages as Relation<{ subjects?: Relation<{ id: string; code: string; name: string; kkm?: number | null }> }>);
     const subject = firstRelation(examPackage?.subjects);
+    const kkm = Number(subject?.kkm ?? 75);
     const maxScore = Number(attempt.max_score ?? 0);
     const percent = maxScore > 0 ? (Number(attempt.score ?? 0) / maxScore) * 100 : 0;
+    const isPassed = attempt.grading_status === "finalized" ? percent >= kkm : null;
 
     return {
       id: attempt.id,
@@ -435,6 +442,8 @@ export async function getReportsByStudent(filters: ReportFilters = {}) {
       score: Number(attempt.score ?? 0),
       maxScore,
       percent: attempt.grading_status === "finalized" ? percent : 0,
+      kkm,
+      isPassed,
       status: attempt.status,
       gradingStatus: attempt.grading_status ?? "-",
       submittedAt: attempt.submitted_at,
@@ -477,6 +486,13 @@ export function filterStudentReportRows(
     const matchesSubject = filters.subject_id
       ? row.subjectId === filters.subject_id
       : true;
+    const matchesPassing = filters.passing_status
+      ? filters.passing_status === "passed"
+        ? row.isPassed === true
+        : filters.passing_status === "failed"
+          ? row.isPassed === false
+          : true
+      : true;
 
     return (
       matchesKeyword &&
@@ -484,7 +500,8 @@ export function filterStudentReportRows(
       matchesGrading &&
       matchesSchedule &&
       matchesClass &&
-      matchesSubject
+      matchesSubject &&
+      matchesPassing
     );
   });
 }

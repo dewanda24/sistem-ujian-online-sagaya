@@ -714,7 +714,7 @@ export async function saveExamScheduleAction(formData: FormData) {
   ] = await Promise.all([
     dbClient
       .from("exam_packages")
-      .select("school_id")
+      .select("school_id, subject_id")
       .eq("id", payload.exam_package_id)
       .maybeSingle(),
     dbClient
@@ -732,6 +732,21 @@ export async function saveExamScheduleAction(formData: FormData) {
   (classes ?? []).forEach((classItem) => {
     assertSameSchool(scope, classItem.school_id);
   });
+
+  if (currentUser.roles?.name === "teacher") {
+    const { data: teacherSubjects } = await dbClient
+      .from("teacher_subjects")
+      .select("subject_id")
+      .eq("teacher_id", currentUser.id);
+
+    const allowedSubjectIds = new Set((teacherSubjects ?? []).map((ts) => ts.subject_id));
+    if (!examPackage?.subject_id || !allowedSubjectIds.has(examPackage.subject_id)) {
+      redirectTo("/dashboard/exams/schedules", {
+        ok: false,
+        message: "Anda hanya dapat membuat jadwal ujian untuk mata pelajaran yang Anda ampu.",
+      });
+    }
+  }
 
   if (payload.status === "scheduled" || payload.status === "active") {
     const validation = await validateScheduleInputReady({
@@ -1518,5 +1533,114 @@ export async function deleteExamScheduleAction(formData: FormData) {
   redirectTo("/dashboard/exams/schedules", {
     ok: true,
     message: "Jadwal ujian berhasil dihapus permanen.",
+  });
+}
+
+export async function duplicateExamPackageAction(formData: FormData) {
+  const currentUser = await requireAuth();
+  const packageId = formString(formData, "id");
+  await requirePermission("exam_packages.manage");
+  const scope = await requireSchoolScope();
+
+  if (!packageId) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: "ID paket ujian tidak ditemukan.",
+    });
+  }
+
+  await assertPackageSchoolScope(packageId);
+
+  const supabase = await createClient();
+  const dbClient = getServiceRoleClient() ?? supabase;
+
+  const { data: originalPackage, error: fetchError } = await dbClient
+    .from("exam_packages")
+    .select("*")
+    .eq("id", packageId)
+    .single();
+
+  if (fetchError || !originalPackage) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: "Paket ujian asli tidak ditemukan.",
+    });
+  }
+
+  assertSameSchool(scope, originalPackage.school_id);
+
+  if (currentUser.roles?.name === "teacher") {
+    const { data: teacherSubjects } = await dbClient
+      .from("teacher_subjects")
+      .select("subject_id")
+      .eq("teacher_id", currentUser.id);
+
+    const allowedSubjectIds = new Set((teacherSubjects ?? []).map((ts) => ts.subject_id));
+    if (!originalPackage.subject_id || !allowedSubjectIds.has(originalPackage.subject_id)) {
+      redirectTo("/dashboard/exams/packages", {
+        ok: false,
+        message: "Anda hanya dapat menduplikasi paket ujian untuk mata pelajaran yang Anda ampu.",
+      });
+    }
+  }
+
+  const { data: originalQuestions } = await dbClient
+    .from("exam_package_questions")
+    .select("question_id, order_number")
+    .eq("exam_package_id", packageId)
+    .order("order_number", { ascending: true });
+
+  const duplicateTitle = `${originalPackage.title || "Paket Ujian"} (Salinan)`;
+  const newPackagePayload = {
+    school_id: originalPackage.school_id,
+    subject_id: originalPackage.subject_id,
+    title: duplicateTitle,
+    description: originalPackage.description,
+    duration_minutes: originalPackage.duration_minutes,
+    status: "draft",
+    shuffle_questions: Boolean(originalPackage.shuffle_questions),
+    shuffle_options: Boolean(originalPackage.shuffle_options),
+    show_result: Boolean(originalPackage.show_result),
+    is_active: true,
+    total_questions: originalPackage.total_questions ?? (originalQuestions?.length ?? 0),
+    total_points: originalPackage.total_points ?? 0,
+    created_by: currentUser.id,
+  };
+
+  const { data: newPackage, error: insertError } = await dbClient
+    .from("exam_packages")
+    .insert(newPackagePayload)
+    .select("id")
+    .single();
+
+  if (insertError || !newPackage) {
+    redirectTo("/dashboard/exams/packages", {
+      ok: false,
+      message: insertError?.message ?? "Gagal membuat duplikat paket ujian.",
+    });
+  }
+
+  if (originalQuestions && originalQuestions.length > 0) {
+    const newPackageQuestions = originalQuestions.map((item, idx) => ({
+      exam_package_id: newPackage.id,
+      question_id: item.question_id,
+      order_number: item.order_number ?? idx + 1,
+    }));
+
+    await dbClient.from("exam_package_questions").insert(newPackageQuestions);
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "exam_packages.create",
+    entityType: "exam_packages",
+    entityId: newPackage.id,
+    payload: { source: "duplicate", original_id: packageId, title: duplicateTitle },
+  });
+
+  revalidatePath("/dashboard/exams/packages");
+  redirectTo("/dashboard/exams/packages", {
+    ok: true,
+    message: `Paket ujian "${duplicateTitle}" berhasil dibuat sebagai draf beserta ${originalQuestions?.length ?? 0} butir soal.`,
   });
 }

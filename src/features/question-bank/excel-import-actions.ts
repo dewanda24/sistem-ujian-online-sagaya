@@ -24,7 +24,8 @@ export type ExcelImportPreviewState = {
   rows: ExcelImportRow[];
 };
 
-const IMPORT_EXCEL_PATH = "/dashboard/import-export?tab=import";
+const IMPORT_EXCEL_PATH = "/dashboard/question-bank/import-excel";
+const QUESTION_PATH = "/dashboard/question-bank/questions";
 const optionLabels = ["A", "B", "C", "D", "E"] as const;
 
 function formString(formData: FormData, key: string) {
@@ -218,6 +219,7 @@ export async function saveExcelImportAction(formData: FormData) {
   redirectWithMessage(
     failed === 0,
     `Import Excel selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.${failedDetails}`,
+    failed === 0 ? QUESTION_PATH : IMPORT_EXCEL_PATH,
   );
 }
 
@@ -385,11 +387,17 @@ async function getOrCreateImportStimulus({
   return stimulus?.id ?? null;
 }
 
-function redirectWithMessage(ok: boolean, message: string): never {
+function redirectWithMessage(
+  ok: boolean,
+  message: string,
+  targetPath?: string,
+): never {
   const params = new URLSearchParams({
     notice: ok ? "success" : "error",
     message,
   });
 
-  redirect(`${IMPORT_EXCEL_PATH}&${params.toString()}`);
+  const base = targetPath ?? (ok ? QUESTION_PATH : IMPORT_EXCEL_PATH);
+  const sep = base.includes("?") ? "&" : "?";
+  redirect(`${base}${sep}${params.toString()}`);
 }

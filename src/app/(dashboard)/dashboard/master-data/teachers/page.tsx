@@ -6,6 +6,7 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -87,6 +88,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2">
                     <TableActions>
                       <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon="pencil">Edit</TableActionLink>
+                      <TableActionSeparator />
                       <form action={toggleUserStatusAction}>
                         <input type="hidden" name="target" value="teachers" />
                         <input type="hidden" name="id" value={teacher.id} />
@@ -95,6 +97,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                           {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                         </TableActionSubmit>
                       </form>
+                      <TableActionSeparator />
                       <form action={deleteTeacherAction}>
                         <input type="hidden" name="id" value={teacher.id} />
                         <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus data guru ${name}? Tindakan ini tidak dapat dibatalkan.`}>
@@ -124,6 +127,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
               <div className="mt-2">
                 <TableActions>
                   <TableActionLink href={`/dashboard/master-data/teachers/${teacher.id}/edit`} icon="pencil">Edit</TableActionLink>
+                  <TableActionSeparator />
                   <form action={toggleUserStatusAction}>
                     <input type="hidden" name="target" value="teachers" />
                     <input type="hidden" name="id" value={teacher.id} />
@@ -132,6 +136,7 @@ export default async function TeachersPage({ searchParams }: PageProps) {
                       {teacher.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                     </TableActionSubmit>
                   </form>
+                  <TableActionSeparator />
                   <form action={deleteTeacherAction}>
                     <input type="hidden" name="id" value={teacher.id} />
                     <TableActionSubmit icon="trash" tone="danger" confirmMessage={`Hapus data guru ${name}? Tindakan ini tidak dapat dibatalkan.`}>

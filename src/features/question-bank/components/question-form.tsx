@@ -20,6 +20,7 @@ import {
 import { saveQuestionAction } from "@/features/question-bank/actions";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
 import { QuestionMediaPreview } from "@/features/question-bank/components/question-media-preview";
+import { CategoryCombobox } from "@/features/question-bank/components/category-combobox";
 import type { SelectOption } from "@/lib/master-data/queries";
 import { cn } from "@/lib/utils";
 
@@ -197,11 +198,14 @@ export function QuestionForm({
   canPublish = false,
 }: QuestionFormProps) {
   const attachment = firstAttachment(editable);
-  const initialSubjectId =
-    editable?.subject_id ?? defaultSubjectId ?? subjects[0]?.value ?? "";
+  const [subjectId, setSubjectId] = useState(
+    editable?.subject_id ?? defaultSubjectId ?? subjects[0]?.value ?? "",
+  );
+  const [categoryId, setCategoryId] = useState(
+    editable?.category_id ?? defaultCategoryId ?? "",
+  );
   const statusInputRef = useRef<HTMLInputElement>(null);
   const saveAndAddAnotherRef = useRef<HTMLInputElement>(null);
-  const [subjectId, setSubjectId] = useState(initialSubjectId);
   const [type, setType] = useState(editable?.type ?? "multiple_choice");
   const [content, setContent] = useState(editable?.content ?? "");
   const [explanation, setExplanation] = useState(editable?.explanation ?? "");
@@ -581,18 +585,11 @@ export function QuestionForm({
           </FieldLabel>
 
           <FieldLabel label="Kategori / Bab">
-            <select
-              name="category_id"
-              defaultValue={editable?.category_id ?? defaultCategoryId ?? ""}
-              className="h-10 rounded-xl border border-[#CBD5E1] bg-white px-3 text-xs font-semibold outline-none focus:border-[#2563EB]"
-            >
-              <option value="">Tanpa kategori (Umum)</option>
-              {filteredCategories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
+            <CategoryCombobox
+              categories={filteredCategories}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
           </FieldLabel>
 
           <FieldLabel label="Bentuk Soal">

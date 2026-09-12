@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Unlock,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import {
   TableActionButton,
+  TableActionGroup,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -277,6 +280,7 @@ function ParticipantRow({
 }) {
   const info = getParticipantInfo(participant);
   const issue = getPrimaryIssue(participant);
+  const attempt = firstRelation(participant.exam_attempts);
 
   return (
     <tr
@@ -306,12 +310,28 @@ function ParticipantRow({
         <ViolationBadge count={info.eventCount} />
       </td>
       <td className="px-3 py-2">
-        <ParticipantActions
-          participant={participant}
-          canControlSessions={canControlSessions}
-          returnTo={returnTo}
-          onDetail={onDetail}
-        />
+        <div className="flex items-center justify-end gap-1.5">
+          {canControlSessions && attempt?.id && attempt.locked_at ? (
+            <form action={unlockAttemptAction}>
+              <input type="hidden" name="attempt_id" value={attempt.id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <button
+                type="submit"
+                className="inline-flex h-8 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-bold text-amber-800 shadow-2xs hover:bg-amber-100 active:scale-95 transition"
+                title="Buka Kunci Siswa Ini Segera"
+              >
+                <Unlock className="size-3.5 text-amber-600" />
+                <span>Buka Kunci</span>
+              </button>
+            </form>
+          ) : null}
+          <ParticipantActions
+            participant={participant}
+            canControlSessions={canControlSessions}
+            returnTo={returnTo}
+            onDetail={onDetail}
+          />
+        </div>
       </td>
     </tr>
   );
@@ -420,7 +440,6 @@ function ParticipantActions({
       <TableActionButton icon="eye" onClick={onDetail}>
         Detail
       </TableActionButton>
-      <TableActionButton icon="eye">Lihat Jawaban</TableActionButton>
       {canControlSessions ? (
         <ActionForms participant={participant} attempt={attempt} returnTo={returnTo} />
       ) : null}
@@ -440,70 +459,77 @@ function ActionForms({
   if (attempt?.id) {
     return (
       <>
-        <form action={forceSubmitAttemptAction}>
-          <input type="hidden" name="attempt_id" value={attempt.id} />
-          <input type="hidden" name="return_to" value={returnTo} />
-          <TableActionSubmit
-            icon="send"
-            disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
-            confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
-          >
-            Selesaikan Ujian
-          </TableActionSubmit>
-        </form>
-        {attempt.locked_at ? (
-          <form action={unlockAttemptAction}>
+        <TableActionSeparator />
+        <TableActionGroup label="Kontrol Sesi">
+          <form action={forceSubmitAttemptAction}>
             <input type="hidden" name="attempt_id" value={attempt.id} />
             <input type="hidden" name="return_to" value={returnTo} />
             <TableActionSubmit
-              icon="unlock"
-              confirmMessage="Buka kunci pengerjaan siswa ini? Siswa bisa lanjut mengerjakan."
+              icon="send"
+              disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
+              confirmMessage="Selesaikan ujian siswa ini sekarang? Jawaban yang tersimpan akan dinilai."
             >
-              Buka Kunci
+              Selesaikan Ujian
             </TableActionSubmit>
           </form>
-        ) : (
-          <form action={lockAttemptAction}>
+          {attempt.locked_at ? (
+            <form action={unlockAttemptAction}>
+              <input type="hidden" name="attempt_id" value={attempt.id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <TableActionSubmit
+                icon="unlock"
+                confirmMessage="Buka kunci pengerjaan siswa ini? Siswa bisa lanjut mengerjakan."
+              >
+                Buka Kunci
+              </TableActionSubmit>
+            </form>
+          ) : (
+            <form action={lockAttemptAction}>
+              <input type="hidden" name="attempt_id" value={attempt.id} />
+              <input type="hidden" name="return_to" value={returnTo} />
+              <input
+                type="hidden"
+                name="lock_reason"
+                value="Dikunci dari pengawasan ujian."
+              />
+              <TableActionSubmit
+                icon="shield-alert"
+                disabled={attempt.status !== "in_progress"}
+                confirmMessage="Kunci pengerjaan siswa ini? Siswa tidak bisa menyimpan jawaban atau menyelesaikan ujian sampai dibuka."
+              >
+                Kunci Pengerjaan
+              </TableActionSubmit>
+            </form>
+          )}
+          <form action={resetDeviceSessionAction}>
             <input type="hidden" name="attempt_id" value={attempt.id} />
             <input type="hidden" name="return_to" value={returnTo} />
-            <input
-              type="hidden"
-              name="lock_reason"
-              value="Dikunci dari pengawasan ujian."
-            />
             <TableActionSubmit
-              icon="shield-alert"
-              disabled={attempt.status !== "in_progress"}
-              confirmMessage="Kunci pengerjaan siswa ini? Siswa tidak bisa menyimpan jawaban atau menyelesaikan ujian sampai dibuka."
+              icon="refresh-cw"
+              disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
+              confirmMessage="Reset sesi login/perangkat siswa ini? Jawaban yang tersimpan TIDAK akan hilang, dan siswa bisa login kembali pada perangkat baru."
             >
-              Catatan Pengawas
+              Reset Sesi Login
             </TableActionSubmit>
           </form>
-        )}
-        <form action={resetDeviceSessionAction}>
-          <input type="hidden" name="attempt_id" value={attempt.id} />
-          <input type="hidden" name="return_to" value={returnTo} />
-          <TableActionSubmit
-            icon="refresh-cw"
-            disabled={attempt.status === "submitted" || attempt.status === "cancelled"}
-            confirmMessage="Reset sesi login/perangkat siswa ini? Jawaban yang tersimpan TIDAK akan hilang, dan siswa bisa login kembali pada perangkat baru."
-          >
-            Reset Sesi Login
-          </TableActionSubmit>
-        </form>
-        <form action={resetAttemptAction}>
-          <input type="hidden" name="attempt_id" value={attempt.id} />
-          <input type="hidden" name="return_to" value={returnTo} />
-          <TableActionSubmit
-            icon="rotate-ccw"
-            tone="danger"
-            confirmationText="RESET"
-            disabled={attempt.status === "cancelled"}
-            confirmMessage="Mulai ulang pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai dari awal."
-          >
-            {UI_LABELS.actions.resetAttempt}
-          </TableActionSubmit>
-        </form>
+        </TableActionGroup>
+
+        <TableActionSeparator />
+        <TableActionGroup label="Zona Bahaya">
+          <form action={resetAttemptAction}>
+            <input type="hidden" name="attempt_id" value={attempt.id} />
+            <input type="hidden" name="return_to" value={returnTo} />
+            <TableActionSubmit
+              icon="rotate-ccw"
+              tone="danger"
+              confirmationText="RESET"
+              disabled={attempt.status === "cancelled"}
+              confirmMessage="Mulai ulang pengerjaan siswa ini? Pengerjaan lama dibatalkan dan siswa bisa mulai dari awal."
+            >
+              {UI_LABELS.actions.resetAttempt}
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
       </>
     );
   }
@@ -513,16 +539,21 @@ function ActionForms({
   }
 
   return (
-    <form action={markParticipantAbsentAction}>
-      <input type="hidden" name="participant_id" value={participant.id} />
-      <input type="hidden" name="return_to" value={returnTo} />
-      <TableActionSubmit
-        tone="danger"
-        confirmMessage="Tandai peserta ini tidak hadir?"
-      >
-        Tidak Hadir
-      </TableActionSubmit>
-    </form>
+    <>
+      <TableActionSeparator />
+      <TableActionGroup label="Presensi">
+        <form action={markParticipantAbsentAction}>
+          <input type="hidden" name="participant_id" value={participant.id} />
+          <input type="hidden" name="return_to" value={returnTo} />
+          <TableActionSubmit
+            tone="danger"
+            confirmMessage="Tandai peserta ini tidak hadir?"
+          >
+            Tandai Tidak Hadir
+          </TableActionSubmit>
+        </form>
+      </TableActionGroup>
+    </>
   );
 }
 

@@ -158,8 +158,26 @@ export function ExamRoomWorkspace({
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveState>>({});
   const [, setSaveMessage] = useState<string>("Semua jawaban otomatis tersimpan.");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const schedule = attempt.exam_schedules;
+  const examPackage = schedule?.exam_packages;
+  const targetEndMs = useMemo(
+    () =>
+      calculateAttemptTargetEndMs(
+        attempt.started_at,
+        examPackage?.duration_minutes,
+        schedule?.end_at,
+      ),
+    [attempt.started_at, examPackage?.duration_minutes, schedule?.end_at],
+  );
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
-    getRemainingSeconds(attempt.exam_schedules?.end_at, new Date(serverNow).getTime()),
+    getRemainingSeconds(
+      calculateAttemptTargetEndMs(
+        attempt.started_at,
+        attempt.exam_schedules?.exam_packages?.duration_minutes,
+        attempt.exam_schedules?.end_at,
+      ),
+      new Date(serverNow).getTime(),
+    ),
   );
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -205,14 +223,29 @@ export function ExamRoomWorkspace({
   const [fontSize, setFontSize] = useState<FontSizeOption>(() =>
     readFontSizePreference(),
   );
-  const [examSessionId] = useState(() =>
+  const [examSessionId, setExamSessionId] = useState(() =>
     getOrCreateExamSessionId(attempt.id),
   );
+
+  useEffect(() => {
+    const clientSessionId = getOrCreateExamSessionId(attempt.id);
+    if (clientSessionId && clientSessionId !== "server-render-placeholder") {
+      setExamSessionId(clientSessionId);
+    }
+  }, [attempt.id]);
 
   const answersRef = useRef(answers);
   const saveStatusRef = useRef(saveStatus);
   const debounceTimers = useRef<Record<string, number>>({});
   const retryTimers = useRef<Record<string, number>>({});
+  const saveAnswerRef = useRef<
+    (
+      questionId: string,
+      nextAnswer: AnswerState,
+      attemptNumber?: number,
+      version?: number,
+    ) => Promise<boolean>
+  >(() => Promise.resolve(false));
   const saveVersions = useRef<Record<string, number>>({});
   const dirtyAnswerIdsRef = useRef<Set<string>>(new Set());
   const submitFlushInProgressRef = useRef(false);
@@ -227,8 +260,6 @@ export function ExamRoomWorkspace({
 
   const isLocked = Boolean(attempt.locked_at);
   const isReadOnly = attempt.status !== "in_progress" || isLocked || sessionConflict;
-  const schedule = attempt.exam_schedules;
-  const examPackage = schedule?.exam_packages;
   const currentItem = questions[activeIndex];
   const currentQuestion = currentItem?.question;
 
@@ -331,13 +362,13 @@ export function ExamRoomWorkspace({
   });
 
   useEffect(() => {
-    if (!schedule?.end_at) {
+    if (!targetEndMs) {
       return;
     }
 
     const serverTimeOffsetMs = Date.now() - new Date(serverNow).getTime();
     const timer = window.setInterval(() => {
-      const rem = getRemainingSeconds(schedule.end_at, Date.now() - serverTimeOffsetMs);
+      const rem = getRemainingSeconds(targetEndMs, Date.now() - serverTimeOffsetMs);
       setRemainingSeconds(rem);
 
       // Peringatan Waktu Kritis 10 Menit & 5 Menit
@@ -357,7 +388,7 @@ export function ExamRoomWorkspace({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [schedule?.end_at, serverNow]);
+  }, [targetEndMs, serverNow]);
 
   useEffect(() => {
     if (isReadOnly) {
@@ -395,7 +426,7 @@ export function ExamRoomWorkspace({
   useEffect(() => {
     if (
       isReadOnly ||
-      !schedule?.end_at ||
+      !targetEndMs ||
       remainingSeconds > 0 ||
       timeExpiredSubmitRef.current
     ) {
@@ -412,7 +443,7 @@ export function ExamRoomWorkspace({
         "Batas waktu ujian telah berakhir. Lembar jawaban akan dikumpulkan otomatis.",
     });
     window.setTimeout(() => submitFormRef.current?.requestSubmit(), 800);
-  }, [isReadOnly, remainingSeconds, schedule?.end_at]);
+  }, [isReadOnly, remainingSeconds, targetEndMs]);
 
   useEffect(() => {
     if (isReadOnly) {
@@ -680,7 +711,7 @@ export function ExamRoomWorkspace({
         if (attemptNumber < 2) {
           setSaveMessage(`Menyimpan ulang jawaban (${attemptNumber + 2}/3)...`);
           retryTimers.current[questionId] = window.setTimeout(() => {
-            void saveAnswer(questionId, nextAnswer, attemptNumber + 1, version);
+            void saveAnswerRef.current(questionId, nextAnswer, attemptNumber + 1, version);
           }, 2000 * (attemptNumber + 1));
           return false;
         }
@@ -698,6 +729,10 @@ export function ExamRoomWorkspace({
     },
     [attempt.id, examSessionId],
   );
+
+  useEffect(() => {
+    saveAnswerRef.current = saveAnswer;
+  }, [saveAnswer]);
 
   const flushPendingAnswersBeforeSubmit = useCallback(async () => {
     const dirtyIds = Array.from(dirtyAnswerIdsRef.current);
@@ -2079,12 +2114,30 @@ function isVideoUrl(value: string) {
   return /^https?:\/\/\S+\.(mp4|webm|ogg)(\?\S*)?$/i.test(value);
 }
 
-function getRemainingSeconds(value?: string | null, nowMs = Date.now()) {
-  if (!value) {
+function calculateAttemptTargetEndMs(
+  startedAt: string | null | undefined,
+  durationMinutes: number | null | undefined,
+  scheduleEndAt: string | null | undefined,
+): number | null {
+  const scheduleEndMs = scheduleEndAt ? new Date(scheduleEndAt).getTime() : null;
+  const durationMs =
+    durationMinutes && durationMinutes > 0 ? durationMinutes * 60 * 1000 : null;
+  const startedMs = startedAt ? new Date(startedAt).getTime() : null;
+
+  const durationEndMs = startedMs && durationMs ? startedMs + durationMs : null;
+
+  if (durationEndMs !== null && scheduleEndMs !== null) {
+    return Math.min(durationEndMs, scheduleEndMs);
+  }
+  return durationEndMs ?? scheduleEndMs;
+}
+
+function getRemainingSeconds(targetEndMs?: number | null, nowMs = Date.now()) {
+  if (!targetEndMs || Number.isNaN(targetEndMs)) {
     return 0;
   }
 
-  return Math.max(0, Math.floor((new Date(value).getTime() - nowMs) / 1000));
+  return Math.max(0, Math.floor((targetEndMs - nowMs) / 1000));
 }
 
 function getSaveSummary(pendingSaveCount: number, failedSaveCount: number) {
@@ -2189,7 +2242,7 @@ function getOrCreateExamSessionId(attemptId: string) {
   const key = getExamSessionStorageKey(attemptId);
   const storedSessionId = window.localStorage.getItem(key);
 
-  if (storedSessionId) {
+  if (storedSessionId && storedSessionId !== "server-render-placeholder") {
     return storedSessionId;
   }
 

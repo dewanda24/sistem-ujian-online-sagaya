@@ -6,8 +6,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   TableActionButton,
-  TableActionDisabled,
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -161,7 +161,7 @@ function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; 
       >
         Edit
       </TableActionLink>
-      <TableActionDisabled icon="key-round">Reset Password</TableActionDisabled>
+      <TableActionSeparator />
       <form action={toggleUserStatusAction}>
         <input type="hidden" name="target" value="students" />
         <input type="hidden" name="id" value={row.id} />
@@ -179,6 +179,7 @@ function RowActions({ row, onDetail }: { row: StudentRow; onDetail: () => void; 
           {row.status === "active" ? "Nonaktifkan" : "Aktifkan"}
         </TableActionSubmit>
       </form>
+      <TableActionSeparator />
       <form action={deleteStudentAction}>
         <input type="hidden" name="id" value={row.id} />
         <TableActionSubmit

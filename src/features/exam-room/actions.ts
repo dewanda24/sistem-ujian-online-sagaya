@@ -26,15 +26,27 @@ type ParticipantWithAttempts = {
 type AttemptTiming = {
   id: string;
   exam_participant_id: string;
+  started_at?: string | null;
   status: string;
   locked_at?: string | null;
   active_session_id?: string | null;
   active_session_seen_at?: string | null;
-  exam_schedules?: {
-    end_at?: string | null;
-  } | Array<{
-    end_at?: string | null;
-  }> | null;
+  exam_schedules?:
+    | {
+        end_at?: string | null;
+        exam_packages?:
+          | { id?: string; duration_minutes?: number | null }
+          | Array<{ id?: string; duration_minutes?: number | null }>
+          | null;
+      }
+    | Array<{
+        end_at?: string | null;
+        exam_packages?:
+          | { id?: string; duration_minutes?: number | null }
+          | Array<{ id?: string; duration_minutes?: number | null }>
+          | null;
+      }>
+    | null;
 };
 
 function formString(formData: FormData, key: string) {
@@ -238,7 +250,7 @@ export async function saveAnswerAction(formData: FormData) {
   const { data: attempt } = await dbClient
     .from("exam_attempts")
     .select(
-      "id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at)",
+      "id, exam_participant_id, started_at, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_packages(id, duration_minutes))",
     )
     .eq("id", parsed.data.attempt_id)
     .eq("student_id", user.id)
@@ -270,7 +282,16 @@ export async function saveAnswerAction(formData: FormData) {
   }
 
   if (await isAttemptExpired(attempt as AttemptTiming)) {
-    await expireAttempt(attempt.id, attempt.exam_participant_id);
+    const schedule = Array.isArray(attempt.exam_schedules)
+      ? attempt.exam_schedules[0]
+      : attempt.exam_schedules;
+    const pkgRelation = schedule?.exam_packages;
+    const examPackage = Array.isArray(pkgRelation)
+      ? pkgRelation[0]
+      : pkgRelation;
+    const packageId = (examPackage as { id?: string })?.id;
+
+    await expireAttempt(attempt.id, attempt.exam_participant_id, packageId);
     redirectWithNotice(
       `/dashboard/exam-room/${parsed.data.attempt_id}`,
       false,
@@ -481,14 +502,36 @@ async function isAttemptExpired(attempt: AttemptTiming) {
     ? attempt.exam_schedules[0]
     : attempt.exam_schedules;
 
-  if (!schedule?.end_at) {
-    return false;
+  const pkgRelation = schedule?.exam_packages;
+  const examPackage = Array.isArray(pkgRelation)
+    ? pkgRelation[0]
+    : pkgRelation;
+
+  const nowMs = Date.now();
+
+  // 1. Cek batas jendela jadwal
+  if (schedule?.end_at && new Date(schedule.end_at).getTime() < nowMs) {
+    return true;
   }
 
-  return new Date(schedule.end_at) < new Date();
+  // 2. Cek alokasi durasi paket dari started_at (dengan toleransi 30 detik untuk latency)
+  if (attempt.started_at && examPackage?.duration_minutes && examPackage.duration_minutes > 0) {
+    const durationEndMs =
+      new Date(attempt.started_at).getTime() +
+      examPackage.duration_minutes * 60 * 1000;
+    if (nowMs > durationEndMs + 30000) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-async function expireAttempt(attemptId: string, participantId: string) {
+async function expireAttempt(
+  attemptId: string,
+  participantId: string,
+  packageId?: string,
+) {
   const supabase = await createClient();
   const dbClient = getServiceRoleClient() ?? supabase;
   const now = new Date().toISOString();
@@ -510,6 +553,12 @@ async function expireAttempt(attemptId: string, participantId: string) {
       submitted_at: now,
     })
     .eq("id", participantId);
+
+  try {
+    await calculateAndPersistAttemptScore(attemptId, { packageId });
+  } catch (err) {
+    console.error("Gagal menghitung skor attempt yang expired:", err);
+  }
 }
 
 function hasActiveSessionConflict(

@@ -478,23 +478,25 @@ Business Rules:
 
 ---
 
-## public.student_classes
+## public.class_members
 
 Purpose:
-Relasi siswa dengan kelas.
+Relasi keanggotaan siswa dengan kelas (canonical multi-tenant membership).
 
 Columns:
 
 - id uuid primary key
 - student_id uuid references public.users.id
 - class_id uuid references public.classes.id
-- academic_year_id uuid references public.academic_years.id
+- joined_at date not null
+- left_at date null
 - created_at timestamptz
 
 Business Rules:
 
-- student_id harus role student
-- Satu siswa aktif di satu kelas per academic_year
+- student_id harus ber-role student
+- Satu siswa hanya boleh memiliki 1 kelas aktif sekaligus (partial unique index `uq_class_members_active_student` where `left_at is null`)
+- Riwayat perpindahan kelas tercatat dengan mengisi `left_at`
 
 ---
 

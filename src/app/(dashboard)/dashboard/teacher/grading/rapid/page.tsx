@@ -1,41 +1,93 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { CheckCircle2, ChevronLeft, RotateCcw } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { SubmitButton } from "@/components/dashboard/submit-button";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getRapidGradingAnswers, firstRelation } from "@/features/results/queries";
-import { gradeEssayAnswerAction } from "@/features/results/actions";
+import { RapidGradingForm } from "@/features/results/components/rapid-grading-form";
 import { QuestionMathRenderer } from "@/features/question-bank/components/question-math-renderer";
-import Link from "next/link";
-import { CheckCircle2, ChevronLeft } from "lucide-react";
 
 type PageProps = {
-  searchParams: Promise<{ schedule_id?: string; notice?: string; message?: string; }>;
+  searchParams: Promise<{
+    schedule_id?: string;
+    skip_ids?: string;
+    notice?: string;
+    message?: string;
+  }>;
 };
 
 export default async function RapidGradingPage({ searchParams }: PageProps) {
   await requirePermission("grading.manage");
   const params = await searchParams;
-  
+
   if (!params.schedule_id) {
     redirect("/dashboard/teacher/grading");
   }
 
-  const answers = await getRapidGradingAnswers(params.schedule_id);
+  const skipIdList = params.skip_ids
+    ? params.skip_ids.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const answers = await getRapidGradingAnswers(params.schedule_id, skipIdList);
 
   if (answers.length === 0) {
+    if (skipIdList.length > 0) {
+      return (
+        <div className="space-y-6">
+          <DashboardPageHeader
+            title="Mode Koreksi Cepat"
+            description="Semua jawaban aktif dalam antrean telah dinilai."
+          />
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center flex flex-col items-center justify-center shadow-xs">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 mb-4">
+              <RotateCcw className="size-7" />
+            </div>
+            <h2 className="text-xl font-bold text-amber-950">Jawaban Aktif Selesai!</h2>
+            <p className="mt-2 text-sm text-amber-800 max-w-md">
+              Anda telah menilai seluruh jawaban aktif, namun masih terdapat{" "}
+              <strong>{skipIdList.length} jawaban</strong> yang sebelumnya dilewati.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 shadow-sm transition active:scale-95"
+              >
+                <RotateCcw className="size-4" />
+                Periksa Jawaban yang Dilewati
+              </Link>
+              <Link
+                href="/dashboard/teacher/grading"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition active:scale-95"
+              >
+                <ChevronLeft className="size-4" />
+                Kembali ke Rekap Koreksi
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         <DashboardPageHeader
           title="Mode Koreksi Cepat"
           description="Semua esai untuk jadwal ini telah dinilai."
         />
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center flex flex-col items-center justify-center">
-          <CheckCircle2 className="size-12 text-emerald-600 mb-3" />
-          <h2 className="text-lg font-bold text-emerald-800">Pekerjaan Selesai!</h2>
-          <p className="mt-1 text-emerald-700">Semua jawaban esai pada jadwal ujian ini telah selesai dikoreksi.</p>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center flex flex-col items-center justify-center shadow-xs">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 mb-4">
+            <CheckCircle2 className="size-8" />
+          </div>
+          <h2 className="text-xl font-bold text-emerald-950">Pekerjaan Selesai!</h2>
+          <p className="mt-2 text-sm text-emerald-800 max-w-md">
+            Luar biasa! Semua jawaban esai pada jadwal ujian ini telah selesai dikoreksi.
+          </p>
           <div className="mt-6">
-            <Link href="/dashboard/teacher/grading" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+            <Link
+              href="/dashboard/teacher/grading"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-sm transition active:scale-95"
+            >
               <ChevronLeft className="size-4" />
               Kembali ke Daftar Koreksi
             </Link>
@@ -45,150 +97,128 @@ export default async function RapidGradingPage({ searchParams }: PageProps) {
     );
   }
 
+  const answer = answers[0];
+  const attempt = firstRelation(answer.exam_attempts);
+  const student = firstRelation(attempt?.users);
+  const profile = firstRelation(student?.user_profiles);
+  const question = firstRelation(answer.questions);
+  const stimuli = firstRelation(question?.question_stimuli);
+  const remaining = answers.length - 1;
+  const maxScore = Number(answer.max_score ?? question?.point ?? 0);
+
+  const currentSkipIds = [...skipIdList, answer.id];
+  const skipUrl = `/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}&skip_ids=${currentSkipIds.join(",")}`;
+  const returnTo = `/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}${
+    skipIdList.length > 0 ? `&skip_ids=${skipIdList.join(",")}` : ""
+  }`;
+
   return (
     <div className="space-y-6">
       <ActionToast status={params.notice} message={params.message} />
-      
-      <div className="flex items-start justify-between">
+
+      <div className="flex items-start justify-between gap-4">
         <DashboardPageHeader
           title="Mode Koreksi Cepat"
-          description={`${answers.length} jawaban esai menunggu untuk dinilai.`}
+          description={`${answers.length} jawaban esai menunggu untuk dinilai.${
+            skipIdList.length > 0 ? ` (${skipIdList.length} dilewati)` : ""
+          }`}
         />
-        <Link href="/dashboard/teacher/grading" className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium hover:bg-slate-50 transition">
-          <ChevronLeft className="size-4" />
-          Tutup Mode Cepat
-        </Link>
+        <div className="flex items-center gap-2">
+          {skipIdList.length > 0 && (
+            <Link
+              href={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-2xs"
+              title="Tampilkan kembali semua jawaban yang sebelumnya dilewati"
+            >
+              <RotateCcw className="size-3.5" />
+              <span>Reset Lewati ({skipIdList.length})</span>
+            </Link>
+          )}
+          <Link
+            href="/dashboard/teacher/grading"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+          >
+            <ChevronLeft className="size-4" />
+            <span>Tutup Mode Cepat</span>
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-8">
-        {(() => {
-          const answer = answers[0];
-          const attempt = firstRelation(answer.exam_attempts);
-          const student = firstRelation(attempt?.users);
-          const profile = firstRelation(student?.user_profiles);
-          const question = firstRelation(answer.questions);
-          const stimuli = firstRelation(question?.question_stimuli);
-          const remaining = answers.length - 1;
-
-          return (
-            <div key={answer.id} className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm ring-1 ring-slate-900/5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E8F0] bg-slate-50/50 p-4 gap-4">
-                <div>
-                  <h3 className="font-semibold text-slate-800">Siswa Saat Ini</h3>
-                  <p className="text-sm text-slate-500">{profile?.full_name ?? student?.username} ({student?.username})</p>
+        <div
+          key={answer.id}
+          className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm ring-1 ring-slate-900/5"
+        >
+          {/* Header Kartu Jawaban */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E8F0] bg-slate-50/70 p-4 gap-4">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Siswa yang Dinilai
+              </h3>
+              <p className="mt-0.5 text-base font-bold text-slate-900">
+                {profile?.full_name ?? student?.username}
+                <span className="ml-2 text-xs font-normal text-slate-500">
+                  ({student?.username})
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {remaining > 0 ? (
+                <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full ring-1 ring-amber-200">
+                  Sisa antrean: {remaining} jawaban lagi
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {remaining > 0 ? (
-                    <div className="text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full ring-1 ring-amber-200">
-                      Sisa antrean: {remaining} jawaban lagi
-                    </div>
-                  ) : (
-                    <div className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full ring-1 ring-emerald-200">
-                      Ini jawaban terakhir!
-                    </div>
-                  )}
-                  <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
-                    Maks: {answer.max_score ?? question?.point ?? 0} Poin
-                  </div>
+              ) : (
+                <div className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full ring-1 ring-emerald-200">
+                  Jawaban terakhir dalam antrean
                 </div>
-              </div>
-
-              <div className="p-6">
-                {/* Soal */}
-                <div className="mb-6 space-y-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pertanyaan</h4>
-                  {stimuli ? (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                      <div className="text-sm font-bold text-slate-700">{stimuli.title}</div>
-                      <QuestionMathRenderer content={stimuli.content} className="mt-2 text-sm" />
-                    </div>
-                  ) : null}
-                  <div className="font-medium text-slate-800 text-base">
-                    <QuestionMathRenderer content={question?.content ?? ""} />
-                  </div>
-                </div>
-
-                {/* Jawaban Siswa */}
-                <div className="mb-6">
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Jawaban Siswa</h4>
-                  <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-[#0F172A] min-h-[120px] text-base">
-                    <QuestionMathRenderer content={answer.essay_answer ?? "-"} />
-                  </div>
-                </div>
-
-                {/* Input Nilai */}
-                {/* Input Nilai */}
-                <div className="mt-8 rounded-2xl border border-blue-200/80 bg-blue-50/70 p-4 sm:p-6 space-y-4">
-                  <form action={gradeEssayAnswerAction} className="space-y-4">
-                    <input type="hidden" name="attempt_id" value={attempt?.id} />
-                    <input type="hidden" name="answer_id" value={answer.id} />
-                    <input
-                      type="hidden"
-                      name="max_score"
-                      value={answer.max_score ?? question?.point ?? 0}
-                    />
-                    <input type="hidden" name="return_to" value={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`} />
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                      <div className="flex-1 sm:max-w-[280px]">
-                        <label className="mb-2 block text-xs font-bold text-blue-900 uppercase tracking-wider">
-                          Beri Skor (Maks: {answer.max_score ?? question?.point ?? 0})
-                        </label>
-                        <input
-                          id="awarded_score_input"
-                          name="awarded_score"
-                          type="number"
-                          min="0"
-                          max={Number(answer.max_score ?? question?.point ?? 0)}
-                          step="0.01"
-                          defaultValue=""
-                          placeholder={`0 - ${answer.max_score ?? question?.point ?? 0}`}
-                          className="h-12 w-full rounded-xl border border-blue-300 bg-white px-4 text-xl font-black text-blue-950 placeholder:text-blue-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 outline-none transition shadow-2xs"
-                          required
-                          autoFocus
-                        />
-                      </div>
-
-                      {/* Quick Presets for Mobile */}
-                      <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
-                        <span className="text-[11px] font-bold text-blue-800 uppercase mr-1">Cepat:</span>
-                        {[
-                          { label: "0", val: 0 },
-                          { label: "50%", val: Number(((Number(answer.max_score ?? question?.point ?? 0)) * 0.5).toFixed(1)) },
-                          { label: "75%", val: Number(((Number(answer.max_score ?? question?.point ?? 0)) * 0.75).toFixed(1)) },
-                          { label: "Maks", val: Number(answer.max_score ?? question?.point ?? 0) },
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => {
-                              const input = document.getElementById("awarded_score_input") as HTMLInputElement | null;
-                              if (input) {
-                                input.value = String(preset.val);
-                                input.focus();
-                              }
-                            }}
-                            className="inline-flex h-9 items-center justify-center rounded-lg border border-blue-200 bg-white px-3 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition"
-                          >
-                            {preset.label} ({preset.val})
-                          </button>
-                        ))}
-                      </div>
-                      
-                      <SubmitButton
-                        loadingText="Menyimpan Nilai..."
-                        className="h-12 w-full sm:w-auto rounded-xl bg-blue-600 px-8 font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2"
-                      >
-                        <span>Simpan & Lanjut</span>
-                        <span className="text-blue-200 text-xs font-normal hidden sm:inline">(Enter)</span>
-                      </SubmitButton>
-                    </div>
-                  </form>
-                </div>
+              )}
+              <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200">
+                Maksimal: {maxScore} Poin
               </div>
             </div>
-          );
-        })()}
+          </div>
+
+          <div className="p-6">
+            {/* Butir Soal */}
+            <div className="mb-6 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Pertanyaan Soal
+              </h4>
+              {stimuli ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-2xs">
+                  <div className="text-sm font-bold text-slate-800">{stimuli.title}</div>
+                  <QuestionMathRenderer
+                    content={stimuli.content}
+                    className="mt-2 text-sm"
+                  />
+                </div>
+              ) : null}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 text-base font-medium text-slate-900">
+                <QuestionMathRenderer content={question?.content ?? ""} />
+              </div>
+            </div>
+
+            {/* Jawaban Siswa */}
+            <div className="mb-6 space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Jawaban Siswa
+              </h4>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-slate-900 min-h-[120px] text-base leading-relaxed">
+                <QuestionMathRenderer content={answer.essay_answer ?? "-"} />
+              </div>
+            </div>
+
+            {/* Form Input Nilai & Catatan & Skip (Client Component) */}
+            <RapidGradingForm
+              attemptId={attempt?.id ?? ""}
+              answerId={answer.id}
+              maxScore={maxScore}
+              returnTo={returnTo}
+              skipUrl={skipUrl}
+              remainingCount={remaining}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -256,13 +256,13 @@ async function getSchoolScheduleIds(schoolId: string) {
   return (data ?? []).map((schedule) => schedule.id as string);
 }
 
-export async function getRapidGradingAnswers(scheduleId: string) {
+export async function getRapidGradingAnswers(scheduleId: string, skipIds?: string[]) {
   const user = await requireAuth();
   const supabase = await createClient();
 
   // Ensure teacher has permission / valid scope (skipping complex checks for brevity or we can rely on RLS/schema)
   // We fetch answers that need manual grading for the given schedule.
-  const { data, error } = await supabase
+  let query = supabase
     .from("exam_answers")
     .select(`
       id,
@@ -288,8 +288,13 @@ export async function getRapidGradingAnswers(scheduleId: string) {
       )
     `)
     .eq("needs_manual_grading", true)
-    .eq("exam_attempts.exam_schedule_id", scheduleId)
-    .order("created_at");
+    .eq("exam_attempts.exam_schedule_id", scheduleId);
+
+  if (skipIds && skipIds.length > 0) {
+    query = query.not("id", "in", `(${skipIds.join(",")})`);
+  }
+
+  const { data, error } = await query.order("created_at");
 
   if (error || !data) {
     return [];

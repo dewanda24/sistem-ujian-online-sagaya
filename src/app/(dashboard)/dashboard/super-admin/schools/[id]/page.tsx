@@ -8,14 +8,18 @@ import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { FormSection } from "@/components/master-data/form-section";
+import { Eye } from "lucide-react";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { saveAdminUserAction } from "@/features/admin/actions";
+
 import { getRoleOptionsByNames } from "@/features/admin/queries";
 import { createBackupAction } from "@/features/super-admin/advanced-actions";
+import { switchSchoolImpersonationAction } from "@/features/super-admin/impersonation-actions";
 import { SchoolForm } from "@/features/super-admin/components/school-form";
 import { SchoolDetailTabs } from "@/features/super-admin/components/school-detail-tabs";
 import { getSuperAdminSchoolDetail } from "@/features/super-admin/school-management";
 import { toggleSchoolAction } from "@/lib/actions/master-data-actions";
+
 
 type PageProps = {
   params: Promise<{
@@ -80,7 +84,18 @@ export default async function SuperAdminSchoolDetailPage({
           >
             Edit Profil Sekolah
           </Link>
+          <form action={switchSchoolImpersonationAction}>
+            <input type="hidden" name="school_id" value={school.id} />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 hover:bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition active:scale-95"
+            >
+              <Eye className="size-3.5" />
+              Tinjau Dashboard Sekolah
+            </button>
+          </form>
         </div>
+
 
         <div className="flex flex-wrap gap-2">
           <form action={toggleSchoolAction}>

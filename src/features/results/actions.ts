@@ -1,4 +1,6 @@
-﻿import { revalidatePath } from "next/cache";
+"use server";
+
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { firstRelation } from "@/features/results/queries";
@@ -18,6 +20,11 @@ import {
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
+}
+
+function formBoolean(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return value === "true" || value === "on" || value === "1";
 }
 
 function redirectToResult(attemptId: string, ok: boolean, message: string, returnTo?: string): never {
@@ -41,6 +48,7 @@ export async function gradeEssayAnswerAction(formData: FormData) {
     answer_id: formString(formData, "answer_id"),
     awarded_score: formString(formData, "awarded_score"),
     max_score: formString(formData, "max_score"),
+    teacher_note: formString(formData, "teacher_note") || null,
   });
 
   if (!parsed.success) {
@@ -60,18 +68,37 @@ export async function gradeEssayAnswerAction(formData: FormData) {
 
   const supabase = await createClient();
   const now = new Date().toISOString();
-  const { error } = await supabase
+
+  const updatePayload: Record<string, unknown> = {
+    awarded_score: parsed.data.awarded_score,
+    max_score: parsed.data.max_score,
+    is_correct: null,
+    needs_manual_grading: false,
+    graded_by: user.id,
+    graded_at: now,
+  };
+
+  if (parsed.data.teacher_note !== undefined) {
+    updatePayload.teacher_note = parsed.data.teacher_note;
+  }
+
+  let { error } = await supabase
     .from("exam_answers")
-    .update({
-      awarded_score: parsed.data.awarded_score,
-      max_score: parsed.data.max_score,
-      is_correct: null,
-      needs_manual_grading: false,
-      graded_by: user.id,
-      graded_at: now,
-    })
+    .update(updatePayload)
     .eq("id", parsed.data.answer_id)
     .eq("exam_attempt_id", parsed.data.attempt_id);
+
+  if (error && (error.message?.includes("graded_by") || error.message?.includes("graded_at") || error.message?.includes("teacher_note"))) {
+    delete updatePayload.graded_by;
+    delete updatePayload.graded_at;
+    delete updatePayload.teacher_note;
+    const retry = await supabase
+      .from("exam_answers")
+      .update(updatePayload)
+      .eq("id", parsed.data.answer_id)
+      .eq("exam_attempt_id", parsed.data.attempt_id);
+    error = retry.error;
+  }
 
   if (error) {
     redirectToResult(parsed.data.attempt_id, false, error.message, returnTo);
@@ -87,6 +114,7 @@ export async function gradeEssayAnswerAction(formData: FormData) {
       attempt_id: parsed.data.attempt_id,
       awarded_score: parsed.data.awarded_score,
       max_score: parsed.data.max_score,
+      teacher_note: parsed.data.teacher_note,
     },
   });
   revalidatePath(`/dashboard/exam-results/${parsed.data.attempt_id}`);
@@ -142,6 +170,79 @@ export async function finalizeAttemptAction(formData: FormData) {
     },
   });
   redirectToResult(parsed.data.attempt_id, true, "Nilai ujian difinalisasi.", returnTo);
+}
+
+export async function bulkFinalizeAttemptsAction(formData: FormData) {
+  const user = await requirePermission("exam_results.finalize");
+  const returnTo = formString(formData, "return_to") || "/dashboard/teacher/grading";
+  const rawIds = formData.getAll("attempt_ids").map(String).filter(Boolean);
+  const scheduleId = formString(formData, "schedule_id");
+  const finalizeAll = formBoolean(formData, "finalize_all");
+
+  let attemptIds = rawIds;
+
+  if (finalizeAll && scheduleId) {
+    const supabase = await createClient();
+    const { data: attempts } = await supabase
+      .from("exam_attempts")
+      .select("id")
+      .eq("exam_schedule_id", scheduleId)
+      .neq("grading_status", "finalized");
+    if (attempts) {
+      attemptIds = attempts.map((a) => a.id);
+    }
+  }
+
+  if (attemptIds.length === 0) {
+    const url = new URL(returnTo, "http://localhost");
+    url.searchParams.set("notice", "error");
+    url.searchParams.set("message", "Tidak ada pengerjaan siswa yang dipilih untuk difinalisasi.");
+    redirect(`${url.pathname}${url.search}`);
+  }
+
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const attemptId of attemptIds) {
+    const canManage = await canManageAttempt(attemptId, user);
+    if (!canManage) {
+      failedCount++;
+      continue;
+    }
+
+    const result = await calculateAndPersistAttemptScore(attemptId, { finalize: true });
+    if (result.ok) {
+      successCount++;
+      revalidatePath(`/dashboard/exam-results/${attemptId}`);
+    } else {
+      failedCount++;
+    }
+  }
+
+  revalidatePath("/dashboard/teacher/grading");
+  revalidatePath("/dashboard/reports/students");
+
+  await logAuditEvent({
+    userId: user.id,
+    action: "exam_attempts.bulk_finalize",
+    entityType: "exam_attempts",
+    entityId: scheduleId ?? attemptIds[0],
+    payload: {
+      total: attemptIds.length,
+      successCount,
+      failedCount,
+    },
+  });
+
+  const message =
+    failedCount > 0
+      ? `Berhasil memfinalisasi ${successCount} nilai siswa (${failedCount} gagal).`
+      : `Berhasil memfinalisasi ${successCount} nilai siswa sekaligus.`;
+
+  const url = new URL(returnTo, "http://localhost");
+  url.searchParams.set("notice", successCount > 0 ? "success" : "error");
+  url.searchParams.set("message", message);
+  redirect(`${url.pathname}${url.search}`);
 }
 
 async function canManageAttempt(

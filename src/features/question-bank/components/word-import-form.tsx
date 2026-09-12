@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Download } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
@@ -213,12 +214,14 @@ export function WordImportForm({
           </label>
           <div className="flex flex-wrap items-center gap-3 md:col-span-2">
             {hideTemplateLink ? null : (
-              <Link
-                href="/api/templates/questions-word"
-                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              <a
+                href="/templates/template_soal.docx"
+                download="template_soal.docx"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition"
               >
-                Unduh Template Word
-              </Link>
+                <Download className="size-4 text-slate-500" />
+                <span>Unduh Template Word</span>
+              </a>
             )}
             <button
               disabled={isPreviewPending}

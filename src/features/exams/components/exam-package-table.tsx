@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
+  CalendarPlus,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -10,14 +12,17 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import {
   TableActionButton,
+  TableActionGroup,
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
-import { UI_LABELS, getStatusLabel } from "@/constants/ui-labels";
+import { UI_LABELS } from "@/constants/ui-labels";
 import {
   archiveExamPackageAction,
   deleteExamPackageAction,
+  duplicateExamPackageAction,
   updateExamPackageStatusAction,
 } from "@/features/exams/actions";
 
@@ -261,67 +266,103 @@ function PackageActions({
   examPackage: ExamPackageRow;
   onPreview: () => void;
 }) {
-  return (
-    <TableActions>
-      <TableActionButton icon="eye" onClick={onPreview}>
-        {UI_LABELS.actions.preview}
-      </TableActionButton>
-      <TableActionLink
-        href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
-        icon="pencil"
-      >
-        {UI_LABELS.actions.update}
-      </TableActionLink>
-      {examPackage.status === "published" ? (
-        <TableActionLink
-          href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
-          icon="calendar-plus"
-        >
-          Jadwalkan
-        </TableActionLink>
-      ) : null}
-      
-      <form action={updateExamPackageStatusAction}>
-        <input type="hidden" name="id" value={examPackage.id} />
-        <input 
-          type="hidden" 
-          name="status" 
-          value={examPackage.status === "published" ? "draft" : "published"} 
-        />
-        <TableActionSubmit
-          icon={examPackage.status === "published" ? "undo" : "send"}
-          confirmMessage={
-            examPackage.status === "published" 
-              ? "Tarik kembali paket ini menjadi Draf?" 
-              : "Terbitkan paket ujian ini agar dapat dijadwalkan?"
-          }
-        >
-          {examPackage.status === "published" ? "Jadikan Draf" : "Terbitkan Paket"}
-        </TableActionSubmit>
-      </form>
+  const isPublished = examPackage.status === "published";
 
-      <form action={archiveExamPackageAction}>
-        <input type="hidden" name="id" value={examPackage.id} />
-        <TableActionSubmit
-          icon="archive"
-          confirmMessage="Arsipkan paket ujian ini? Paket yang diarsipkan tidak akan muncul di daftar utama."
-          tone="danger"
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      {/* Quick Action: Jadwalkan jika sudah published */}
+      {isPublished ? (
+        <Link
+          href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
+          className="inline-flex h-8 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition"
+          title="Jadwalkan Paket Ujian Ini"
         >
-          Arsipkan
-        </TableActionSubmit>
-      </form>
-      <form action={deleteExamPackageAction}>
-        <input type="hidden" name="id" value={examPackage.id} />
-        <TableActionSubmit
-          icon="trash"
-          confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN paket ujian ini? Tindakan ini tidak bisa dibatalkan."
-          confirmationText="HAPUS"
-          tone="danger"
-        >
-          Hapus Permanen
-        </TableActionSubmit>
-      </form>
-    </TableActions>
+          <CalendarPlus className="size-3.5 text-blue-600" />
+          <span className="hidden sm:inline">Jadwalkan</span>
+        </Link>
+      ) : null}
+
+      <TableActions>
+        <TableActionGroup label="Paket Soal">
+          <TableActionButton icon="eye" onClick={onPreview}>
+            {UI_LABELS.actions.preview}
+          </TableActionButton>
+          <TableActionLink
+            href={`/dashboard/exams/packages/create?edit=${examPackage.id}&subject_id=${examPackage.subject_id ?? ""}`}
+            icon="pencil"
+          >
+            {UI_LABELS.actions.update}
+          </TableActionLink>
+          <form action={duplicateExamPackageAction}>
+            <input type="hidden" name="id" value={examPackage.id} />
+            <TableActionSubmit
+              icon="copy"
+              confirmMessage={`Duplikat paket ujian "${examPackage.title || ""}" beserta butir soalnya?`}
+            >
+              Duplikat Paket
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
+
+        <TableActionSeparator />
+
+        <TableActionGroup label="Publikasi & Jadwal">
+          {isPublished ? (
+            <TableActionLink
+              href={`/dashboard/exams/schedules?package_id=${examPackage.id}`}
+              icon="calendar-plus"
+            >
+              Jadwalkan
+            </TableActionLink>
+          ) : null}
+
+          <form action={updateExamPackageStatusAction}>
+            <input type="hidden" name="id" value={examPackage.id} />
+            <input 
+              type="hidden" 
+              name="status" 
+              value={isPublished ? "draft" : "published"} 
+            />
+            <TableActionSubmit
+              icon={isPublished ? "undo" : "send"}
+              confirmMessage={
+                isPublished 
+                  ? "Tarik kembali paket ini menjadi Draf?" 
+                  : "Terbitkan paket ujian ini agar dapat dijadwalkan?"
+              }
+            >
+              {isPublished ? "Jadikan Draf" : "Terbitkan Paket"}
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
+
+        <TableActionSeparator />
+
+        <TableActionGroup label="Zona Bahaya">
+          <form action={archiveExamPackageAction}>
+            <input type="hidden" name="id" value={examPackage.id} />
+            <TableActionSubmit
+              icon="archive"
+              confirmMessage="Arsipkan paket ujian ini? Paket yang diarsipkan tidak akan muncul di daftar utama."
+              tone="danger"
+            >
+              {UI_LABELS.actions.archive}
+            </TableActionSubmit>
+          </form>
+          <form action={deleteExamPackageAction}>
+            <input type="hidden" name="id" value={examPackage.id} />
+            <TableActionSubmit
+              icon="trash"
+              confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN paket ujian ini? Tindakan ini tidak bisa dibatalkan."
+              confirmationText="HAPUS"
+              tone="danger"
+            >
+              Hapus Permanen
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
+      </TableActions>
+    </div>
   );
 }
 

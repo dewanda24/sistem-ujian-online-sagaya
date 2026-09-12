@@ -46,6 +46,9 @@ type PageProps = {
 export default async function QuestionsPage({ searchParams }: PageProps) {
   const currentUser = await requirePermission("question_bank.view");
   const canPublish = hasPermission(currentUser, "questions.publish");
+  const canCreate = hasPermission(currentUser, "questions.create");
+  const canManage = hasPermission(currentUser, "question_bank.manage");
+  const canEdit = hasPermission(currentUser, "questions.update");
   const params = await searchParams;
   const filters = {
     q: params.q,
@@ -55,7 +58,9 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
     status: params.status,
   };
   
-  const isDrawerOpen = params.action === "create" || params.action === "edit" || params.action === "duplicate";
+  const isDrawerOpen =
+    (canCreate && params.action === "create") ||
+    (canEdit && (params.action === "edit" || params.action === "duplicate"));
   const drawerTitle = params.action === "edit" ? "Edit Soal" : params.action === "duplicate" ? "Duplikat Soal" : "Tambah Soal Cepat";
 
   const [subjects, categories, questions, stimuli, schoolId, fetchedQuestion] = await Promise.all([
@@ -84,29 +89,35 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
           description="Pusat pembuatan dan manajemen butir soal pilihan ganda & esai dengan dukungan rumus KaTeX, media, dan import cepat."
         />
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="?action=create"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white shadow-2xs transition hover:bg-blue-700 active:scale-[0.98]"
-          >
-            <Plus className="size-3.5" />
-            <span>Tambah Soal</span>
-          </Link>
-          <Link
-            href="/dashboard/question-bank/import-word"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100"
-            title="Import naskah soal dari Microsoft Word (.docx)"
-          >
-            <FileText className="size-3.5" />
-            <span>Import Word</span>
-          </Link>
-          <Link
-            href="/dashboard/question-bank/import-excel"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 text-xs font-bold text-emerald-700 shadow-2xs transition hover:bg-emerald-100"
-            title="Import template butir soal dari Excel (.xlsx)"
-          >
-            <FileSpreadsheet className="size-3.5" />
-            <span>Import Excel</span>
-          </Link>
+          {canCreate ? (
+            <Link
+              href="?action=create"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white shadow-2xs transition hover:bg-blue-700 active:scale-[0.98]"
+            >
+              <Plus className="size-3.5" />
+              <span>Tambah Soal</span>
+            </Link>
+          ) : null}
+          {canManage ? (
+            <>
+              <Link
+                href="/dashboard/question-bank/import-word"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100"
+                title="Import naskah soal dari Microsoft Word (.docx)"
+              >
+                <FileText className="size-3.5" />
+                <span>Import Word</span>
+              </Link>
+              <Link
+                href="/dashboard/question-bank/import-excel"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 text-xs font-bold text-emerald-700 shadow-2xs transition hover:bg-emerald-100"
+                title="Import template butir soal dari Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="size-3.5" />
+                <span>Import Excel</span>
+              </Link>
+            </>
+          ) : null}
           <Link
             href="/dashboard/question-bank/stimuli"
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50"
@@ -144,20 +155,22 @@ export default async function QuestionsPage({ searchParams }: PageProps) {
         includeQuestionFilters
       />
 
-      <QuestionTable questions={questions} />
+      <QuestionTable questions={questions} canEdit={canEdit} />
 
-      <QuestionDrawer isOpen={isDrawerOpen} title={drawerTitle}>
-        <QuestionForm
-          editable={editable}
-          schoolId={schoolId ?? ""}
-          subjects={subjects}
-          categories={categories}
-          stimuli={stimuli}
-          defaultSubjectId={params.subject_id}
-          defaultCategoryId={params.category_id}
-          canPublish={canPublish}
-        />
-      </QuestionDrawer>
+      {isDrawerOpen ? (
+        <QuestionDrawer isOpen={isDrawerOpen} title={drawerTitle}>
+          <QuestionForm
+            editable={editable}
+            schoolId={schoolId ?? ""}
+            subjects={subjects}
+            categories={categories}
+            stimuli={stimuli}
+            defaultSubjectId={params.subject_id}
+            defaultCategoryId={params.category_id}
+            canPublish={canPublish}
+          />
+        </QuestionDrawer>
+      ) : null}
     </div>
   );
 }

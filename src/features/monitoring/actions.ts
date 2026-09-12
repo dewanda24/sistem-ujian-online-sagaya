@@ -420,7 +420,7 @@ export async function resetDeviceSessionAction(formData: FormData) {
   const supabase = await createClient();
   const { data: attempt } = await supabase
     .from("exam_attempts")
-    .select("id, exam_schedule_id, active_session_id, active_session_seen_at")
+    .select("id, exam_schedule_id, student_id, active_session_id, active_session_seen_at")
     .eq("id", attemptId)
     .maybeSingle();
 
@@ -428,6 +428,7 @@ export async function resetDeviceSessionAction(formData: FormData) {
     redirectBack(formData, false, "Pengerjaan ujian tidak ditemukan.");
   }
 
+  const now = new Date().toISOString();
   const { error } = await supabase
     .from("exam_attempts")
     .update({
@@ -436,6 +437,7 @@ export async function resetDeviceSessionAction(formData: FormData) {
       locked_at: null,
       locked_by: null,
       lock_reason: null,
+      last_saved_at: now,
     })
     .eq("id", attempt.id);
 
@@ -450,6 +452,7 @@ export async function resetDeviceSessionAction(formData: FormData) {
     entityId: attempt.id,
     payload: {
       exam_schedule_id: attempt.exam_schedule_id,
+      student_id: attempt.student_id,
       previous_active_session_id: attempt.active_session_id,
     },
   });

@@ -219,6 +219,191 @@ export async function saveSystemSettingsAction(formData: FormData) {
   });
 }
 
+export async function createSchoolWithAdminAction(formData: FormData) {
+  const currentUser = await requireRole("super_admin");
+  const supabase = await createClient();
+  const adminClient = serviceRoleClient();
+  const redirectPath = "/dashboard/super-admin/schools/new";
+
+  const schoolName = formString(formData, "name");
+  const npsn = formString(formData, "npsn") || null;
+  const educationLevel = formString(formData, "education_level") || null;
+  const address = formString(formData, "address") || null;
+  const city = formString(formData, "city") || null;
+  const province = formString(formData, "province") || null;
+  const schoolEmail = formString(formData, "email") || null;
+  const schoolPhone = formString(formData, "phone") || null;
+  const isActive = formString(formData, "is_active") !== "false";
+
+  const adminFullName = formString(formData, "admin_full_name");
+  const adminEmail = formString(formData, "admin_email");
+  const adminUsername = formString(formData, "admin_username");
+  const adminPassword = formString(formData, "admin_password");
+
+  if (!schoolName) {
+    redirectTo(redirectPath, { ok: false, message: "Nama sekolah wajib diisi." });
+  }
+
+  if (!adminFullName || !adminEmail || !adminUsername || !adminPassword) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Data Admin Sekolah (Nama, Email, Username, dan Password) wajib diisi lengkap untuk onboarding.",
+    });
+  }
+
+  if (adminPassword.length < 6) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Password admin minimal 6 karakter.",
+    });
+  }
+
+  if (npsn) {
+    const { data: existingSchool } = await supabase
+      .from("schools")
+      .select("id")
+      .eq("npsn", npsn)
+      .maybeSingle();
+
+    if (existingSchool) {
+      redirectTo(redirectPath, { ok: false, message: `NPSN ${npsn} sudah terdaftar.` });
+    }
+  }
+
+  const [{ data: existingEmailUser }, { data: existingUsernameUser }] = await Promise.all([
+    supabase.from("users").select("id").eq("email", adminEmail).maybeSingle(),
+    supabase.from("users").select("id").eq("username", adminUsername).maybeSingle(),
+  ]);
+
+  if (existingEmailUser) {
+    redirectTo(redirectPath, { ok: false, message: `Email admin ${adminEmail} sudah digunakan.` });
+  }
+  if (existingUsernameUser) {
+    redirectTo(redirectPath, { ok: false, message: `Username admin ${adminUsername} sudah digunakan.` });
+  }
+
+  if (!adminClient) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Kunci layanan Supabase belum tersedia. Akun login admin tidak dapat dibuat.",
+    });
+  }
+
+  // 1. Buat record sekolah
+  const { data: createdSchool, error: schoolError } = await supabase
+    .from("schools")
+    .insert([
+      {
+        name: schoolName,
+        npsn,
+        education_level: educationLevel,
+        address,
+        city,
+        province,
+        email: schoolEmail,
+        phone: schoolPhone,
+        is_active: isActive,
+      },
+    ])
+    .select("id, name")
+    .single();
+
+  if (schoolError || !createdSchool) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: schoolError ? getFriendlyErrorMessage(schoolError) : "Gagal mendaftarkan sekolah.",
+    });
+  }
+
+  // 2. Buat akun Auth Supabase
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email: adminEmail,
+    password: adminPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: adminFullName,
+      school_id: createdSchool.id,
+    },
+  });
+
+  if (authError || !authData.user) {
+    await supabase.from("schools").delete().eq("id", createdSchool.id);
+    redirectTo(redirectPath, {
+      ok: false,
+      message: authError ? getFriendlyErrorMessage(authError) : "Gagal membuat kredensial login admin.",
+    });
+  }
+
+  // 3. Ambil role admin
+  const roleId = await getAdminRoleId();
+  if (!roleId) {
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+    await supabase.from("schools").delete().eq("id", createdSchool.id);
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Peran 'admin' tidak ditemukan dalam sistem.",
+    });
+  }
+
+  // 4. Masukkan ke tabel users
+  const { data: savedUser, error: userError } = await supabase
+    .from("users")
+    .insert([
+      {
+        auth_user_id: authData.user.id,
+        email: adminEmail,
+        username: adminUsername,
+        role_id: roleId,
+        school_id: createdSchool.id,
+        status: "active",
+      },
+    ])
+    .select("id")
+    .single();
+
+  if (userError || !savedUser) {
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+    await supabase.from("schools").delete().eq("id", createdSchool.id);
+    redirectTo(redirectPath, {
+      ok: false,
+      message: userError ? getFriendlyErrorMessage(userError) : "Gagal menyimpan data pengguna admin.",
+    });
+  }
+
+  // 5. Masukkan ke tabel user_profiles
+  await supabase.from("user_profiles").insert([
+    {
+      user_id: savedUser.id,
+      full_name: adminFullName,
+      phone: schoolPhone,
+    },
+  ]);
+
+  // 6. Catat audit event
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "school.onboarding_with_admin",
+    entityType: "schools",
+    entityId: createdSchool.id,
+    payload: {
+      school_name: createdSchool.name,
+      admin_email: adminEmail,
+      admin_username: adminUsername,
+    },
+  });
+
+  revalidatePath("/dashboard/super-admin/schools");
+  revalidatePath("/dashboard/super-admin/admins");
+  revalidatePath("/dashboard/super-admin/users");
+  revalidatePath("/dashboard/super-admin");
+
+  redirect(
+    `/dashboard/super-admin/schools/${createdSchool.id}?status=success&message=${encodeURIComponent(
+      "Sekolah baru dan akun admin berhasil dibuat.",
+    )}`,
+  );
+}
+
 export async function previewGlobalImportAction(formData: FormData) {
   const currentUser = await requireRole("super_admin");
   const type = formString(formData, "type") === "school_admins" ? "school_admins" : "schools";
@@ -352,50 +537,74 @@ export async function commitGlobalImportAction(formData: FormData) {
   });
 }
 
-export async function createBackupAction(formData: FormData) {
-  const currentUser = await requireRole("super_admin");
-  const scope = formString(formData, "scope") === "school" ? "school" : "global";
-  const schoolId = scope === "school" ? formString(formData, "school_id") : "";
-  const supabase = await createClient();
-  const snapshot = await buildBackupSnapshot(scope, schoolId || null);
+export async function performBackupOperation({
+  scope = "global",
+  schoolId = null,
+  kind = "manual",
+  createdBy = null,
+}: {
+  scope?: "global" | "school";
+  schoolId?: string | null;
+  kind?: "manual" | "scheduled";
+  createdBy?: string | null;
+}) {
+  const supabase = serviceRoleClient() ?? (await createClient());
+  const snapshot = await buildBackupSnapshot(scope, schoolId);
   const { data: job, error } = await supabase
     .from("super_admin_backup_jobs")
     .insert({
       scope,
-      school_id: scope === "school" ? schoolId || null : null,
+      school_id: scope === "school" ? schoolId : null,
       status: snapshot.ok ? "completed" : "failed",
-      kind: "manual",
+      kind,
       snapshot: snapshot.data,
       row_counts: snapshot.rowCounts,
       error_message: snapshot.ok ? null : snapshot.message,
-      created_by: currentUser.id,
+      created_by: createdBy,
     })
     .select("id")
     .single();
 
-  if (!error) {
+  if (!error && createdBy) {
     await logAuditEvent({
-      userId: currentUser.id,
-      action: `backup.${scope}.create`,
+      userId: createdBy,
+      action: `backup.${scope}.${kind}`,
       entityType: "super_admin_backup_jobs",
       entityId: job?.id ? String(job.id) : null,
       payload: {
         scope,
-        school_id: scope === "school" ? schoolId || null : null,
+        school_id: scope === "school" ? schoolId : null,
         row_counts: snapshot.rowCounts,
+        kind,
         status: snapshot.ok ? "completed" : "failed",
       },
     });
   }
 
+  return {
+    ok: snapshot.ok && !error,
+    jobId: job?.id ? String(job.id) : null,
+    error: error ? getFriendlyErrorMessage(error) : snapshot.ok ? null : snapshot.message,
+    rowCounts: snapshot.rowCounts,
+  };
+}
+
+export async function createBackupAction(formData: FormData) {
+  const currentUser = await requireRole("super_admin");
+  const scope = formString(formData, "scope") === "school" ? "school" : "global";
+  const schoolId = scope === "school" ? formString(formData, "school_id") : null;
+
+  const result = await performBackupOperation({
+    scope,
+    schoolId,
+    kind: "manual",
+    createdBy: currentUser.id,
+  });
+
   revalidatePath("/dashboard/super-admin/backup-recovery");
   redirectTo("/dashboard/super-admin/backup-recovery", {
-    ok: snapshot.ok && !error,
-    message: error
-      ? getFriendlyErrorMessage(error)
-      : snapshot.ok
-        ? "Backup berhasil dibuat."
-        : snapshot.message,
+    ok: result.ok,
+    message: result.ok ? "Backup berhasil dibuat." : result.error ?? "Gagal membuat backup.",
   });
 }
 

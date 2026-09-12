@@ -337,6 +337,7 @@ function auditLogMatchesKeyword(row: AuditLogRow, keyword: string) {
 
 export async function getAuditLogs(filters: AuditLogFilters = {}) {
   await requirePermission("audit_logs.view");
+  const scope = await requireSchoolScope();
   const supabase = await createClient();
   const limit = parseAuditLogLimit(filters.limit);
   const action = filters.action?.trim();
@@ -350,6 +351,26 @@ export async function getAuditLogs(filters: AuditLogFilters = {}) {
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (!scope.isSuperAdmin) {
+    const schoolId = requireScopedSchoolId(scope);
+    const { data: schoolUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("school_id", schoolId);
+
+    const schoolUserIds = (schoolUsers ?? []).map((u) => u.id as string);
+
+    if (schoolUserIds.length === 0) {
+      return {
+        rows: [] as AuditLogRow[],
+        unavailable: false,
+        message: "",
+      };
+    }
+
+    query = query.in("user_id", schoolUserIds);
+  }
 
   if (action) {
     query = query.ilike("action", `%${action}%`);

@@ -14,6 +14,7 @@ type PageProps = {
     q?: string;
     status?: string;
     grading_status?: string;
+    passing_status?: string;
     schedule_id?: string;
     class_id?: string;
     subject_id?: string;
@@ -77,7 +78,7 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm md:grid-cols-[1.4fr_1fr_1fr_1.2fr_auto]">
+      <form className="grid gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <select
           name="schedule_id"
           defaultValue={params.schedule_id ?? ""}
@@ -111,6 +112,15 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
           <option value="submitted">Sudah Dikumpulkan</option>
           <option value="expired">Waktu Habis</option>
         </select>
+        <select
+          name="passing_status"
+          defaultValue={params.passing_status ?? ""}
+          className="min-w-0 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"
+        >
+          <option value="">Semua kelulusan</option>
+          <option value="passed">Tuntas (≥ KKM)</option>
+          <option value="failed">Belum Tuntas (&lt; KKM)</option>
+        </select>
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -120,7 +130,7 @@ export default async function StudentReportsPage({ searchParams }: PageProps) {
         <div className="flex gap-2">
           <Link
             href="/dashboard/reports/students"
-            className="inline-flex items-center rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
+            className="inline-flex items-center justify-center rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm hover:bg-[#F8FAFC]"
           >
             Reset
           </Link>

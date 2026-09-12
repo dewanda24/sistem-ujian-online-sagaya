@@ -29,7 +29,8 @@ export type WordImportPreviewState = {
   };
 };
 
-const IMPORT_WORD_PATH = "/dashboard/import-export?tab=import";
+const IMPORT_WORD_PATH = "/dashboard/question-bank/import-word";
+const QUESTION_PATH = "/dashboard/question-bank/questions";
 const optionLabels = ["A", "B", "C", "D"] as const;
 
 function formString(formData: FormData, key: string) {
@@ -266,6 +267,7 @@ export async function saveWordImportAction(formData: FormData) {
   redirectWithMessage(
     failed === 0,
     `Import Word selesai: ${success} berhasil disimpan sebagai draft, ${failed} gagal.${failedDetails}`,
+    failed === 0 ? QUESTION_PATH : IMPORT_WORD_PATH,
   );
 }
 
@@ -329,11 +331,17 @@ async function assertCategoryMatchesSubject(
   return Boolean(data?.id);
 }
 
-function redirectWithMessage(ok: boolean, message: string): never {
+function redirectWithMessage(
+  ok: boolean,
+  message: string,
+  targetPath?: string,
+): never {
   const params = new URLSearchParams({
     notice: ok ? "success" : "error",
     message,
   });
 
-  redirect(`${IMPORT_WORD_PATH}&${params.toString()}`);
+  const base = targetPath ?? (ok ? QUESTION_PATH : IMPORT_WORD_PATH);
+  const sep = base.includes("?") ? "&" : "?";
+  redirect(`${base}${sep}${params.toString()}`);
 }

@@ -48,7 +48,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       value: String(activeSchools),
       description:
         "Minimal satu sekolah aktif wajib dibuat sebelum Admin Sekolah mengisi data operasional.",
-      href: "/dashboard/master-data/schools",
+      href: "/dashboard/super-admin/schools",
     },
     {
       title: "Admin Tanpa Sekolah",
@@ -56,7 +56,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       value: String(schoolAdminsWithoutSchool),
       description:
         "Admin Sekolah wajib punya school_id agar tidak masuk halaman forbidden.",
-      href: "/dashboard/master-data/admins",
+      href: "/dashboard/super-admin/admins",
     },
     {
       title: "Pengguna Operasional Tanpa Sekolah",
@@ -64,7 +64,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       value: String(operationalUsersWithoutSchool),
       description:
         "Guru, siswa, pengawas khusus, principal, dan admin sebaiknya terhubung ke sekolah untuk mode multi-school.",
-      href: "/dashboard/admin/users",
+      href: "/dashboard/super-admin/users",
     },
     {
       title: "Kunci Layanan Supabase",
@@ -78,7 +78,7 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       status: auditLogsAvailable ? "ready" : "missing",
       value: auditLogsAvailable ? "Siap" : "Belum Siap",
       description: "Wajib untuk jejak audit action sensitif.",
-      href: "/dashboard/admin/audit-logs",
+      href: "/dashboard/super-admin/audit-logs",
     },
     {
       title: "Fitur Kunci Pengerjaan",
@@ -93,21 +93,21 @@ export async function getProductionReadinessItems(): Promise<ReadinessItem[]> {
       status: usersWithoutAuth === 0 ? "ready" : "warning",
       value: String(usersWithoutAuth),
       description: "Pengguna internal tanpa akun login Supabase tidak bisa masuk.",
-      href: "/dashboard/admin/users",
+      href: "/dashboard/super-admin/users",
     },
     {
       title: "Pengguna Tanpa Hak Akses",
       status: usersWithoutRole === 0 ? "ready" : "missing",
       value: String(usersWithoutRole),
       description: "Pengguna tanpa hak akses tidak bisa masuk ke beranda.",
-      href: "/dashboard/admin/users",
+      href: "/dashboard/super-admin/users",
     },
     {
       title: "Pengguna Tidak Aktif",
       status: inactiveUsers === 0 ? "ready" : "warning",
       value: String(inactiveUsers),
       description: "Pastikan pengguna tidak aktif memang disengaja.",
-      href: "/dashboard/admin/users?user_status=inactive",
+      href: "/dashboard/super-admin/users?user_status=inactive",
     },
     {
       title: "Siswa Tanpa Kelas Aktif",

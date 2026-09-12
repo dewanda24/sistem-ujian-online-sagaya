@@ -14,7 +14,9 @@ import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-butto
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   TableActionButton,
+  TableActionGroup,
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -79,6 +81,7 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
 
 type QuestionTableProps = {
   questions: QuestionRow[];
+  canEdit?: boolean;
 };
 
 type Density = "compact" | "comfortable";
@@ -116,7 +119,7 @@ const bulkActions = [
   },
 ];
 
-export function QuestionTable({ questions }: QuestionTableProps) {
+export function QuestionTable({ questions, canEdit = true }: QuestionTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewQuestion, setPreviewQuestion] = useState<QuestionRow | null>(null);
   const [density, setDensity] = useState<Density>("compact");
@@ -211,7 +214,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         </div>
       </div>
 
-      {selectedIds.length > 0 ? (
+      {canEdit && selectedIds.length > 0 ? (
         <div className="sticky top-3 z-20 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="text-sm font-medium text-[#0F172A]">
@@ -248,14 +251,16 @@ export function QuestionTable({ questions }: QuestionTableProps) {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
             <tr className="h-10">
-              <th className="w-11 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleVisible}
-                  aria-label="Pilih semua"
-                />
-              </th>
+              {canEdit ? (
+                <th className="w-11 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleVisible}
+                    aria-label="Pilih semua"
+                  />
+                </th>
+              ) : null}
               <th className="px-3 py-2 font-medium">Soal</th>
               <th className="w-40 px-3 py-2 font-medium">Mapel</th>
               <th className="w-24 px-3 py-2 font-medium">Tipe</th>
@@ -273,15 +278,17 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                   selectedSet.has(question.id) && "bg-blue-50/60",
                 )}
               >
-                <td className={cellClassName}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSet.has(question.id)}
-                    onChange={() => toggleOne(question.id)}
-                    className="size-3.5 rounded text-blue-600 focus:ring-blue-500"
-                    aria-label={`Pilih soal ${question.id}`}
-                  />
-                </td>
+                {canEdit ? (
+                  <td className={cellClassName}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSet.has(question.id)}
+                      onChange={() => toggleOne(question.id)}
+                      className="size-3.5 rounded text-blue-600 focus:ring-blue-500"
+                      aria-label={`Pilih soal ${question.id}`}
+                    />
+                  </td>
+                ) : null}
                 <td className={cn(cellClassName, "min-w-0")}>
                   <div className="line-clamp-2 text-xs font-semibold leading-relaxed text-slate-900">
                     <QuestionMathRenderer content={question.content} />
@@ -332,6 +339,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                 <td className={cellClassName}>
                   <QuestionActions
                     question={question}
+                    canEdit={canEdit}
                     onPreview={() => setPreviewQuestion(question)}
                   />
                 </td>
@@ -342,14 +350,16 @@ export function QuestionTable({ questions }: QuestionTableProps) {
       </div>
 
       <div className="grid gap-2 md:hidden">
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm shadow-sm">
-          <input
-            type="checkbox"
-            checked={allVisibleSelected}
-            onChange={toggleVisible}
-          />
-          Pilih Semua
-        </label>
+        {canEdit ? (
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 text-sm shadow-sm">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleVisible}
+            />
+            Pilih Semua
+          </label>
+        ) : null}
         {pagedQuestions.map((question) => (
           <article
             key={question.id}
@@ -359,12 +369,14 @@ export function QuestionTable({ questions }: QuestionTableProps) {
             )}
           >
             <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                checked={selectedSet.has(question.id)}
-                onChange={() => toggleOne(question.id)}
-                className="mt-1"
-              />
+              {canEdit ? (
+                <input
+                  type="checkbox"
+                  checked={selectedSet.has(question.id)}
+                  onChange={() => toggleOne(question.id)}
+                  className="mt-1"
+                />
+              ) : null}
               <div className="min-w-0 flex-1">
                 <div className="line-clamp-1 text-sm font-medium leading-5 text-[#0F172A]">
                   {question.content || "-"}
@@ -381,6 +393,7 @@ export function QuestionTable({ questions }: QuestionTableProps) {
                 <div className="mt-2 flex items-center gap-1.5">
                   <QuestionActions
                     question={question}
+                    canEdit={canEdit}
                     onPreview={() => setPreviewQuestion(question)}
                   />
                 </div>
@@ -410,59 +423,79 @@ export function QuestionTable({ questions }: QuestionTableProps) {
 
 function QuestionActions({
   question,
+  canEdit = true,
   onPreview,
 }: {
   question: QuestionRow;
+  canEdit?: boolean;
   onPreview: () => void;
 }) {
   return (
     <TableActions>
-      <TableActionButton icon="eye" onClick={onPreview}>
-        {UI_LABELS.actions.preview}
-      </TableActionButton>
-      <TableActionLink
-        href={`?action=edit&id=${question.id}`}
-        icon="pencil"
-      >
-        {UI_LABELS.actions.update}
-      </TableActionLink>
-      <TableActionLink
-        href={`?action=duplicate&id=${question.id}`}
-        icon="copy"
-      >
-        Duplikat
-      </TableActionLink>
-      <form action={updateQuestionStatusAction}>
-        <input type="hidden" name="id" value={question.id} />
-        <input
-          type="hidden"
-          name="status"
-          value={question.status === "published" ? "draft" : "published"}
-        />
-        <TableActionSubmit
-          icon={question.status === "published" ? "undo" : "send"}
-          confirmMessage={
-            question.status === "published"
-              ? "Ubah soal ini menjadi belum diterbitkan?"
-              : "Terbitkan soal ini?"
-          }
-        >
-          {question.status === "published"
-            ? UI_LABELS.actions.unpublish
-            : UI_LABELS.actions.publish}
-        </TableActionSubmit>
-      </form>
-      <form action={updateQuestionStatusAction}>
-        <input type="hidden" name="id" value={question.id} />
-        <input type="hidden" name="status" value="archived" />
-        <TableActionSubmit
-          icon="archive"
-          confirmMessage="Arsipkan soal ini?"
-          tone="danger"
-        >
-          Arsipkan
-        </TableActionSubmit>
-      </form>
+      <TableActionGroup label="Butir Soal">
+        <TableActionButton icon="eye" onClick={onPreview}>
+          {UI_LABELS.actions.preview}
+        </TableActionButton>
+        {canEdit ? (
+          <>
+            <TableActionLink
+              href={`?action=edit&id=${question.id}`}
+              icon="pencil"
+            >
+              {UI_LABELS.actions.update}
+            </TableActionLink>
+            <TableActionLink
+              href={`?action=duplicate&id=${question.id}`}
+              icon="copy"
+            >
+              Duplikat
+            </TableActionLink>
+          </>
+        ) : null}
+      </TableActionGroup>
+
+      {canEdit ? (
+        <>
+          <TableActionSeparator />
+          <TableActionGroup label="Status">
+            <form action={updateQuestionStatusAction}>
+              <input type="hidden" name="id" value={question.id} />
+              <input
+                type="hidden"
+                name="status"
+                value={question.status === "published" ? "draft" : "published"}
+              />
+              <TableActionSubmit
+                icon={question.status === "published" ? "undo" : "send"}
+                confirmMessage={
+                  question.status === "published"
+                    ? "Ubah soal ini menjadi belum diterbitkan?"
+                    : "Terbitkan soal ini?"
+                }
+              >
+                {question.status === "published"
+                  ? UI_LABELS.actions.unpublish
+                  : UI_LABELS.actions.publish}
+              </TableActionSubmit>
+            </form>
+          </TableActionGroup>
+
+          <TableActionSeparator />
+          <TableActionGroup label="Zona Bahaya">
+            <form action={updateQuestionStatusAction}>
+              <input type="hidden" name="id" value={question.id} />
+              <input type="hidden" name="status" value="archived" />
+              <TableActionSubmit
+                icon="archive"
+                confirmMessage="Arsipkan soal ini?"
+                tone="danger"
+              >
+                Arsipkan
+              </TableActionSubmit>
+            </form>
+          </TableActionGroup>
+        </>
+      ) : null}
     </TableActions>
   );
 }

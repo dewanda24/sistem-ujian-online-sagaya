@@ -64,6 +64,8 @@ export async function calculateAndPersistAttemptScore(
 
   const answerUpdates: Array<{
     id: string;
+    exam_attempt_id: string;
+    question_id: string;
     is_correct: boolean | null;
     max_score: number;
     awarded_score: number | null;
@@ -97,6 +99,8 @@ export async function calculateAndPersistAttemptScore(
       if (answer?.id) {
         answerUpdates.push({
           id: answer.id,
+          exam_attempt_id: attemptId,
+          question_id: question.question_id,
           is_correct: null,
           max_score: question.point,
           awarded_score: hasManualScore ? Number(answer.awarded_score) : null,
@@ -117,6 +121,8 @@ export async function calculateAndPersistAttemptScore(
       if (answer?.id) {
         answerUpdates.push({
           id: answer.id,
+          exam_attempt_id: attemptId,
+          question_id: question.question_id,
           is_correct: isCorrect,
           max_score: question.point,
           awarded_score: awardedScore,

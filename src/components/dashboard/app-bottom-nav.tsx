@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,18 +48,19 @@ const navConfig: Record<RoleName, NavItem[]> = {
   ],
   admin: [
     { label: "Beranda", href: "/dashboard/admin", icon: Home, exact: true },
-    { label: "Data", href: "/dashboard/admin/users", icon: Users },
-    { label: "Laporan", href: "/dashboard/admin/reports", icon: FileText },
+    { label: "Data", href: "/dashboard/master-data/users", icon: Users },
+    { label: "Laporan", href: "/dashboard/reports", icon: FileText },
     { label: "Profil", href: "/dashboard/profile", icon: User },
   ],
   principal: [
     { label: "Beranda", href: "/dashboard/principal", icon: Home, exact: true },
-    { label: "Laporan", href: "/dashboard/principal/reports", icon: FileText },
+    { label: "Laporan", href: "/dashboard/reports", icon: FileText },
     { label: "Profil", href: "/dashboard/profile", icon: User },
   ],
   super_admin: [
     { label: "Beranda", href: "/dashboard/super-admin", icon: Home, exact: true },
     { label: "Sekolah", href: "/dashboard/super-admin/schools", icon: Settings },
+    { label: "Monitor", href: "/dashboard/super-admin/monitoring", icon: Monitor },
     { label: "Profil", href: "/dashboard/profile", icon: User },
   ],
 };

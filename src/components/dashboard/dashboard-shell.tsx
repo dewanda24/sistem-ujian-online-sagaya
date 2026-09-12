@@ -16,19 +16,43 @@ import type { CurrentUser } from "@/types/auth";
 import type { RoleName } from "@/types/auth";
 import { cn } from "@/lib/utils";
 
+import { TenantImpersonationBanner } from "@/features/super-admin/components/tenant-impersonation-banner";
+import { SchoolSwitcher } from "@/features/super-admin/components/school-switcher";
+
 interface DashboardShellProps {
   children: ReactNode;
   user: CurrentUser;
+  impersonatedSchool?: {
+    id: string;
+    name: string;
+    education_level?: string | null;
+  } | null;
+  superAdminSchools?: Array<{
+    id: string;
+    name: string;
+    education_level?: string | null;
+  }>;
 }
 
-export function DashboardShell({ children, user }: DashboardShellProps) {
+export function DashboardShell({
+  children,
+  user,
+  impersonatedSchool,
+  superAdminSchools,
+}: DashboardShellProps) {
   const pathname = usePathname();
   return (
-    <DashboardShellContent key={pathname} user={user}>
+    <DashboardShellContent
+      key={pathname}
+      user={user}
+      impersonatedSchool={impersonatedSchool}
+      superAdminSchools={superAdminSchools}
+    >
       {children}
     </DashboardShellContent>
   );
 }
+
 
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -67,12 +91,16 @@ function getPageTitle(pathname: string): string {
     "/dashboard/proctor": "Beranda",
     "/dashboard/proctor/monitoring": "Monitoring",
     "/dashboard/admin": "Beranda",
-    "/dashboard/admin/users": "Data Pengguna",
-    "/dashboard/admin/students": "Data Siswa",
-    "/dashboard/admin/teachers": "Data Guru",
-    "/dashboard/admin/classes": "Data Kelas",
-    "/dashboard/admin/subjects": "Mata Pelajaran",
-    "/dashboard/admin/reports": "Laporan",
+    "/dashboard/master-data/users": "Data Pengguna",
+    "/dashboard/master-data/students": "Data Siswa",
+    "/dashboard/master-data/teachers": "Data Guru",
+    "/dashboard/master-data/classes": "Data Kelas",
+    "/dashboard/master-data/subjects": "Mata Pelajaran",
+    "/dashboard/super-admin/users": "Pengguna Global",
+    "/dashboard/super-admin/schools": "Manajemen Sekolah",
+    "/dashboard/super-admin/monitoring": "Pemantauan Sistem",
+    "/dashboard/super-admin/reports": "Laporan Global",
+    "/dashboard/super-admin/settings": "Pengaturan Sistem",
     "/dashboard/profile": "Profil Saya",
     "/dashboard/settings": "Pengaturan",
   };
@@ -89,7 +117,12 @@ function getPageTitle(pathname: string): string {
   return "Sagaya CBT";
 }
 
-function DashboardShellContent({ children, user }: DashboardShellProps) {
+function DashboardShellContent({
+  children,
+  user,
+  impersonatedSchool,
+  superAdminSchools = [],
+}: DashboardShellProps) {
   const menuItems = getDashboardMenu(user);
   const pathname = usePathname();
   const isExamRoom = pathname.startsWith("/dashboard/exam-room");
@@ -119,6 +152,7 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
   };
 
   const role = user.roles?.name as RoleName | undefined;
+  const isSuperAdmin = role === "super_admin";
   const displayName = user.user_profiles?.full_name ?? user.username;
   const initials = displayName
     .split(" ")
@@ -141,7 +175,13 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
   const pageTitle = getPageTitle(pathname);
 
   const topBarActions = (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1.5">
+      {isSuperAdmin && superAdminSchools.length > 0 && (
+        <SchoolSwitcher
+          schools={superAdminSchools}
+          activeSchoolId={impersonatedSchool?.id}
+        />
+      )}
       <button
         type="button"
         aria-label="Notifikasi"
@@ -176,6 +216,11 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
 
       {/* Main content column */}
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Impersonation Warning Banner if active */}
+        {impersonatedSchool && (
+          <TenantImpersonationBanner school={impersonatedSchool} />
+        )}
+
         {/* Mobile Top App Bar */}
         <div className="lg:hidden">
           <TopAppBar
@@ -199,7 +244,13 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
             </svg>
           </button>
           <span className="flex-1 text-[17px] font-semibold text-[#1E293B] truncate">{pageTitle}</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && superAdminSchools.length > 0 && (
+              <SchoolSwitcher
+                schools={superAdminSchools}
+                activeSchoolId={impersonatedSchool?.id}
+              />
+            )}
             <button
               type="button"
               aria-label="Notifikasi"
@@ -219,6 +270,7 @@ function DashboardShellContent({ children, user }: DashboardShellProps) {
 
         {/* Page content */}
         <main
+
           className={cn(
             "min-w-0 flex-1 px-4 py-4 lg:px-8 lg:py-6",
             // Add bottom padding for bottom nav on mobile

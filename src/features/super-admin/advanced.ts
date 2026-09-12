@@ -322,6 +322,7 @@ export async function getLiveSuperAdminMonitoringData(
 
     return {
       id: schedule.id,
+      schoolId: schedule.school_id,
       title: schedule.title ?? "-",
       status: schedule.status ?? "-",
       start_at: schedule.start_at,

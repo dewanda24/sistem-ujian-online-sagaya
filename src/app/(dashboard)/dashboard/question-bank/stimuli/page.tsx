@@ -24,6 +24,7 @@ import {
   getQuestionStimuli,
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
+import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type PageProps = {
@@ -37,7 +38,8 @@ type PageProps = {
 };
 
 export default async function QuestionStimuliPage({ searchParams }: PageProps) {
-  await requirePermission("question_bank.view");
+  const currentUser = await requirePermission("question_bank.view");
+  const canManage = hasPermission(currentUser, "question_bank.manage");
   const params = await searchParams;
   const [subjects, schoolId, stimuli] = await Promise.all([
     getScopedSubjectOptions(),
@@ -57,10 +59,11 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
         description="Kelola bacaan, gambar, audio, video, atau pengantar yang dapat dipakai bersama oleh banyak soal."
       />
 
-      <FormSection
-        title={editable ? "Edit Stimulus" : "+ Buat Stimulus"}
-        description="Stimulus dapat dipakai ulang oleh beberapa soal dalam mapel yang sama."
-      >
+      {canManage ? (
+        <FormSection
+          title={editable ? "Edit Stimulus" : "+ Buat Stimulus"}
+          description="Stimulus dapat dipakai ulang oleh beberapa soal dalam mapel yang sama."
+        >
         <form
           action={saveQuestionStimulusAction}
           className="grid gap-4 md:grid-cols-2"
@@ -143,6 +146,7 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
           </div>
         </form>
       </FormSection>
+      ) : null}
 
       <QuestionBankFilters
         subjects={subjects}
@@ -193,41 +197,45 @@ export default async function QuestionStimuliPage({ searchParams }: PageProps) {
               <StatusBadge active={Boolean(stimulus.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <TableActions>
-                <TableActionLink
-                  href={`/dashboard/question-bank/stimuli?edit=${stimulus.id}`}
-                  icon="pencil"
-                >
-                  Edit
-                </TableActionLink>
-                <form action={toggleQuestionStimulusAction}>
-                  <input type="hidden" name="id" value={stimulus.id} />
-                  <input
-                    type="hidden"
-                    name="is_active"
-                    value={stimulus.is_active ? "false" : "true"}
-                  />
-                  <TableActionSubmit
-                    icon="power"
-                    confirmMessage={`${
-                      stimulus.is_active ? "Nonaktifkan" : "Aktifkan"
-                    } stimulus ${stimulus.title}?`}
+              {canManage ? (
+                <TableActions>
+                  <TableActionLink
+                    href={`/dashboard/question-bank/stimuli?edit=${stimulus.id}`}
+                    icon="pencil"
                   >
-                    {stimulus.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </TableActionSubmit>
-                </form>
-                <form action={deleteQuestionStimulusAction}>
-                  <input type="hidden" name="id" value={stimulus.id} />
-                  <TableActionSubmit
-                    icon="archive"
-                    confirmMessage="Arsipkan stimulus ini? Soal lama yang masih memakai stimulus ini tetap menyimpan relasinya, tetapi stimulus tidak akan muncul sebagai pilihan aktif."
-                    confirmationText="HAPUS"
-                    tone="danger"
-                  >
-                    Arsipkan
-                  </TableActionSubmit>
-                </form>
-              </TableActions>
+                    Edit
+                  </TableActionLink>
+                  <form action={toggleQuestionStimulusAction}>
+                    <input type="hidden" name="id" value={stimulus.id} />
+                    <input
+                      type="hidden"
+                      name="is_active"
+                      value={stimulus.is_active ? "false" : "true"}
+                    />
+                    <TableActionSubmit
+                      icon="power"
+                      confirmMessage={`${
+                        stimulus.is_active ? "Nonaktifkan" : "Aktifkan"
+                      } stimulus ${stimulus.title}?`}
+                    >
+                      {stimulus.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                  <form action={deleteQuestionStimulusAction}>
+                    <input type="hidden" name="id" value={stimulus.id} />
+                    <TableActionSubmit
+                      icon="archive"
+                      confirmMessage="Arsipkan stimulus ini? Soal lama yang masih memakai stimulus ini tetap menyimpan relasinya, tetapi stimulus tidak akan muncul sebagai pilihan aktif."
+                      confirmationText="HAPUS"
+                      tone="danger"
+                    >
+                      Arsipkan
+                    </TableActionSubmit>
+                  </form>
+                </TableActions>
+              ) : (
+                <span className="text-xs text-slate-400">-</span>
+              )}
             </td>
           </tr>
         ))}

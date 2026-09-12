@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  PenLine,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -14,6 +15,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import {
   TableActionButton,
   TableActionLink,
+  TableActionSeparator,
   TableActions,
 } from "@/components/dashboard/table-actions";
 import { UI_LABELS } from "@/constants/ui-labels";
@@ -28,6 +30,8 @@ type ReportResultRow = {
   score: number;
   maxScore: number;
   percent: number;
+  kkm?: number | null;
+  isPassed?: boolean | null;
   status: string;
   gradingStatus: string;
   submittedAt: string | null;
@@ -59,7 +63,8 @@ function getScoreLabel(row: ReportResultRow) {
 function getPassStatus(row: ReportResultRow) {
   if (row.gradingStatus !== "finalized") return null;
 
-  return row.percent >= 75 ? "Lulus" : "Tidak lulus";
+  const kkm = row.kkm ?? 75;
+  return row.percent >= kkm ? "Tuntas" : "Belum Tuntas";
 }
 
 function exportHref(row: ReportResultRow) {
@@ -148,12 +153,12 @@ export function ReportResultTable({
                   {getPassStatus(row) ? (
                     <div
                       className={`mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium ${
-                        row.percent >= 75
+                        row.percent >= (row.kkm ?? 75)
                           ? "bg-emerald-50 text-emerald-700"
                           : "bg-red-50 text-red-700"
                       }`}
                     >
-                      {getPassStatus(row)}
+                      {getPassStatus(row)} (KKM {row.kkm ?? 75})
                     </div>
                   ) : null}
                 </td>
@@ -255,28 +260,43 @@ export function ReportResultTable({
 function RowActions({
   row,
   onDetail,
+  compact,
 }: {
   row: ReportResultRow;
   onDetail: () => void;
   compact?: boolean;
 }) {
+  const needsGrading = row.gradingStatus === "needs_manual_grading";
+
   return (
-    <TableActions>
-      <TableActionButton icon="eye" onClick={onDetail}>
-        Rincian
-      </TableActionButton>
-      <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon="file-text">
-        Lihat Jawaban
-      </TableActionLink>
-      {row.gradingStatus === "needs_manual_grading" ? (
-        <TableActionLink href={`/dashboard/exam-results/${row.id}`} icon="pen-line">
-          Koreksi Esai
-        </TableActionLink>
+    <div className="flex items-center justify-end gap-1.5">
+      {needsGrading && !compact ? (
+        <Link
+          href={`/dashboard/exam-results/${row.id}`}
+          className="inline-flex h-8 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-xs font-bold text-amber-800 shadow-2xs hover:bg-amber-100 active:scale-95 transition"
+          title="Koreksi Esai Siswa Sekarang"
+        >
+          <PenLine className="size-3.5 text-amber-600" />
+          <span>Koreksi Esai</span>
+        </Link>
       ) : null}
-      <TableActionLink href={exportHref(row)} icon="download">
-        {UI_LABELS.actions.exportData}
-      </TableActionLink>
-    </TableActions>
+
+      <TableActions>
+        <TableActionButton icon="eye" onClick={onDetail}>
+          Rincian
+        </TableActionButton>
+        <TableActionLink
+          href={`/dashboard/exam-results/${row.id}`}
+          icon={needsGrading ? "pen-line" : "file-text"}
+        >
+          {needsGrading ? "Koreksi Esai" : "Lihat Lembar Jawaban"}
+        </TableActionLink>
+        <TableActionSeparator />
+        <TableActionLink href={exportHref(row)} icon="download">
+          {UI_LABELS.actions.exportData}
+        </TableActionLink>
+      </TableActions>
+    </div>
   );
 }
 
@@ -319,9 +339,16 @@ function DetailDrawer({
             <Info label="Mapel" value={row.subject} />
             <Info label="Waktu selesai" value={formatDateTime(row.submittedAt)} />
           </Section>
-          <Section title="Nilai">
+          <Section title="Nilai & Kelulusan">
             <Info label="Nilai akhir" value={getScoreLabel(row)} />
             <Info label="Skor mentah" value={`${row.score} / ${row.maxScore}`} />
+            <Info label="KKM Mapel" value={String(row.kkm ?? 75)} />
+            {getPassStatus(row) ? (
+              <Info
+                label="Status Kelulusan"
+                value={`${getPassStatus(row)} (${row.percent >= (row.kkm ?? 75) ? "Memenuhi KKM" : "Di bawah KKM"})`}
+              />
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <StatusPill value={row.status} />
               <StatusPill value={row.gradingStatus} />

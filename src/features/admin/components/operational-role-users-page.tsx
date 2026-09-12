@@ -4,6 +4,7 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -12,7 +13,6 @@ import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
-  resetAdminUserPasswordAction,
   saveAdminUserAction,
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
@@ -257,6 +257,7 @@ export async function OperationalRoleUsersPage({
                 >
                   Edit
                 </TableActionLink>
+                <TableActionSeparator />
                 <form action={toggleAdminUserStatusAction}>
                   <input type="hidden" name="redirect_path" value={redirectPath} />
                   <input type="hidden" name="id" value={item.id} />
@@ -272,25 +273,6 @@ export async function OperationalRoleUsersPage({
                     } akun ${item.profile?.full_name ?? item.username}?`}
                   >
                     {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                  </TableActionSubmit>
-                </form>
-                <form action={resetAdminUserPasswordAction} className="grid gap-1.5">
-                  <input type="hidden" name="redirect_path" value={redirectPath} />
-                  <input type="hidden" name="id" value={item.id} />
-                  <input
-                    name="password"
-                    type="password"
-                    placeholder="Password baru"
-                    className="w-36 rounded-md border px-2 py-1 text-xs"
-                    required
-                  />
-                  <TableActionSubmit
-                    icon="key-round"
-                    confirmMessage={`Reset password untuk ${item.profile?.full_name ?? item.username}?`}
-                    confirmationText="RESET"
-                    tone="danger"
-                  >
-                    Reset
                   </TableActionSubmit>
                 </form>
               </TableActions>

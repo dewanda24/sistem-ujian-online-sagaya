@@ -103,6 +103,9 @@ export async function releaseActiveSessionAction(formData: FormData) {
     .update({
       active_session_id: null,
       active_session_seen_at: null,
+      locked_at: null,
+      locked_by: null,
+      lock_reason: null,
       last_activity_at: now,
     })
     .eq("id", attempt.id);

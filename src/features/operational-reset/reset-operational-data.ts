@@ -29,7 +29,6 @@ const DELETE_ALL_ORDER = [
   "question_stimuli",
   "question_categories",
   "teacher_subjects",
-  "student_classes",
   "class_members",
   "classes",
   "semesters",
@@ -413,15 +412,7 @@ async function deleteStudentOwnedData(
       "peserta ujian milik siswa",
     ),
   );
-  tableSummaries.push(
-    await deleteByIn(
-      supabase,
-      "student_classes",
-      "student_id",
-      studentIds,
-      "penempatan kelas siswa",
-    ),
-  );
+
   tableSummaries.push(
     await deleteByIn(
       supabase,

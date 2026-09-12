@@ -39,7 +39,7 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
     label: "Penugasan guru/siswa",
     description:
       "Penugasan guru-mapel-kelas dan riwayat penempatan siswa ke kelas.",
-    tables: ["teacher_subjects", "student_classes", "class_members"],
+    tables: ["teacher_subjects", "class_members"],
   },
   {
     id: "students",
@@ -51,7 +51,6 @@ export const operationalResetScopes: OperationalResetScopeDefinition[] = [
       "exam_answers (milik siswa)",
       "exam_attempts (milik siswa)",
       "exam_participants (milik siswa)",
-      "student_classes (milik siswa)",
       "class_members (milik siswa)",
       "user_profiles (akun siswa)",
       "users (akun siswa)",

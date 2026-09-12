@@ -33,6 +33,7 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
   const envStatus = getEnvStatus();
   const readyEnvCount = envStatus.filter((item) => item.configured).length;
   const latestBackup = backupJobs.rows[0];
+  const hasAutomatedBackup = backupJobs.rows.some((b) => b.kind === "scheduled");
 
   return (
     <div className="space-y-6">
@@ -45,7 +46,7 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
       <section className="grid gap-4 md:grid-cols-3">
         <DashboardCard
           title="Status Backup"
-          description="Ringkasan kesiapan cadangan manual sebelum otomatisasi dibuat."
+          description="Kesiapan cadangan manual dan endpoint otomatisasi."
         >
           <div className="space-y-3 text-sm">
             <ReadinessRow
@@ -68,18 +69,26 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
                 )?.configured,
               )}
             />
-            <ReadinessRow label="Cadangan otomatis" value="Belum aktif" />
+            <ReadinessRow
+              label="Cadangan otomatis"
+              value={hasAutomatedBackup ? "Aktif (Terjadwal)" : "Endpoint /api/cron/backup Siap"}
+              ready={hasAutomatedBackup || readyEnvCount === envStatus.length}
+            />
           </div>
         </DashboardCard>
 
         <DashboardCard
-          title="Jadwal Rekomendasi"
-          description="SOP dasar sampai cadangan otomatis disiapkan."
+          title="Jadwal & Integrasi"
+          description="SOP operasional & integrasi webhook/cron otomatis."
         >
           <div className="space-y-3 text-sm">
             <ReadinessRow label="Sebelum migrasi" value="Wajib cadangkan" ready />
             <ReadinessRow label="Sebelum simulasi besar" value="Wajib cadangkan" ready />
-            <ReadinessRow label="Harian produksi" value="Manual/Supabase" />
+            <ReadinessRow
+              label="Otomatis harian"
+              value={hasAutomatedBackup ? "Tereksekusi" : "Endpoint /api/cron/backup"}
+              ready={hasAutomatedBackup}
+            />
           </div>
         </DashboardCard>
 

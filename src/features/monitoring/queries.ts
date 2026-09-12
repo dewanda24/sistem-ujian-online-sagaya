@@ -3,6 +3,8 @@ import { hasPermission } from "@/lib/auth/has-permission";
 import {
   getActiveProctorScheduleIds,
   hasActiveProctorAssignment,
+  getTeacherSubjectIds,
+  hasTeacherMonitoringAccess,
 } from "@/lib/auth/proctor-scope";
 import {
   assertSameSchool,
@@ -43,12 +45,24 @@ export async function getMonitoringSchedules(options?: {
   let schedules = data;
 
   if (options?.scope === "teacher" && options.user?.id) {
-    const assignedScheduleIds = await getActiveProctorScheduleIds(
-      options.user.id,
-    );
+    const [assignedScheduleIds, teacherSubjectIds] = await Promise.all([
+      getActiveProctorScheduleIds(options.user.id),
+      options.user.roles?.name === "teacher"
+        ? getTeacherSubjectIds(options.user.id)
+        : Promise.resolve([]),
+    ]);
 
     schedules = schedules.filter((schedule) => {
-      return assignedScheduleIds.includes(schedule.id as string);
+      const isAssigned = assignedScheduleIds.includes(schedule.id as string);
+      if (isAssigned) return true;
+
+      const examPackage = firstRelation(schedule.exam_packages);
+      const isSubjectTeacher =
+        Boolean(examPackage?.subject_id) &&
+        teacherSubjectIds.includes(examPackage?.subject_id as string);
+      const isCreator = schedule.created_by === options.user?.id;
+
+      return isSubjectTeacher || isCreator;
     });
   }
 
@@ -259,7 +273,7 @@ export async function canControlMonitoringSchedule(
     return false;
   }
 
-  return hasActiveProctorAssignment(user.id, scheduleId);
+  return hasTeacherMonitoringAccess(user.id, scheduleId);
 }
 
 async function assertMonitoringScheduleInScope(
@@ -283,7 +297,7 @@ async function assertMonitoringScheduleInScope(
     options?.scope === "teacher" &&
     ["teacher", "proctor"].includes(options.user?.roles?.name ?? "")
   ) {
-    const allowed = await hasActiveProctorAssignment(
+    const allowed = await hasTeacherMonitoringAccess(
       options.user?.id ?? "",
       scheduleId,
     );

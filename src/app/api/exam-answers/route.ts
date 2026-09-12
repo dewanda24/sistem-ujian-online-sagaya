@@ -13,11 +13,29 @@ import { calculateAndPersistAttemptScore } from "@/lib/scoring/exam-scoring";
 type AttemptTiming = {
   id: string;
   exam_participant_id: string;
+  started_at?: string | null;
   status: string;
   locked_at?: string | null;
   active_session_id?: string | null;
   active_session_seen_at?: string | null;
-  exam_schedules?: { end_at?: string | null; exam_package_id?: string | null } | Array<{ end_at?: string | null; exam_package_id?: string | null }> | null;
+  exam_schedules?:
+    | {
+        end_at?: string | null;
+        exam_package_id?: string | null;
+        exam_packages?:
+          | { duration_minutes?: number | null }
+          | Array<{ duration_minutes?: number | null }>
+          | null;
+      }
+    | Array<{
+        end_at?: string | null;
+        exam_package_id?: string | null;
+        exam_packages?:
+          | { duration_minutes?: number | null }
+          | Array<{ duration_minutes?: number | null }>
+          | null;
+      }>
+    | null;
 };
 
 type NormalizedAnswerPayload = {
@@ -84,7 +102,7 @@ export async function POST(request: Request) {
   const dbClient = getServiceRoleClient() ?? supabase;
   const { data: attempt } = await dbClient
     .from("exam_attempts")
-    .select("id, exam_participant_id, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_package_id)")
+    .select("id, exam_participant_id, started_at, status, locked_at, active_session_id, active_session_seen_at, exam_schedules(end_at, exam_package_id, exam_packages(duration_minutes))")
     .eq("id", normalized.attempt_id)
     .eq("student_id", user!.id)
     .eq("status", "in_progress")
@@ -197,11 +215,29 @@ function isAttemptExpired(attempt: AttemptTiming) {
     ? attempt.exam_schedules[0]
     : attempt.exam_schedules;
 
-  if (!schedule?.end_at) {
-    return false;
+  const pkgRelation = schedule?.exam_packages;
+  const examPackage = Array.isArray(pkgRelation)
+    ? pkgRelation[0]
+    : pkgRelation;
+
+  const nowMs = Date.now();
+
+  // 1. Cek batas jendela jadwal
+  if (schedule?.end_at && new Date(schedule.end_at).getTime() < nowMs) {
+    return true;
   }
 
-  return new Date(schedule.end_at) < new Date();
+  // 2. Cek alokasi durasi paket dari started_at (dengan toleransi 30 detik untuk latency)
+  if (attempt.started_at && examPackage?.duration_minutes && examPackage.duration_minutes > 0) {
+    const durationEndMs =
+      new Date(attempt.started_at).getTime() +
+      examPackage.duration_minutes * 60 * 1000;
+    if (nowMs > durationEndMs + 30000) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function expireAttempt(attemptId: string, participantId: string) {

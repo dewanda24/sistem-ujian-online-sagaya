@@ -189,37 +189,34 @@ export default async function SystemSettingsPage({ searchParams }: PageProps) {
                   : "danger"
               }
             />
-            <SettingRow label="RLS" value="Belum tahap penguatan" />
+            <SettingRow label="RLS Multi-Tenant" value="Teraplikasi (Hardened)" tone="success" />
           </div>
         </DashboardCard>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <DashboardCard
-          title="Daftar Cek Keamanan"
-          description="Daftar cek operasional sebelum rilis produksi."
+          title="Daftar Cek Keamanan & Tata Kelola"
+          description="Status kesiapan operasional arsitektur platform."
         >
-          <ChecklistItem done label="Login dan hak akses aktif" />
-          <ChecklistItem done label="Catatan aktivitas tersedia" />
-          <ChecklistItem done label="Kunci layanan hanya dipakai di server" />
-          <ChecklistItem done={configuredCount === envStatus.length} label="Variabel wajib lengkap" />
-          <ChecklistItem label="Penguatan RLS produksi belum dieksekusi" />
-          <ChecklistItem label="Backup otomatis belum diaktifkan" />
+          <ChecklistItem done label="Login dan hak akses terpusat aktif" />
+          <ChecklistItem done label="Catatan aktivitas (Audit Trail) immutable aktif" />
+          <ChecklistItem done label="Kunci layanan hanya dipakai di server (Service Role Isolation)" />
+          <ChecklistItem done={configuredCount === envStatus.length} label="Variabel wajib lingkungan lengkap" />
+          <ChecklistItem done label="Penguatan RLS produksi multi-tenant aktif" />
+          <ChecklistItem done label="Penyimpanan konfigurasi global di tabel system_settings aktif" />
         </DashboardCard>
 
         <DashboardCard
-          title="Catatan Konfigurasi"
-          description="Pengaturan saat ini sengaja hanya-baca agar tidak membutuhkan struktur database baru."
+          title="Catatan Tata Kelola Sistem"
+          description="Tata cara pembaruan konfigurasi dan broadcast pengumuman darurat."
         >
           <div className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Untuk mengubah nama aplikasi, lingkungan, atau mode perawatan,
-              gunakan variabel lingkungan di Vercel/server.
+              Perubahan identitas aplikasi (nama, logo, tema) dan batas keamanan CBT langsung tersimpan di basis data dan berlaku instan tanpa perlu rebuild ulang server.
             </p>
             <p>
-              Pengaturan permanen seperti logo sekolah, aturan keamanan ujian global,
-              dan kebijakan ujian sebaiknya memakai tabel pengaturan khusus pada
-              sprint terpisah.
+              Pengumuman darurat global dapat diaktifkan kapan saja melalui kartu siaran di atas untuk menginformasikan jadwal pemeliharaan server kepada seluruh pengawas, guru, dan peserta ujian.
             </p>
           </div>
         </DashboardCard>

@@ -55,7 +55,8 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
           <thead className="border-b border-[#E2E8F0] text-xs uppercase text-[#64748B]">
             <tr className="h-10">
               <th className="px-3 py-2 font-medium">Nama Mata Pelajaran</th>
-              <th className="w-32 px-3 py-2 font-medium">Kode</th>
+              <th className="w-28 px-3 py-2 font-medium">Kode</th>
+              <th className="w-24 px-3 py-2 font-medium text-center">KKM</th>
               <th className="w-28 px-3 py-2 font-medium">Status</th>
               <th className="w-36 px-3 py-2 font-medium">Aksi</th>
             </tr>
@@ -65,6 +66,7 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
               <tr key={subject.id} className="h-14 hover:bg-[#F8FAFC]">
                 <td className="min-w-0 px-3 py-2"><div className="line-clamp-1 font-medium text-[#0F172A]">{subject.name}</div></td>
                 <td className="truncate px-3 py-2">{subject.code}</td>
+                <td className="px-3 py-2 text-center font-semibold text-[#0F172A]">{subject.kkm ?? 75}</td>
                 <td className="px-3 py-2"><StatusBadge active={Boolean(subject.is_active)} /></td>
                 <td className="px-3 py-2">
                   <TableActions>
@@ -97,7 +99,7 @@ export default async function SubjectsPage({ searchParams }: PageProps) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="line-clamp-1 text-sm font-medium text-[#0F172A]">{subject.name}</div>
-                <div className="mt-0.5 line-clamp-1 text-xs text-[#64748B]">{subject.code}</div>
+                <div className="mt-0.5 line-clamp-1 text-xs text-[#64748B]">{subject.code} • KKM: {subject.kkm ?? 75}</div>
               </div>
               <StatusBadge active={Boolean(subject.is_active)} />
             </div>

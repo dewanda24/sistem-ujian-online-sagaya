@@ -187,7 +187,6 @@ export async function saveSchoolAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/schools");
   revalidatePath(SUPER_ADMIN_SCHOOLS_PATH);
   if (savedSchool?.id) {
     revalidatePath(`${SUPER_ADMIN_SCHOOLS_PATH}/${savedSchool.id}`);
@@ -226,7 +225,6 @@ export async function toggleSchoolAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/master-data/schools");
   revalidatePath(SUPER_ADMIN_SCHOOLS_PATH);
   revalidatePath(`${SUPER_ADMIN_SCHOOLS_PATH}/${id}`);
   redirectTo(redirectPath, {
@@ -663,11 +661,13 @@ export async function toggleClassAction(formData: FormData) {
 export async function saveSubjectAction(formData: FormData) {
   const currentUser = await requirePermission("subjects.manage");
   const scope = await requireSchoolScope();
+  const rawKkm = formData.get("kkm");
   const parsed = subjectSchema.safeParse({
     id: formString(formData, "id"),
     school_id: formString(formData, "school_id"),
     code: formString(formData, "code"),
     name: formString(formData, "name"),
+    kkm: rawKkm !== null && rawKkm !== "" ? Number(rawKkm) : 75,
     is_active: formBoolean(formData, "is_active"),
   });
 
@@ -683,7 +683,7 @@ export async function saveSubjectAction(formData: FormData) {
   const dbClient = serviceRoleClient() ?? supabase;
   const { id, ...payload } = parsed.data;
   assertSameSchool(scope, payload.school_id);
-  const { data: savedSubject, error } = id
+  let { data: savedSubject, error } = id
     ? await dbClient
         .from("subjects")
         .update(payload)
@@ -691,6 +691,20 @@ export async function saveSubjectAction(formData: FormData) {
         .select("id")
         .single()
     : await dbClient.from("subjects").insert(payload).select("id").single();
+
+  if (error && (error.message?.includes("kkm") || error.code === "PGRST204")) {
+    const { kkm: _k, ...payloadWithoutKkm } = payload;
+    const fallbackRes = id
+      ? await dbClient
+          .from("subjects")
+          .update(payloadWithoutKkm)
+          .eq("id", id)
+          .select("id")
+          .single()
+      : await dbClient.from("subjects").insert(payloadWithoutKkm).select("id").single();
+    savedSubject = fallbackRes.data;
+    error = fallbackRes.error;
+  }
 
   if (!error && savedSubject?.id) {
     await logAuditEvent({
@@ -785,6 +799,34 @@ async function deleteAuthUser(authUserId: string | null | undefined) {
   }
 
   await adminClient.auth.admin.deleteUser(authUserId);
+}
+
+async function updateAuthUserPassword(
+  authUserId: string | null | undefined,
+  password?: string,
+) {
+  if (!authUserId || !password) {
+    return { ok: true, error: null };
+  }
+
+  const adminClient = serviceRoleClient();
+
+  if (!adminClient) {
+    return {
+      ok: false,
+      error:
+        "SUPABASE_SERVICE_ROLE_KEY belum tersedia. Pembaruan password login belum dapat dijalankan.",
+    };
+  }
+
+  const { error } = await adminClient.auth.admin.updateUserById(authUserId, {
+    password,
+  });
+
+  return {
+    ok: !error,
+    error: error ? getFriendlyErrorMessage(error) : null,
+  };
 }
 
 async function getDefaultSchoolId() {
@@ -1740,12 +1782,24 @@ export async function saveTeacherAction(formData: FormData) {
   } else {
     const { data: targetUser } = await supabase
       .from("users")
-      .select("school_id")
+      .select("school_id, auth_user_id")
       .eq("id", id)
       .maybeSingle();
 
     assertSameSchool(scope, targetUser?.school_id);
     targetSchoolId = targetUser?.school_id ?? null;
+    authUserId = targetUser?.auth_user_id ?? null;
+
+    if (password && authUserId) {
+      const updateResult = await updateAuthUserPassword(authUserId, password);
+
+      if (!updateResult.ok) {
+        redirectTo("/dashboard/master-data/teachers", {
+          ok: false,
+          message: updateResult.error ?? "Gagal memperbarui password guru.",
+        });
+      }
+    }
   }
 
   const userSchoolId = scope.isSuperAdmin ? targetSchoolId : scope.schoolId;
@@ -2012,12 +2066,24 @@ export async function saveStudentAction(formData: FormData) {
   } else {
     const { data: targetUser } = await supabase
       .from("users")
-      .select("school_id")
+      .select("school_id, auth_user_id")
       .eq("id", id)
       .maybeSingle();
 
     assertSameSchool(scope, targetUser?.school_id);
     targetSchoolId = targetUser?.school_id ?? null;
+    authUserId = targetUser?.auth_user_id ?? null;
+
+    if (password && authUserId) {
+      const updateResult = await updateAuthUserPassword(authUserId, password);
+
+      if (!updateResult.ok) {
+        redirectTo("/dashboard/master-data/students", {
+          ok: false,
+          message: updateResult.error ?? "Gagal memperbarui password siswa.",
+        });
+      }
+    }
   }
 
   const userSchoolId = scope.isSuperAdmin ? targetSchoolId : scope.schoolId;

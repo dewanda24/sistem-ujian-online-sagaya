@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserCheck, UserX, KeyRound, ShieldAlert, Plus, Search, FilterX } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
@@ -15,10 +16,10 @@ import {
   getUserGovernanceSummary,
 } from "@/features/admin/queries";
 import {
-  resetAdminUserPasswordAction,
   saveAdminUserAction,
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
+import { UserPasswordResetModal } from "@/features/admin/components/user-password-reset-modal";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getSchoolOptions } from "@/lib/master-data/queries";
 
@@ -29,6 +30,7 @@ type PageProps = {
     school_id?: string;
     user_status?: string;
     edit?: string;
+    reset_user?: string;
     status?: string;
     message?: string;
   }>;
@@ -41,6 +43,8 @@ export default async function UsersPage({
 }: PageProps) {
   const currentUser = await requirePermission("users.view");
   const params = await searchParams;
+  const isSuperAdmin = currentUser.roles?.name === "super_admin";
+
   const [users, roles, operationalRoles, summary, schools] = await Promise.all([
     getAdminUsers({
       q: params.q,
@@ -53,86 +57,74 @@ export default async function UsersPage({
     getUserGovernanceSummary({
       school_id: params.school_id,
     }),
-    currentUser.roles?.name === "super_admin"
-      ? getSchoolOptions()
-      : Promise.resolve([]),
+    isSuperAdmin ? getSchoolOptions() : Promise.resolve([]),
   ]);
+
   const editable = users.find((user) => user.id === params.edit);
+  const resetTargetUser = params.reset_user
+    ? users.find((user) => user.id === params.reset_user)
+    : null;
+
+  const hasFilters = Boolean(params.q || params.role_id || params.user_status || params.school_id);
 
   return (
     <div className="space-y-6">
       <ActionToast status={params.status} message={params.message} />
+
+      {/* Reset Password Modal */}
+      {resetTargetUser && (
+        <UserPasswordResetModal
+          user={{
+            id: resetTargetUser.id,
+            username: resetTargetUser.username,
+            email: resetTargetUser.email,
+            full_name: resetTargetUser.profile?.full_name,
+          }}
+          redirectPath={basePath}
+        />
+      )}
+
       <DashboardPageHeader
-        title={currentUser.roles?.name === "super_admin" ? "Pengguna Global" : "Pengguna"}
+        title={isSuperAdmin ? "Direktori Pengguna Global" : "Manajemen Pengguna"}
         description={
-          currentUser.roles?.name === "super_admin"
-            ? "Lihat semua pengguna lintas sekolah, filter peran/status/sekolah, reset password, dan aktif/nonaktifkan akun."
-            : "Direktori akun aplikasi. Akun guru, siswa, admin sekolah, dan pengawas khusus dikelola dari Data Sekolah agar lebih rapi."
+          isSuperAdmin
+            ? "Pusat akun lintas seluruh sekolah. Cari pengguna, kelola hak akses, aktifkan/nonaktifkan akun, dan reset sandi secara langsung."
+            : "Direktori akun aplikasi untuk mengelola hak akses pengguna sekolah."
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-4">
+      {/* KPI Summary Cards */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
           title="Total Pengguna"
           value={String(summary.total)}
-          description="Semua akun internal yang terdaftar."
+          description="Seluruh akun terdaftar di sistem"
         />
         <DashboardCard
           title="Belum Terhubung"
           value={String(summary.withoutAuth)}
-          description="Belum tersambung ke akun login."
+          description="Belum memiliki sesi auth login"
         />
         <DashboardCard
-          title="Tanpa Peran"
+          title="Tanpa Hak Akses"
           value={String(summary.withoutRole)}
-          description="Berisiko gagal akses dashboard."
+          description="Belum ditentukan perannya"
         />
         <DashboardCard
-          title="Tidak Aktif"
+          title="Akun Ditangguhkan"
           value={String(summary.inactive)}
-          description="Akun nonaktif atau status belum aktif."
+          description="Status tidak aktif"
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <DashboardCard
-          title="Sebaran Peran"
-          description="Ringkasan jumlah akun per peran untuk pengecekan cepat."
-        >
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            {summary.byRole.map((item) => (
-              <div
-                key={item.role}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
-              >
-                <span className="truncate">
-                  {item.label}{" "}
-                  <span className="text-xs text-muted-foreground">
-                    ({item.role})
-                  </span>
-                </span>
-                <span className="font-semibold">{item.count}</span>
-              </div>
-            ))}
-          </div>
-        </DashboardCard>
-
-        <DashboardCard
-          title="Data Operasional"
-          description="Gunakan Data Sekolah untuk akun yang memiliki konteks akademik atau tugas khusus."
-        >
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <QuickLink href="/dashboard/master-data/admins" label="Admin Sekolah" />
-            <QuickLink href="/dashboard/master-data/proctors" label="Pengawas Khusus" />
-            <QuickLink href="/dashboard/master-data/teachers" label="Guru" />
-            <QuickLink href="/dashboard/master-data/students" label="Siswa" />
-          </div>
-        </DashboardCard>
-      </section>
-
+      {/* Create / Edit Form Section */}
       <FormSection
-        title={editable ? "Edit Pengguna Umum" : "Tambah Pengguna Umum"}
-        description="Form ini tersedia untuk akun umum. Guru, siswa, admin sekolah, dan pengawas khusus sebaiknya dikelola dari Data Sekolah masing-masing."
+        title={editable ? `Edit Pengguna: ${editable.username}` : "Tambah Pengguna Baru"}
+        description={
+          editable
+            ? "Perbarui informasi akun, email, peran hak akses, atau sekolah naungan pengguna."
+            : "Buat akun pengguna baru langsung ke platform. Akun akan otomatis dapat masuk ke sistem."
+        }
       >
         <form action={saveAdminUserAction} className="grid gap-4 md:grid-cols-2">
           <input type="hidden" name="redirect_path" value={basePath} />
@@ -142,198 +134,308 @@ export default async function UsersPage({
             name="auth_user_id"
             defaultValue={editable?.auth_user_id ?? ""}
           />
-          <input
-            name="full_name"
-            defaultValue={editable?.profile?.full_name ?? ""}
-            placeholder="Nama lengkap"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <input
-            name="email"
-            type="email"
-            defaultValue={editable?.email ?? ""}
-            placeholder="Email"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <input
-            name="username"
-            defaultValue={editable?.username ?? ""}
-            placeholder="Username"
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder={editable ? "Kosongkan jika tidak diubah" : "Password awal"}
-            className="rounded-md border px-3 py-2 text-sm"
-            required={!editable}
-          />
-          <select
-            name="role_id"
-            defaultValue={editable?.role_id ?? operationalRoles[0]?.id ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
-            required
-          >
-            {operationalRoles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.label} ({role.name})
-              </option>
-            ))}
-          </select>
-          {currentUser.roles?.name === "super_admin" ? (
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
+              Nama Lengkap <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="full_name"
+              defaultValue={editable?.profile?.full_name ?? ""}
+              placeholder="Contoh: Ahmad Fauzi, S.Pd."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
+              Alamat Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="email"
+              type="email"
+              defaultValue={editable?.email ?? ""}
+              placeholder="nama@sekolah.sch.id"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
+              Username Login <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="username"
+              defaultValue={editable?.username ?? ""}
+              placeholder="username login unik"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
+              Password {editable ? "(Opsional)" : <span className="text-red-500">*</span>}
+            </label>
+            <input
+              name="password"
+              type="password"
+              placeholder={editable ? "Kosongkan jika tidak ingin mengubah sandi" : "Minimal 6 karakter"}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              required={!editable}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
+              Peran Hak Akses <span className="text-red-500">*</span>
+            </label>
             <select
-              name="school_id"
-              defaultValue={editable?.school_id ?? ""}
-              className="rounded-md border px-3 py-2 text-sm"
+              name="role_id"
+              defaultValue={editable?.role_id ?? operationalRoles[0]?.id ?? ""}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              required
             >
-              <option value="">Tanpa sekolah</option>
-              {schools.map((school) => (
-                <option key={school.value} value={school.value}>
-                  {school.label}
+              {operationalRoles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.label} ({role.name})
                 </option>
               ))}
             </select>
-          ) : null}
-          <select
-            name="status"
-            defaultValue={editable?.status ?? "active"}
-            className="rounded-md border px-3 py-2 text-sm"
-          >
-            <option value="active">Aktif</option>
-            <option value="inactive">Tidak Aktif</option>
-          </select>
-          <div className="flex justify-end md:col-span-2">
+          </div>
+
+          {isSuperAdmin && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">
+                Institusi Sekolah Naungan
+              </label>
+              <select
+                name="school_id"
+                defaultValue={editable?.school_id ?? ""}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Tanpa sekolah (Tingkat Platform / Global)</option>
+                {schools.map((school) => (
+                  <option key={school.value} value={school.value}>
+                    {school.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Status Akun</label>
+            <select
+              name="status"
+              defaultValue={editable?.status ?? "active"}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="active">Aktif (Dapat masuk ke sistem)</option>
+              <option value="inactive">Nonaktif (Akses ditangguhkan)</option>
+            </select>
+          </div>
+
+          <div className="flex items-end justify-end gap-2 md:col-span-2 pt-2">
+            {editable && (
+              <Link
+                href={basePath}
+                className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+              >
+                Batal Edit
+              </Link>
+            )}
             <ConfirmSubmitButton
               confirmMessage={
                 editable
-                  ? "Simpan perubahan pengguna, termasuk peran/status bila diubah?"
-                  : "Tambah pengguna operasional baru?"
+                  ? "Simpan perubahan informasi pengguna ini?"
+                  : "Buat akun pengguna baru pada sistem?"
               }
               confirmTitle="Konfirmasi Pengguna"
-              loadingText={editable ? "Memperbarui..." : "Menyimpan..."}
-              variant="default"
-              className="px-4 py-2 text-sm"
+              loadingText={editable ? "Menyimpan..." : "Membuat Akun..."}
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              {editable ? "Simpan Pengguna" : "Tambah Pengguna"}
+              {editable ? "Perbarui Pengguna" : "Tambah Pengguna"}
             </ConfirmSubmitButton>
           </div>
         </form>
       </FormSection>
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-5">
-        <input
-          name="q"
-          defaultValue={params.q ?? ""}
-          placeholder="Cari username atau email"
-          className="rounded-md border px-3 py-2 text-sm"
-        />
-        <select
-          name="role_id"
-          defaultValue={params.role_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+      {/* Role Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+        <Link
+          href={basePath}
+          className={`rounded-full px-3.5 py-1 text-xs font-medium transition-colors shadow-xs ${
+            !params.role_id
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
         >
-          <option value="">Semua peran</option>
-          {roles.map((role) => (
-            <option key={role.id} value={role.id}>
-              {role.label}
-            </option>
-          ))}
-        </select>
+          Semua Peran ({summary.total})
+        </Link>
+        {roles.map((r) => {
+          const isSelected = params.role_id === r.id;
+          const roleCount = summary.byRole.find((br) => br.role === r.name)?.count ?? 0;
+          return (
+            <Link
+              key={r.id}
+              href={`${basePath}?role_id=${r.id}${params.school_id ? `&school_id=${params.school_id}` : ""}`}
+              className={`rounded-full px-3.5 py-1 text-xs font-medium transition-colors shadow-xs ${
+                isSelected
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {r.label} ({roleCount})
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Search and Secondary Filter Bar */}
+      <form className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5 shadow-sm">
+        <div className="relative sm:col-span-2">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            name="q"
+            defaultValue={params.q ?? ""}
+            placeholder="Cari username, email, atau nama..."
+            className="w-full rounded-lg border bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
         <select
           name="user_status"
           defaultValue={params.user_status ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
-          <option value="">Semua status</option>
+          <option value="">Semua Status</option>
           <option value="active">Aktif</option>
-          <option value="inactive">Tidak Aktif</option>
+          <option value="inactive">Nonaktif</option>
         </select>
-        {currentUser.roles?.name === "super_admin" ? (
+
+        {isSuperAdmin ? (
           <select
             name="school_id"
             defaultValue={params.school_id ?? ""}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="">Semua sekolah</option>
+            <option value="">Semua Sekolah</option>
             {schools.map((school) => (
               <option key={school.value} value={school.value}>
                 {school.label}
               </option>
             ))}
           </select>
-        ) : null}
-        <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
-          Filter
-        </button>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Filter
+          </button>
+          {hasFilters && (
+            <Link
+              href={basePath}
+              className="inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors text-muted-foreground"
+              title="Reset Filter"
+            >
+              <FilterX className="size-4" />
+            </Link>
+          )}
+        </div>
       </form>
 
+      {/* User Data Table */}
       <DataTable
         columns={[
-          "Nama",
+          "Nama & Username",
           "Email",
-          "Peran",
+          "Peran Hak Akses",
           "Sekolah",
-          "Akun Login",
+          "Akun Auth Login",
           "Status",
           "Aksi",
         ]}
         isEmpty={users.length === 0}
         empty={
           <EmptyState
-            title="Pengguna belum ditemukan"
-            description="Data pengguna akan muncul setelah akun aplikasi dibuat."
+            title="Pengguna tidak ditemukan"
+            description="Tidak ada akun pengguna yang cocok dengan kriteria pencarian saat ini."
           />
         }
       >
-        {users.map((item) => (
-          <tr key={item.id}>
-            <td className="px-4 py-3">
-              <div className="font-medium">
-                {item.profile?.full_name ?? item.username}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {item.username}
-              </div>
-            </td>
-            <td className="px-4 py-3">{item.email}</td>
-            <td className="px-4 py-3">
-              <div className="font-medium">{item.role?.label ?? "-"}</div>
-              <div className="text-xs text-muted-foreground">
-                {item.role?.name ?? "-"}
-              </div>
-            </td>
-            <td className="px-4 py-3">
-              <SchoolScopeCell
-                roleName={item.role?.name}
-                schoolName={item.school?.name}
-              />
-            </td>
-            <td className="px-4 py-3">
-              <span className="font-mono text-xs">
-                {item.auth_user_id ?? "-"}
-              </span>
-            </td>
-            <td className="px-4 py-3">
-              <StatusBadge active={item.status === "active"} />
-            </td>
-            <td className="px-4 py-3">
-              {item.role?.name === "teacher" || item.role?.name === "student" ? (
-                <span className="text-xs text-muted-foreground">
-                  Kelola di Data Sekolah
+        {users.map((item) => {
+          const hasAuth = Boolean(item.auth_user_id);
+
+          return (
+            <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+              <td className="px-4 py-3.5">
+                <div className="font-medium text-foreground">
+                  {item.profile?.full_name ?? item.username}
+                </div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  @{item.username}
+                </div>
+              </td>
+              <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                {item.email}
+              </td>
+              <td className="px-4 py-3.5">
+                <span className="inline-flex items-center rounded-md border bg-muted/60 px-2 py-0.5 text-xs font-medium">
+                  {item.role?.label ?? item.role?.name ?? "-"}
                 </span>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <a
+              </td>
+              <td className="px-4 py-3.5 text-xs">
+                {item.school?.name ? (
+                  <span className="text-foreground font-medium">{item.school.name}</span>
+                ) : item.role?.name === "super_admin" ? (
+                  <span className="text-primary font-semibold">Global Platform</span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">Belum diatur</span>
+                )}
+              </td>
+              <td className="px-4 py-3.5">
+                {hasAuth ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                    <UserCheck className="size-3.5" />
+                    Terhubung
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                    <UserX className="size-3.5" />
+                    Belum Terhubung
+                  </span>
+                )}
+              </td>
+              <td className="px-4 py-3.5">
+                <StatusBadge active={item.status === "active"} />
+              </td>
+              <td className="px-4 py-3.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Link
                     href={`${basePath}?edit=${item.id}${
                       params.school_id ? `&school_id=${params.school_id}` : ""
-                    }`}
-                    className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                    }${params.role_id ? `&role_id=${params.role_id}` : ""}`}
+                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted font-medium transition-colors"
                   >
                     Edit
-                  </a>
+                  </Link>
+                  <Link
+                    href={`${basePath}?reset_user=${item.id}${
+                      params.school_id ? `&school_id=${params.school_id}` : ""
+                    }${params.role_id ? `&role_id=${params.role_id}` : ""}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 px-2.5 py-1 text-xs hover:bg-amber-100 dark:hover:bg-amber-900/40 font-medium transition-colors"
+                  >
+                    <KeyRound className="size-3" />
+                    Reset Sandi
+                  </Link>
                   <form action={toggleAdminUserStatusAction}>
                     <input type="hidden" name="redirect_path" value={basePath} />
                     <input type="hidden" name="id" value={item.id} />
@@ -346,71 +448,17 @@ export default async function UsersPage({
                       confirmMessage={`${
                         item.status === "active" ? "Nonaktifkan" : "Aktifkan"
                       } akun ${item.profile?.full_name ?? item.username}?`}
+                      className="text-xs px-2.5 py-1"
                     >
                       {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                     </ConfirmSubmitButton>
                   </form>
-                  <form
-                    action={resetAdminUserPasswordAction}
-                    className="flex flex-wrap gap-2"
-                  >
-                    <input type="hidden" name="redirect_path" value={basePath} />
-                    <input type="hidden" name="id" value={item.id} />
-                    <input
-                      name="password"
-                      type="password"
-                      placeholder="Password baru"
-                      className="w-32 rounded-md border px-2 py-1.5 text-xs"
-                      required
-                      minLength={6}
-                    />
-                    <ConfirmSubmitButton
-                      confirmMessage={`Reset password untuk ${item.profile?.full_name ?? item.username}?`}
-                      confirmationText="RESET"
-                      variant="danger"
-                    >
-                      Reset
-                    </ConfirmSubmitButton>
-                  </form>
                 </div>
-              )}
-            </td>
-          </tr>
-        ))}
+              </td>
+            </tr>
+          );
+        })}
       </DataTable>
     </div>
   );
-}
-
-function QuickLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-md border px-3 py-2 font-medium transition hover:bg-muted"
-    >
-      {label}
-    </Link>
-  );
-}
-
-function SchoolScopeCell({
-  roleName,
-  schoolName,
-}: {
-  roleName?: string;
-  schoolName?: string | null;
-}) {
-  if (schoolName) {
-    return <span className="text-sm">{schoolName}</span>;
-  }
-
-  if (roleName === "admin") {
-    return (
-      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-        Belum diset
-      </span>
-    );
-  }
-
-  return <span className="text-sm text-muted-foreground">-</span>;
 }

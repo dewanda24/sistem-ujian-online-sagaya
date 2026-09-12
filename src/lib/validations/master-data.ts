@@ -53,6 +53,7 @@ export const subjectSchema = z.object({
   school_id: uuidField,
   code: z.string().min(1, "Kode mata pelajaran wajib diisi"),
   name: z.string().min(2, "Nama mata pelajaran wajib diisi"),
+  kkm: z.coerce.number().int().min(0, "KKM minimal 0").max(100, "KKM maksimal 100").default(75),
   is_active: z.boolean().default(true),
 });
 

@@ -55,7 +55,6 @@ const allRoles: RoleName[] = [
 ];
 
 const adminSchoolRoles: RoleName[] = ["admin"];
-const userAdminRoles: RoleName[] = ["super_admin", "admin"];
 const examManagerRoles: RoleName[] = ["admin", "teacher"];
 const reportRoles: RoleName[] = ["super_admin", "admin", "principal", "teacher"];
 
@@ -96,161 +95,7 @@ const profileItem = (role: RoleName): AccessMenuItem => ({
   roles: [role],
 });
 
-const academicMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Persiapan Sekolah",
-  description: "Kelola data dasar yang dibutuhkan sebelum pelaksanaan ujian.",
-  href: "/dashboard/master-data",
-  icon: "database",
-  roles,
-  permission: "master_data.view",
-  children: [
-    {
-      label: "Tahun Ajaran & Semester",
-      href: "/dashboard/master-data/academic-years",
-      activePaths: ["/dashboard/master-data/semesters"],
-      icon: "calendar-days",
-      roles,
-      permission: "academic_years.view",
-    },
-    {
-      label: "Kelas",
-      href: "/dashboard/master-data/classes",
-      icon: "list-checks",
-      roles,
-      permission: "classes.view",
-    },
-    {
-      label: "Mata Pelajaran",
-      href: "/dashboard/master-data/subjects",
-      icon: "book-open",
-      roles,
-      permission: "subjects.view",
-    },
-    {
-      label: "Penugasan Guru",
-      href: "/dashboard/master-data/teacher-assignments",
-      icon: "clipboard-check",
-      roles,
-      permission: "teachers.manage",
-    },
-  ],
-});
 
-const questionBankMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: roles.includes("teacher") ? "Soal Saya" : "Kelola Soal",
-  description: roles.includes("teacher")
-    ? "Kelola soal yang digunakan dalam ujian mata pelajaran."
-    : "Buat, susun, dan atur soal untuk berbagai kebutuhan ujian.",
-  href: "/dashboard/question-bank",
-  icon: "book-open",
-  roles,
-  permission: "question_bank.view",
-  children: [
-    {
-      label: "Bank Soal",
-      href: "/dashboard/question-bank/questions",
-      activePaths: [
-        "/dashboard/question-bank",
-        "/dashboard/question-bank/stimuli",
-      ],
-      icon: "book-open",
-      roles,
-      permission: "question_bank.view",
-    },
-    {
-      label: "Kategori Soal",
-      href: "/dashboard/question-bank/categories",
-      icon: "list-checks",
-      roles: roles.filter((r) => r !== "teacher"),
-      permission: "question_categories.manage",
-    },
-    {
-      label: "Impor & Ekspor",
-      href: "/dashboard/question-bank/import-excel",
-      activePaths: ["/dashboard/question-bank/import-word"],
-      icon: "download",
-      roles,
-      permission: "question_bank.manage",
-    },
-  ],
-});
-
-const adminExamMenu = (roles: RoleName[]): AccessMenuItem => ({
-  label: "Kelola Ujian",
-  description: "Siapkan paket, jadwal, dan peserta ujian sekolah.",
-  href: "/dashboard/exams",
-  icon: "file-text",
-  roles,
-  permission: "exams.view",
-  children: [
-    {
-      label: "Paket Ujian",
-      href: "/dashboard/exams/packages",
-      icon: "book-open",
-      roles,
-      permission: "exam_packages.view",
-    },
-    {
-      label: "Jadwal Ujian",
-      href: "/dashboard/exams/schedules",
-      icon: "calendar-days",
-      roles,
-      permission: "exam_schedules.view",
-    },
-  ],
-});
-
-const adminExecutionMenu: AccessMenuItem = {
-  label: "Pelaksanaan Ujian",
-  description: "Pantau ujian yang sedang berlangsung dan tangani kendala peserta.",
-  href: "/dashboard/admin/monitoring",
-  icon: "activity",
-  roles: ["admin"],
-  permission: "exam_monitoring.view",
-  children: [
-    {
-      label: "Monitoring Ujian",
-      href: "/dashboard/admin/monitoring",
-      icon: "activity",
-      roles: ["admin"],
-      permission: "exam_monitoring.view",
-    },
-    {
-      label: "Pusat Pemulihan",
-      href: "/dashboard/recovery-center",
-      icon: "activity",
-      roles: ["admin"],
-      permission: "exam_monitoring.view",
-    },
-  ],
-};
-
-const teacherExamMenu: AccessMenuItem = {
-  label: "Paket Ujian",
-  description: "Rakit butir soal menjadi naskah paket ujian siap pakai.",
-  href: "/dashboard/exams/packages",
-  icon: "file-text",
-  roles: ["teacher"],
-  permission: "exam_packages.view",
-};
-
-const teacherMonitoringMenu: AccessMenuItem = {
-  label: "Pengawasan Ujian",
-  description: "Pantau pelaksanaan ujian yang Anda awasi.",
-  href: "/dashboard/teacher/monitoring",
-  icon: "activity",
-  roles: ["teacher"],
-  permission: "exam_monitoring.view",
-  children: [
-    {
-      label: "Monitoring Ujian",
-      href: "/dashboard/teacher/monitoring",
-      icon: "activity",
-      roles: ["teacher"],
-      permission: "exam_monitoring.view",
-    },
-  ],
-};
 
 const proctorExamMenu: AccessMenuItem = {
   label: "Ujian Diawasi",
@@ -319,131 +164,74 @@ const reportMenu = (roles: RoleName[]): AccessMenuItem => ({
   ],
 });
 
-const teacherReportMenu: AccessMenuItem = {
-  ...reportMenu(["teacher"]),
-  children: [
-    {
-      label: "Koreksi Esai",
-      href: "/dashboard/teacher/grading",
-      icon: "clipboard-check",
-      roles: ["teacher"],
-      permission: "grading.view",
-    },
-    ...(reportMenu(["teacher"]).children ?? []),
-  ],
-};
-
-const adminUserMenu: AccessMenuItem = {
-  label: "Pengguna Sekolah",
-  description: "Kelola data guru, siswa, dan pengawas ujian.",
-  href: "/dashboard/master-data/teachers",
-  icon: "users",
-  roles: ["admin"],
-  children: [
-    {
-      label: "Guru",
-      href: "/dashboard/master-data/teachers",
-      icon: "users",
-      roles: ["admin"],
-      permission: "teachers.view",
-    },
-    {
-      label: "Siswa",
-      href: "/dashboard/master-data/students",
-      icon: "graduation-cap",
-      roles: ["admin"],
-      permission: "students.view",
-    },
-    {
-      label: "Pengawas Ujian",
-      href: "/dashboard/exams/proctors",
-      icon: "shield-check",
-      roles: ["admin"],
-      permission: "exam_schedules.manage",
-    },
-  ],
-};
 
 const superAdminAcademicMenu: AccessMenuItem = {
-  label: "Manajemen Sekolah",
-  description: "Kelola sekolah, admin sekolah, dan data organisasi.",
+  label: "Institusi Sekolah",
+  description: "Kelola data sekolah dan admin sekolah terdaftar.",
   href: "/dashboard/super-admin/schools",
-  icon: "database",
+  icon: "building-2",
   roles: ["super_admin"],
   permission: "schools.view",
   children: [
     {
-      label: "Sekolah",
+      label: "Daftar Sekolah",
       href: "/dashboard/super-admin/schools",
       activePaths: [
         "/dashboard/super-admin/schools/new",
-        "/dashboard/master-data/schools",
       ],
       icon: "building-2",
       roles: ["super_admin"],
       permission: "schools.view",
     },
     {
-      label: "Tahun Ajaran & Semester",
-      href: "/dashboard/master-data/semesters",
-      icon: "calendar-days",
+      label: "Admin Sekolah",
+      href: "/dashboard/super-admin/admins",
+      icon: "users",
       roles: ["super_admin"],
-      permission: "semesters.view",
+      permission: "users.view",
     },
   ],
 };
 
 const superAdminUserMenu: AccessMenuItem = {
   label: "Pengguna & Akses",
-  description: "Atur pengguna, peran, dan hak akses sistem.",
+  description: "Kelola pengguna direktori global dan hak akses.",
   href: "/dashboard/super-admin/users",
   icon: "users",
   roles: ["super_admin"],
   permission: "users.view",
   children: [
     {
-      label: "Admin Sekolah",
-      href: "/dashboard/super-admin/admins",
-      activePaths: ["/dashboard/master-data/admins"],
-      icon: "users",
-      roles: ["super_admin"],
-      permission: "users.view",
-    },
-    {
-      label: "Pengguna",
+      label: "Pengguna Global",
       href: "/dashboard/super-admin/users",
       icon: "users",
       roles: ["super_admin"],
       permission: "users.view",
     },
     {
-      label: "Pengawas Ujian",
-      href: "/dashboard/master-data/proctors",
+      label: "Peran & Izin",
+      href: "/dashboard/super-admin/roles",
+      activePaths: [
+        "/dashboard/super-admin/permissions",
+      ],
       icon: "shield-check",
       roles: ["super_admin"],
-      permission: "users.view",
+      permission: "roles.view",
     },
   ],
 };
 
 const superAdminExamMenu: AccessMenuItem = {
-  label: "Monitoring Sistem",
-  description: "Pantau aktivitas, audit, dan operasional platform.",
+  label: "Monitoring & Data",
+  description: "Pantau aktivitas ujian langsung, cadangan, dan impor data.",
   href: "/dashboard/super-admin/monitoring",
-  icon: "file-text",
+  icon: "activity",
   roles: ["super_admin"],
   permission: "exam_monitoring.view",
   children: [
     {
-      label: "Monitoring Ujian",
+      label: "Pemantauan CBT Live",
       href: "/dashboard/super-admin/monitoring",
-      icon: "activity",
-      roles: ["super_admin"],
-      permission: "exam_monitoring.view",
-    },
-    {
-      label: "Pusat Pemulihan",
-      href: "/dashboard/recovery-center",
       icon: "activity",
       roles: ["super_admin"],
       permission: "exam_monitoring.view",
@@ -454,33 +242,8 @@ const superAdminExamMenu: AccessMenuItem = {
       icon: "hard-drive",
       roles: ["super_admin"],
     },
-  ],
-};
-
-const superAdminReportMenu: AccessMenuItem = {
-  label: "Data & Cadangan",
-  description: "Kelola impor, ekspor, cadangan, dan pemulihan data.",
-  href: "/dashboard/super-admin/reports",
-  icon: "activity",
-  roles: ["super_admin"],
-  permission: "reports.view",
-  children: [
     {
-      label: "Hasil Ujian",
-      href: "/dashboard/super-admin/reports",
-      icon: "file-text",
-      roles: ["super_admin"],
-      permission: "reports.view",
-    },
-    {
-      label: "Analitik",
-      href: "/dashboard/super-admin/monitoring",
-      icon: "activity",
-      roles: ["super_admin"],
-      permission: "exam_monitoring.view",
-    },
-    {
-      label: "Ekspor Laporan",
+      label: "Impor & Ekspor Data",
       href: "/dashboard/super-admin/import-export",
       icon: "download",
       roles: ["super_admin"],
@@ -489,24 +252,31 @@ const superAdminReportMenu: AccessMenuItem = {
   ],
 };
 
+const superAdminReportMenu: AccessMenuItem = {
+  label: "Laporan & Analitik",
+  description: "Statistik komparatif dan performa lintas sekolah.",
+  href: "/dashboard/super-admin/reports",
+  icon: "file-text",
+  roles: ["super_admin"],
+  permission: "reports.view",
+  children: [
+    {
+      label: "Laporan Global",
+      href: "/dashboard/super-admin/reports",
+      icon: "file-text",
+      roles: ["super_admin"],
+      permission: "reports.view",
+    },
+  ],
+};
+
 const superAdminSystemMenu: AccessMenuItem = {
-  label: "Pengaturan Sistem",
-  description: "Atur konfigurasi dan kebijakan sistem secara global.",
+  label: "Pengaturan Platform",
+  description: "Konfigurasi sistem, audit trails, dan bantuan operasional.",
   href: "/dashboard/super-admin/settings",
   icon: "settings",
   roles: ["super_admin"],
   children: [
-    {
-      label: "Hak Akses",
-      href: "/dashboard/super-admin/roles",
-      activePaths: [
-        "/dashboard/super-admin/permissions",
-        "/dashboard/super-admin/role-permission",
-      ],
-      icon: "shield-check",
-      roles: ["super_admin"],
-      permission: "roles.view",
-    },
     {
       label: "Catatan Aktivitas",
       href: "/dashboard/super-admin/audit-logs",
@@ -522,7 +292,7 @@ const superAdminSystemMenu: AccessMenuItem = {
       permission: "users.view",
     },
     {
-      label: "Pengaturan",
+      label: "Pengaturan Global",
       href: "/dashboard/super-admin/settings",
       icon: "settings",
       roles: ["super_admin"],
@@ -530,6 +300,12 @@ const superAdminSystemMenu: AccessMenuItem = {
     {
       label: "Bantuan Sekolah",
       href: "/dashboard/super-admin/support",
+      icon: "activity",
+      roles: ["super_admin"],
+    },
+    {
+      label: "Panduan & FAQ",
+      href: "/dashboard/super-admin/help",
       icon: "file-text",
       roles: ["super_admin"],
     },
@@ -580,6 +356,66 @@ const adminSetupMenu: AccessMenuItem = {
       roles: ["admin"],
       permission: "students.view",
     },
+    {
+      label: "Direktori Pengguna",
+      href: "/dashboard/master-data/users",
+      icon: "users",
+      roles: ["admin"],
+      permission: "users.view",
+    },
+  ],
+};
+
+const adminQuestionBankMenu: AccessMenuItem = {
+  label: "Bank Soal Sekolah",
+  description: "Pantau ketersediaan dan butir soal mata pelajaran sekolah.",
+  href: "/dashboard/question-bank/questions",
+  activePaths: [
+    "/dashboard/question-bank",
+    "/dashboard/question-bank/questions",
+    "/dashboard/question-bank/categories",
+    "/dashboard/question-bank/stimuli",
+  ],
+  icon: "book-open",
+  roles: ["admin"],
+  permission: "question_bank.view",
+  children: [
+    {
+      label: "Daftar Soal",
+      href: "/dashboard/question-bank/questions",
+      activePaths: [
+        "/dashboard/question-bank",
+        "/dashboard/question-bank/questions",
+      ],
+      icon: "book-open",
+      roles: ["admin"],
+      permission: "question_bank.view",
+    },
+    {
+      label: "Kategori Soal",
+      href: "/dashboard/question-bank/categories",
+      icon: "list-checks",
+      roles: ["admin"],
+      permission: "question_categories.view",
+    },
+    {
+      label: "Stimulus / Bacaan",
+      href: "/dashboard/question-bank/stimuli",
+      icon: "file-text",
+      roles: ["admin"],
+      permission: "question_bank.view",
+    },
+    {
+      label: "Import Soal",
+      href: "/dashboard/question-bank/import-word",
+      activePaths: [
+        "/dashboard/question-bank/import-word",
+        "/dashboard/question-bank/import-excel",
+      ],
+      icon: "download",
+      roles: ["admin"],
+      permission: "question_bank.manage",
+    },
   ],
 };
 
@@ -611,6 +447,13 @@ const adminOperationsMenu: AccessMenuItem = {
       icon: "clipboard-check",
       roles: ["admin"],
       permission: "students.view",
+    },
+    {
+      label: "Impor & Ekspor Data",
+      href: "/dashboard/import-export",
+      icon: "download",
+      roles: ["admin"],
+      permission: "import_export.view",
     },
     {
       label: "Monitoring Berjalan",
@@ -663,6 +506,11 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "teachers.manage",
       "students.view",
       "students.manage",
+      "question_bank.view",
+      "question_bank.export",
+      "question_bank.manage",
+      "question_categories.view",
+      "question_categories.manage",
       "exams.view",
       "exam_packages.view",
       "exam_packages.manage",
@@ -681,6 +529,7 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
     menu: [
       dashboardItem("admin", "/dashboard/admin"),
       adminSetupMenu,
+      adminQuestionBankMenu,
       adminOperationsMenu,
       reportMenu(["admin"]),
       profileItem("admin"),
@@ -688,7 +537,12 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
   },
   principal: {
     dashboardPath: "/dashboard/principal",
-    permissions: [...commonPermissions, "reports.view", "reports.export"],
+    permissions: [
+      ...commonPermissions,
+      "reports.view",
+      "reports.export",
+      "exam_results.view",
+    ],
     menu: [
       dashboardItem("principal", "/dashboard/principal"),
       reportMenu(["principal"]),
@@ -706,11 +560,16 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
       "questions.update",
       "questions.publish",
       "questions.archive",
+      "question_categories.view",
+      "question_categories.manage",
       "exams.view",
       "exam_packages.view",
       "exam_packages.manage",
       "exam_packages.archive",
       "exam_schedules.view",
+      "exam_schedules.manage",
+      "exam_schedules.archive",
+      "exam_tokens.manage",
       "exam_monitoring.view",
       "grading.view",
       "grading.manage",
@@ -737,14 +596,62 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         icon: "book-open",
         roles: ["teacher"],
         permission: "question_bank.view",
+        children: [
+          {
+            label: "Daftar Soal",
+            href: "/dashboard/question-bank/questions",
+            activePaths: [
+              "/dashboard/question-bank",
+              "/dashboard/question-bank/questions",
+              "/dashboard/question-bank/stimuli",
+            ],
+            icon: "book-open",
+            roles: ["teacher"],
+            permission: "question_bank.view",
+          },
+          {
+            label: "Kategori Soal",
+            href: "/dashboard/question-bank/categories",
+            icon: "list-checks",
+            roles: ["teacher"],
+            permission: "question_categories.manage",
+          },
+          {
+            label: "Import & Ekspor",
+            href: "/dashboard/question-bank/import-word",
+            activePaths: [
+              "/dashboard/question-bank/import-word",
+              "/dashboard/question-bank/import-excel",
+            ],
+            icon: "download",
+            roles: ["teacher"],
+            permission: "question_bank.manage",
+          },
+        ],
       },
       {
-        label: "Paket Ujian",
-        description: "Rakit butir soal menjadi naskah paket ujian siap pakai.",
+        label: "Kelola Ujian",
+        description: "Siapkan paket naskah dan jadwal ujian mata pelajaran Anda.",
         href: "/dashboard/exams/packages",
         icon: "file-text",
         roles: ["teacher"],
-        permission: "exam_packages.view",
+        permission: "exams.view",
+        children: [
+          {
+            label: "Paket Ujian",
+            href: "/dashboard/exams/packages",
+            icon: "book-open",
+            roles: ["teacher"],
+            permission: "exam_packages.view",
+          },
+          {
+            label: "Jadwal Ujian",
+            href: "/dashboard/exams/schedules",
+            icon: "calendar-days",
+            roles: ["teacher"],
+            permission: "exam_schedules.view",
+          },
+        ],
       },
       {
         label: "Koreksi Esai",
@@ -766,6 +673,14 @@ export const ACCESS_MATRIX: Record<RoleName, AccessRoleConfig> = {
         label: "Monitoring Ujian",
         description: "Pantau pengerjaan siswa yang sedang berlangsung.",
         href: "/dashboard/teacher/monitoring",
+        icon: "activity",
+        roles: ["teacher"],
+        permission: "exam_monitoring.view",
+      },
+      {
+        label: "Pusat Pemulihan",
+        description: "Penanganan kendala ujian saat bertugas sebagai pengawas.",
+        href: "/dashboard/recovery-center",
         icon: "activity",
         roles: ["teacher"],
         permission: "exam_monitoring.view",
@@ -842,11 +757,11 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   },
   {
     path: "/dashboard/recovery-center",
-    roles: ["super_admin", "admin", "proctor"],
+    roles: ["super_admin", "admin", "proctor", "teacher"],
     match: "prefix",
     permission: "exam_monitoring.view",
   },
-  { path: "/dashboard/super-admin", roles: ["super_admin"], match: "prefix" },
+  { path: "/dashboard/super-admin", roles: ["super_admin"], match: "exact" },
   { path: "/dashboard/admin", roles: ["admin"], match: "exact" },
   {
     path: "/dashboard/super-admin/users",
@@ -872,6 +787,7 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
     match: "prefix",
     permission: "audit_logs.view",
   },
+  { path: "/dashboard/super-admin", roles: ["super_admin"], match: "prefix" },
   {
     path: "/dashboard/admin/monitoring",
     roles: ["admin"],
@@ -879,10 +795,10 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
     permission: "exam_monitoring.view",
   },
   {
-    path: "/dashboard/master-data/schools",
-    roles: ["super_admin"],
+    path: "/dashboard/master-data/academic-years",
+    roles: ["super_admin", "admin"],
     match: "prefix",
-    permission: "schools.view",
+    permission: "academic_years.view",
   },
   {
     path: "/dashboard/master-data/semesters",
@@ -891,13 +807,14 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
     permission: "semesters.view",
   },
   {
-    path: "/dashboard/master-data/admins",
-    roles: ["super_admin"],
-    match: "prefix",
-  },
-  {
     path: "/dashboard/master-data/proctors",
     roles: ["super_admin"],
+    match: "prefix",
+    permission: "users.view",
+  },
+  {
+    path: "/dashboard/master-data/users",
+    roles: ["super_admin", "admin"],
     match: "prefix",
     permission: "users.view",
   },
@@ -909,7 +826,7 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   },
   {
     path: "/dashboard/question-bank/import",
-    roles: ["teacher"],
+    roles: examManagerRoles,
     match: "prefix",
     permission: "question_bank.manage",
   },
@@ -939,7 +856,7 @@ export const DASHBOARD_ROUTE_RULES: RouteAccessRule[] = [
   },
   {
     path: "/dashboard/exam-results",
-    roles: ["student", "teacher", "admin", "super_admin"],
+    roles: ["student", "teacher", "admin", "super_admin", "principal"],
     match: "prefix",
     permission: "exam_results.view",
   },
@@ -999,9 +916,7 @@ export function canShowMenuItem(user: CurrentUser, item: AccessMenuItem) {
 
   if (
     role === "teacher" &&
-    ["/dashboard/teacher/monitoring", "/dashboard/recovery-center"].includes(
-      item.href,
-    ) &&
+    item.href === "/dashboard/recovery-center" &&
     !user.has_active_proctor_assignment
   ) {
     return false;
@@ -1029,10 +944,14 @@ export function canRoleAccessRoute(role: string | null | undefined, pathname: st
     return false;
   }
 
+  if (role === "super_admin") {
+    return true;
+  }
+
   const rule = findRouteRule(pathname);
 
   if (!rule) {
-    return role === "super_admin";
+    return false;
   }
 
   return rule.roles.includes(role);

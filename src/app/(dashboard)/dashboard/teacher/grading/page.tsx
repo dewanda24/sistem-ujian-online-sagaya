@@ -1,7 +1,5 @@
-﻿import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { EmptyState } from "@/components/dashboard/empty-state";
-import { StatusPill } from "@/components/dashboard/status-pill";
-import { DataTable } from "@/components/master-data/data-table";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { ActionToast } from "@/components/master-data/action-toast";
 import { Zap } from "lucide-react";
 import Link from "next/link";
 import {
@@ -9,6 +7,8 @@ import {
   getTeacherGradingFilters,
   getTeacherResultRecap,
 } from "@/features/results/queries";
+import { GradingTable } from "@/features/results/components/grading-table";
+import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type PageProps = {
@@ -17,12 +17,16 @@ type PageProps = {
     grading_status?: string;
     schedule_id?: string;
     subject_id?: string;
+    notice?: string;
+    message?: string;
   }>;
 };
 
 export default async function GradingPage({ searchParams }: PageProps) {
-  await requirePermission("grading.view");
+  const user = await requirePermission("grading.view");
+  const canFinalize = hasPermission(user, "exam_results.finalize");
   const params = await searchParams;
+
   const [rawAttempts, filters] = await Promise.all([
     getTeacherResultRecap({
       grading_status: params.grading_status,
@@ -31,6 +35,7 @@ export default async function GradingPage({ searchParams }: PageProps) {
     }),
     getTeacherGradingFilters(),
   ]);
+
   const attempts = rawAttempts.filter((attempt) => {
     const keyword = params.q?.toLowerCase().trim();
 
@@ -57,34 +62,68 @@ export default async function GradingPage({ searchParams }: PageProps) {
       .includes(keyword);
   });
 
+  const attemptItems = attempts.map((attempt) => {
+    const student = firstRelation(attempt.users);
+    const profile = firstRelation(student?.user_profiles);
+    const schedule = firstRelation(attempt.exam_schedules);
+    const examPackage = firstRelation(schedule?.exam_packages);
+    const subject = firstRelation(examPackage?.subjects);
+
+    return {
+      id: attempt.id,
+      score: attempt.score,
+      max_score: attempt.max_score,
+      correct_answers: attempt.correct_answers,
+      total_questions: attempt.total_questions,
+      grading_status: attempt.grading_status,
+      student_name: profile?.full_name ?? student?.username ?? "-",
+      student_identifier: profile?.nis ?? student?.email ?? "",
+      schedule_title: schedule?.title ?? "-",
+      subject_code: subject?.code ?? "-",
+    };
+  });
+
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.set("q", params.q);
+  if (params.grading_status) queryParams.set("grading_status", params.grading_status);
+  if (params.subject_id) queryParams.set("subject_id", params.subject_id);
+  if (params.schedule_id) queryParams.set("schedule_id", params.schedule_id);
+
+  const currentUrl = `/dashboard/teacher/grading${
+    queryParams.toString() ? `?${queryParams.toString()}` : ""
+  }`;
+
   return (
     <div className="space-y-6">
+      <ActionToast status={params.notice} message={params.message} />
+
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <DashboardPageHeader
-          title="Koreksi Essay"
-          description="Jawaban essay yang perlu diperiksa sebelum nilai siswa menjadi final."
+          title="Koreksi Jawaban Essay"
+          description="Periksa dan beri skor jawaban esai peserta ujian, lalu finalisasi nilai agar dapat dilihat oleh siswa."
         />
         {params.schedule_id && (
           <Link
             href={`/dashboard/teacher/grading/rapid?schedule_id=${params.schedule_id}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-2xs hover:bg-blue-700 transition active:scale-95"
           >
             <Zap className="size-4" />
-            Mode Koreksi Cepat
+            <span>Mode Koreksi Cepat</span>
           </Link>
         )}
       </div>
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_220px_220px_220px_auto]">
+
+      <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:grid-cols-[1fr_200px_200px_200px_auto]">
         <input
           name="q"
           defaultValue={params.q ?? ""}
-          placeholder="Cari siswa, ujian, mapel"
-          className="rounded-md border px-3 py-2 text-sm"
+          placeholder="Cari siswa, nis, email..."
+          className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
         />
         <select
           name="grading_status"
           defaultValue={params.grading_status ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-blue-600"
         >
           <option value="">Semua status</option>
           <option value="needs_manual_grading">Perlu koreksi essay</option>
@@ -94,7 +133,7 @@ export default async function GradingPage({ searchParams }: PageProps) {
         <select
           name="subject_id"
           defaultValue={params.subject_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-blue-600"
         >
           <option value="">Semua mapel</option>
           {filters.subjects.map((subject) => (
@@ -106,75 +145,35 @@ export default async function GradingPage({ searchParams }: PageProps) {
         <select
           name="schedule_id"
           defaultValue={params.schedule_id ?? ""}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-blue-600"
         >
-          <option value="">Semua ujian</option>
+          <option value="">Semua jadwal ujian</option>
           {filters.schedules.map((schedule) => (
             <option key={schedule.value} value={schedule.value}>
               {schedule.label}
             </option>
           ))}
         </select>
-        <button className="rounded-md border px-4 py-2 text-sm hover:bg-muted">
+        <button className="rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-slate-800 transition active:scale-95">
           Filter
         </button>
       </form>
-      {/* ... alert if no schedule_id is selected for Rapid Grading */}
-      {!params.schedule_id && attempts.some(a => a.grading_status === "needs_manual_grading") && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 flex items-center justify-between">
-          <span>Pilih <strong>satu ujian spesifik</strong> di dropdown filter untuk menggunakan <strong>Mode Koreksi Cepat</strong>.</span>
-        </div>
-      )}
-      <DataTable
-        columns={["Siswa", "Ujian", "Mapel", "Skor", "Benar", "Status", "Aksi"]}
-        isEmpty={attempts.length === 0}
-        empty={
-          <EmptyState
-            title="Tidak ada pekerjaan grading"
-            description="Daftar koreksi akan tampil setelah siswa mengumpulkan jawaban essay."
-          />
-        }
-      >
-        {attempts.map((attempt) => {
-          const student = firstRelation(attempt.users);
-          const profile = firstRelation(student?.user_profiles);
-          const schedule = firstRelation(attempt.exam_schedules);
-          const examPackage = firstRelation(schedule?.exam_packages);
-          const subject = firstRelation(examPackage?.subjects);
 
-          return (
-            <tr key={attempt.id}>
-              <td className="px-4 py-3">
-                <div className="font-medium">
-                  {profile?.full_name ?? student?.username ?? "-"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {profile?.nis ?? student?.email ?? ""}
-                </div>
-              </td>
-              <td className="px-4 py-3">{schedule?.title ?? "-"}</td>
-              <td className="px-4 py-3">{subject?.code ?? "-"}</td>
-              <td className="px-4 py-3">
-                {Number(attempt.score ?? 0)} / {Number(attempt.max_score ?? 0)}
-              </td>
-              <td className="px-4 py-3">
-                {attempt.correct_answers ?? 0} / {attempt.total_questions ?? 0}
-              </td>
-              <td className="px-4 py-3">
-                <StatusPill value={attempt.grading_status} />
-              </td>
-              <td className="px-4 py-3">
-                <a
-                  href={`/dashboard/exam-results/${attempt.id}`}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                >
-                  Detail
-                </a>
-              </td>
-            </tr>
-          );
-        })}
-      </DataTable>
+      {!params.schedule_id &&
+        attempts.some((a) => a.grading_status === "needs_manual_grading") && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-xs font-medium text-blue-900 flex items-center justify-between shadow-2xs">
+            <span>
+              💡 <strong>Tips Efisiensi:</strong> Pilih salah satu jadwal ujian di filter dropdown untuk membuka <strong>Mode Koreksi Cepat</strong> atau memfinalisasi semua nilai sekaligus.
+            </span>
+          </div>
+        )}
+
+      <GradingTable
+        attempts={attemptItems}
+        canFinalize={canFinalize}
+        scheduleId={params.schedule_id}
+        currentUrl={currentUrl}
+      />
     </div>
   );
 }

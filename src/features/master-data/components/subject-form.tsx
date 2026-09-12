@@ -9,6 +9,7 @@ type SubjectFormData = {
   school_id?: string | null;
   code?: string | null;
   name?: string | null;
+  kkm?: number | null;
   is_active?: boolean | null;
 };
 
@@ -41,7 +42,13 @@ export function SubjectForm({ subject, schools }: { subject?: SubjectFormData | 
         <input name="name" defaultValue={subject?.name ?? ""} placeholder="Contoh: Matematika Wajib" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" required />
       </div>
 
-      <div className="md:col-span-2">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-[#64748B]">KKM (Kriteria Ketuntasan Minimal) <span className="text-red-500">*</span></label>
+        <input type="number" name="kkm" min={0} max={100} defaultValue={subject?.kkm ?? 75} placeholder="75" className="w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm focus:border-blue-600 focus:outline-none" required />
+        <p className="mt-1 text-[11px] text-[#94A3B8]">Nilai ambang kelulusan standar ujian (rentang 0-100, default 75).</p>
+      </div>
+
+      <div className="flex items-center pt-5">
         <label className="flex items-center gap-2 text-sm text-[#0F172A]">
           <input name="is_active" type="checkbox" defaultChecked={subject?.is_active ?? true} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
           Status Mata Pelajaran Aktif

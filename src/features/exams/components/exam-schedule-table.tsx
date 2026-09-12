@@ -4,15 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   Calendar,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
   Copy,
-  GraduationCap,
-  KeyRound,
+  ScreenShare,
   ShieldAlert,
-  Users,
   X,
 } from "lucide-react";
 
@@ -20,7 +19,9 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import {
   TableActionButton,
+  TableActionGroup,
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -321,120 +322,180 @@ function ScheduleActions({
   monitoringBasePath: string;
   onPreview: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
   async function copyToken() {
     if (schedule.access_token) {
       await navigator.clipboard.writeText(schedule.access_token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
     }
   }
 
+  const isLive = schedule.status === "ongoing" || schedule.status === "scheduled";
+
   return (
-    <TableActions>
-      <TableActionButton icon="eye" onClick={onPreview}>
-        {UI_LABELS.actions.preview}
-      </TableActionButton>
-      <TableActionLink
-        href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
-        icon="screen-share"
-      >
-        Live Monitoring
-      </TableActionLink>
-      <TableActionLink
-        href={`/dashboard/reports/students?schedule_id=${schedule.id}`}
-        icon="clipboard"
-      >
-        Hasil Nilai Siswa
-      </TableActionLink>
-      <TableActionLink
-        href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
-        icon="pencil"
-      >
-        {UI_LABELS.actions.update}
-      </TableActionLink>
-      <TableActionButton
-        icon="clipboard"
-        onClick={copyToken}
-        disabled={!schedule.access_token}
-      >
-        {UI_LABELS.actions.copyToken}
-      </TableActionButton>
-      <form action={regenerateExamTokenAction}>
-        <input type="hidden" name="id" value={schedule.id} />
-        <TableActionSubmit confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi.">
-          {UI_LABELS.actions.generateToken}
-        </TableActionSubmit>
-      </form>
-      {schedule.status === "draft" || schedule.status === "cancelled" ? (
-        <form action={updateExamScheduleStatusAction}>
-          <input type="hidden" name="id" value={schedule.id} />
-          <input type="hidden" name="status" value="scheduled" />
-          <input
-            type="hidden"
-            name="confirm_warnings"
-            value={
-              readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
-                ? "true"
-                : "false"
-            }
-          />
-          <TableActionSubmit
-            icon="send"
-            confirmMessage={
-              readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
-                ? "Tetap publish? Jadwal masih memiliki warning readiness."
-                : "Publish jadwal ujian ini?"
-            }
-          >
-            Publish Jadwal
-          </TableActionSubmit>
-        </form>
+    <div className="flex items-center justify-end gap-1.5">
+      {/* Quick Action 1: Live Monitoring direct button if ongoing or scheduled */}
+      {isLive ? (
+        <Link
+          href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 active:scale-95 transition"
+          title="Buka Ruang Pengawasan Langsung"
+        >
+          <ScreenShare className="size-3.5 text-blue-600" />
+          <span className="hidden lg:inline">Monitoring</span>
+        </Link>
       ) : null}
-      <form action={toggleExamScheduleActiveAction}>
-        <input type="hidden" name="id" value={schedule.id} />
-        <input
-          type="hidden"
-          name="is_active"
-          value={schedule.is_active ? "false" : "true"}
-        />
-        <TableActionSubmit
-          icon="toggle-left"
-          confirmMessage={
-            schedule.is_active
-              ? "Nonaktifkan jadwal ujian ini?"
-              : "Aktifkan jadwal ujian ini?"
-          }
+
+      {/* Quick Action 2: Copy Token 1-click if token exists */}
+      {schedule.access_token ? (
+        <button
+          type="button"
+          onClick={copyToken}
+          className={cn(
+            "inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition active:scale-95 shadow-2xs",
+            copied
+              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+          )}
+          title={`Salin Token (${schedule.access_token})`}
         >
-          {schedule.is_active ? "Nonaktifkan" : "Aktifkan"}
-        </TableActionSubmit>
-      </form>
-      <form action={updateExamScheduleStatusAction}>
-        <input type="hidden" name="id" value={schedule.id} />
-        <input type="hidden" name="status" value="cancelled" />
-        <TableActionSubmit confirmMessage="Batalkan jadwal ujian ini?">
-          Batalkan
-        </TableActionSubmit>
-      </form>
-      <form action={archiveExamScheduleAction}>
-        <input type="hidden" name="id" value={schedule.id} />
-        <TableActionSubmit
-          icon="archive"
-          confirmMessage="Arsipkan jadwal ujian ini?"
-          tone="danger"
-        >
-          {UI_LABELS.actions.archive}
-        </TableActionSubmit>
-      </form>
-      <form action={deleteExamScheduleAction}>
-        <input type="hidden" name="id" value={schedule.id} />
-        <TableActionSubmit
-          icon="trash"
-          confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN jadwal ujian ini? Tindakan ini tidak bisa dibatalkan."
-          confirmationText="HAPUS"
-          tone="danger"
-        >
-          Hapus Permanen
-        </TableActionSubmit>
-      </form>
-    </TableActions>
+          {copied ? (
+            <>
+              <Check className="size-3 text-emerald-600" />
+              <span className="font-mono text-[11px]">Tersalin</span>
+            </>
+          ) : (
+            <>
+              <Copy className="size-3 text-slate-500" />
+              <span className="font-mono text-[11px]">{schedule.access_token}</span>
+            </>
+          )}
+        </button>
+      ) : null}
+
+      {/* Structured Dropdown */}
+      <TableActions>
+        <TableActionGroup label="Navigasi & Info">
+          <TableActionButton icon="eye" onClick={onPreview}>
+            {UI_LABELS.actions.preview}
+          </TableActionButton>
+          <TableActionLink
+            href={`${monitoringBasePath}?schedule_id=${schedule.id}`}
+            icon="screen-share"
+          >
+            Live Monitoring
+          </TableActionLink>
+          <TableActionLink
+            href={`/dashboard/reports/students?schedule_id=${schedule.id}`}
+            icon="clipboard"
+          >
+            Hasil Nilai Siswa
+          </TableActionLink>
+          <TableActionLink
+            href={`/dashboard/exams/schedules/create?edit=${schedule.id}`}
+            icon="pencil"
+          >
+            {UI_LABELS.actions.update}
+          </TableActionLink>
+        </TableActionGroup>
+
+        <TableActionSeparator />
+
+        <TableActionGroup label="Operasional & Token">
+          <TableActionButton
+            icon="clipboard"
+            onClick={copyToken}
+            disabled={!schedule.access_token}
+          >
+            {UI_LABELS.actions.copyToken}
+          </TableActionButton>
+          <form action={regenerateExamTokenAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <TableActionSubmit confirmMessage="Buat token baru? Token lama tidak bisa dipakai lagi.">
+              {UI_LABELS.actions.generateToken}
+            </TableActionSubmit>
+          </form>
+          {schedule.status === "draft" || schedule.status === "cancelled" ? (
+            <form action={updateExamScheduleStatusAction}>
+              <input type="hidden" name="id" value={schedule.id} />
+              <input type="hidden" name="status" value="scheduled" />
+              <input
+                type="hidden"
+                name="confirm_warnings"
+                value={
+                  readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                    ? "true"
+                    : "false"
+                }
+              />
+              <TableActionSubmit
+                icon="send"
+                confirmMessage={
+                  readiness && readiness.summary.warning > 0 && readiness.summary.critical === 0
+                    ? "Tetap publish? Jadwal masih memiliki warning readiness."
+                    : "Publish jadwal ujian ini?"
+                }
+              >
+                Publish Jadwal
+              </TableActionSubmit>
+            </form>
+          ) : null}
+          <form action={toggleExamScheduleActiveAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <input
+              type="hidden"
+              name="is_active"
+              value={schedule.is_active ? "false" : "true"}
+            />
+            <TableActionSubmit
+              icon="toggle-left"
+              confirmMessage={
+                schedule.is_active
+                  ? "Nonaktifkan jadwal ujian ini?"
+                  : "Aktifkan jadwal ujian ini?"
+              }
+            >
+              {schedule.is_active ? "Nonaktifkan" : "Aktifkan"}
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
+
+        <TableActionSeparator />
+
+        <TableActionGroup label="Zona Bahaya">
+          <form action={updateExamScheduleStatusAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <input type="hidden" name="status" value="cancelled" />
+            <TableActionSubmit confirmMessage="Batalkan jadwal ujian ini?">
+              Batalkan
+            </TableActionSubmit>
+          </form>
+          <form action={archiveExamScheduleAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <TableActionSubmit
+              icon="archive"
+              confirmMessage="Arsipkan jadwal ujian ini?"
+              tone="danger"
+            >
+              {UI_LABELS.actions.archive}
+            </TableActionSubmit>
+          </form>
+          <form action={deleteExamScheduleAction}>
+            <input type="hidden" name="id" value={schedule.id} />
+            <TableActionSubmit
+              icon="trash"
+              confirmMessage="Anda yakin ingin MENGHAPUS PERMANEN jadwal ujian ini? Tindakan ini tidak bisa dibatalkan."
+              confirmationText="HAPUS"
+              tone="danger"
+            >
+              Hapus Permanen
+            </TableActionSubmit>
+          </form>
+        </TableActionGroup>
+      </TableActions>
+    </div>
   );
 }
 

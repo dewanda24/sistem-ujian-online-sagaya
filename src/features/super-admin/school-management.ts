@@ -244,6 +244,7 @@ function buildSchoolOperationalRow({
 export type SuperAdminSchoolListFilters = {
   q?: string;
   status?: string;
+  education_level?: string;
 };
 
 export async function getSuperAdminSchoolRows(
@@ -272,6 +273,10 @@ export async function getSuperAdminSchoolRows(
 
   if (filters.status === "inactive") {
     schoolQuery = schoolQuery.eq("is_active", false);
+  }
+
+  if (filters.education_level) {
+    schoolQuery = schoolQuery.eq("education_level", filters.education_level);
   }
 
   const [

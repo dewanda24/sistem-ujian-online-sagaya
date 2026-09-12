@@ -461,29 +461,7 @@ export async function getStudentActiveClassCounts(studentIds: string[]) {
     }
   }
 
-  const studentsWithoutActiveClass = scopedStudentIds.filter(
-    (studentId) => !activeClassIdsByStudent.has(studentId),
-  );
 
-  if (studentsWithoutActiveClass.length > 0) {
-    const { data: legacyClasses } = await supabase
-      .from("student_classes")
-      .select("student_id, class_id")
-      .in("student_id", studentsWithoutActiveClass);
-
-    for (const item of legacyClasses ?? []) {
-      const studentId = item.student_id as string | null;
-      const classId = item.class_id as string | null;
-
-      if (studentId && classId) {
-        const classIds =
-          activeClassIdsByStudent.get(studentId) ?? new Set<string>();
-
-        classIds.add(classId);
-        activeClassIdsByStudent.set(studentId, classIds);
-      }
-    }
-  }
 
   return new Map(
     [...activeClassIdsByStudent.entries()].map(([studentId, classIds]) => [
@@ -539,34 +517,7 @@ export async function getStudentLoginCards(filters: {
     }
   }
 
-  const studentsWithoutActiveClass = studentIds.filter(
-    (studentId) => !activeClassByStudent.has(studentId),
-  );
 
-  if (studentsWithoutActiveClass.length > 0) {
-    const { data: legacyClasses } = await supabase
-      .from("student_classes")
-      .select("student_id, classes(id, name), academic_years(name)")
-      .in("student_id", studentsWithoutActiveClass)
-      .order("created_at", { ascending: false });
-
-    for (const membership of legacyClasses ?? []) {
-      if (activeClassByStudent.has(membership.student_id as string)) {
-        continue;
-      }
-
-      const classItem = getClassRelation(membership.classes);
-      const classId = classItem?.id ?? "";
-
-      if (membership.student_id && classId) {
-        activeClassByStudent.set(membership.student_id as string, {
-          id: classId,
-          name: classItem?.name ?? "Kelas",
-          academicYear: getAcademicYearName(membership.academic_years),
-        });
-      }
-    }
-  }
 
   const search = filters.q?.trim().toLowerCase() ?? "";
 

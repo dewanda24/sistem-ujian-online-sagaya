@@ -45,9 +45,11 @@ function getOperationalUserRedirectPath(formData: FormData) {
   const path = formString(formData, "redirect_path");
   const basePath = path.split("?")[0].split("#")[0];
   const allowedPaths = new Set([
-    "/dashboard/admin/users",
+    "/dashboard/master-data/users",
     "/dashboard/master-data/admins",
     "/dashboard/master-data/proctors",
+    "/dashboard/master-data/teachers",
+    "/dashboard/master-data/students",
     "/dashboard/super-admin/admins",
     "/dashboard/super-admin/users",
     "/dashboard/super-admin/schools",
@@ -60,7 +62,7 @@ function getOperationalUserRedirectPath(formData: FormData) {
     return path;
   }
 
-  return "/dashboard/admin/users";
+  return "/dashboard/super-admin/users";
 }
 
 function serviceRoleClient() {
@@ -356,7 +358,7 @@ export async function saveAdminUserAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/super-admin/users");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
   revalidatePath("/dashboard/super-admin/schools");
@@ -409,7 +411,10 @@ export async function toggleAdminUserStatusAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/super-admin/users");
+  revalidatePath("/dashboard/master-data/users");
+  revalidatePath("/dashboard/master-data/teachers");
+  revalidatePath("/dashboard/master-data/students");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
   revalidatePath("/dashboard/super-admin/schools");
@@ -449,10 +454,10 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     ? targetUser?.roles[0]
     : targetUser?.roles;
 
-  if (!targetUser?.auth_user_id) {
+  if (!targetUser) {
     redirectTo(redirectPath, {
       ok: false,
-      message: "Auth user belum terhubung.",
+      message: "Pengguna tidak ditemukan.",
     });
   }
 
@@ -466,7 +471,11 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     });
   }
 
-  if (role?.name === "teacher" || role?.name === "student") {
+  if (
+    !scope.isSuperAdmin &&
+    redirectPath !== "/dashboard/master-data/users" &&
+    (role?.name === "teacher" || role?.name === "student")
+  ) {
     redirectTo(redirectPath, {
       ok: false,
       message: "Password guru dan siswa dikelola dari Master Data.",
@@ -483,26 +492,58 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     });
   }
 
-  const { error } = await adminClient.auth.admin.updateUserById(
-    targetUser.auth_user_id,
-    {
-      password: parsed.data.password,
-    },
-  );
+  let authUserId = targetUser.auth_user_id;
 
-  if (!error) {
-    await logAuditEvent({
-      userId: currentUser.id,
-      action: "users.password_reset",
-      entityType: "users",
-      entityId: targetUser.id,
-      payload: {
-        email: targetUser.email,
+  if (!authUserId) {
+    const { data: newAuth, error: authError } = await adminClient.auth.admin.createUser({
+      email: targetUser.email,
+      password: parsed.data.password,
+      email_confirm: true,
+      user_metadata: {
+        username: (targetUser as any).username,
+        role: role?.name,
       },
     });
+
+    if (authError || !newAuth.user) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: `Gagal membuat akun login auth: ${authError?.message ?? "Error tidak diketahui"}`,
+      });
+    }
+
+    authUserId = newAuth.user.id;
+    await supabase.from("users").update({ auth_user_id: authUserId }).eq("id", targetUser.id);
+  } else {
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      authUserId,
+      {
+        password: parsed.data.password,
+      },
+    );
+
+    if (updateError) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: `Gagal mereset password: ${updateError.message}`,
+      });
+    }
   }
 
-  revalidatePath("/dashboard/admin/users");
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "users.password_reset",
+    entityType: "users",
+    entityId: targetUser.id,
+    payload: {
+      email: targetUser.email,
+    },
+  });
+
+  revalidatePath("/dashboard/super-admin/users");
+  revalidatePath("/dashboard/master-data/users");
+  revalidatePath("/dashboard/master-data/teachers");
+  revalidatePath("/dashboard/master-data/students");
   revalidatePath("/dashboard/master-data/admins");
   revalidatePath("/dashboard/master-data/proctors");
   revalidatePath("/dashboard/super-admin/schools");
@@ -510,8 +551,8 @@ export async function resetAdminUserPasswordAction(formData: FormData) {
     revalidatePath(`/dashboard/super-admin/schools/${targetUser.school_id}`);
   }
   redirectTo(redirectPath, {
-    ok: !error,
-    message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
+    ok: true,
+    message: "Password pengguna berhasil diperbarui.",
   });
 }
 
@@ -526,14 +567,14 @@ export async function updateRolePermissionAction(formData: FormData) {
   const permissionCode = await getPermissionCodeById(permissionId);
 
   if (!roleName || !permissionCode) {
-    redirectTo("/dashboard/admin/permissions", {
+    redirectTo("/dashboard/super-admin/permissions", {
       ok: false,
       message: "Hak akses atau izin akses tidak ditemukan.",
     });
   }
 
   if (roleName === "super_admin") {
-    redirectTo("/dashboard/admin/permissions", {
+    redirectTo("/dashboard/super-admin/permissions", {
       ok: false,
       message: "Izin akses Super Admin tidak dapat diubah dari tabel ini.",
     });
@@ -576,8 +617,8 @@ export async function updateRolePermissionAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin/permissions");
-  redirectTo("/dashboard/admin/permissions", {
+  revalidatePath("/dashboard/super-admin/permissions");
+  redirectTo("/dashboard/super-admin/permissions", {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
@@ -592,7 +633,7 @@ export async function updateRoleLabelAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirectTo("/dashboard/admin/roles", {
+    redirectTo("/dashboard/super-admin/roles", {
       ok: false,
       message: parsed.error.issues[0]?.message ?? "Label hak akses tidak valid.",
     });
@@ -606,7 +647,7 @@ export async function updateRoleLabelAction(formData: FormData) {
     .maybeSingle();
 
   if (!roleBefore) {
-    redirectTo("/dashboard/admin/roles", {
+    redirectTo("/dashboard/super-admin/roles", {
       ok: false,
       message: "Peran tidak ditemukan.",
     });
@@ -631,9 +672,10 @@ export async function updateRoleLabelAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard/admin/roles");
-  redirectTo("/dashboard/admin/roles", {
+  revalidatePath("/dashboard/super-admin/roles");
+  redirectTo("/dashboard/super-admin/roles", {
     ok: !error,
     message: error ? getFriendlyErrorMessage(error) : "Data berhasil diperbarui.",
   });
 }
+

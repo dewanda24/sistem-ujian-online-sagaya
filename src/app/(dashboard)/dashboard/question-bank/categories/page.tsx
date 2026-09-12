@@ -22,6 +22,7 @@ import {
   getQuestionCategories,
   getScopedSubjectOptions,
 } from "@/features/question-bank/queries";
+import { hasPermission } from "@/lib/auth/has-permission";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 type QuestionCategoryRow = Awaited<ReturnType<typeof getQuestionCategories>>[number];
@@ -39,7 +40,8 @@ type PageProps = {
 export default async function QuestionCategoriesPage({
   searchParams,
 }: PageProps) {
-  await requirePermission("question_bank.view");
+  const currentUser = await requirePermission("question_bank.view");
+  const canManage = hasPermission(currentUser, "question_categories.manage");
   const params = await searchParams;
   const [subjects, schoolId, categories] = await Promise.all([
     getScopedSubjectOptions(),
@@ -59,10 +61,11 @@ export default async function QuestionCategoriesPage({
         description="Kelola kategori soal per mata pelajaran. Guru hanya melihat mapel yang ditugaskan melalui teacher_subjects."
       />
 
-      <FormSection
-        title={editable ? "Edit Kategori" : "Tambah Kategori"}
-        description="Kategori membantu filter bank soal saat menyusun paket ujian nanti."
-      >
+      {canManage ? (
+        <FormSection
+          title={editable ? "Edit Kategori" : "Tambah Kategori"}
+          description="Kategori membantu filter bank soal saat menyusun paket ujian nanti."
+        >
         <form
           action={saveQuestionCategoryAction}
           className="grid gap-4 md:grid-cols-2"
@@ -111,6 +114,7 @@ export default async function QuestionCategoriesPage({
           </div>
         </form>
       </FormSection>
+      ) : null}
 
       <QuestionBankFilters
         subjects={subjects}
@@ -148,7 +152,11 @@ export default async function QuestionCategoriesPage({
               <StatusBadge active={Boolean(category.is_active)} />
             </td>
             <td className="px-4 py-3">
-              <CategoryActions category={category} />
+              {canManage ? (
+                <CategoryActions category={category} />
+              ) : (
+                <span className="text-xs text-slate-400">-</span>
+              )}
             </td>
           </tr>
         ))}

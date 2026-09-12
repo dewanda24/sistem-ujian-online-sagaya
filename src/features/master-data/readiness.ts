@@ -127,14 +127,14 @@ export async function getMasterDataReadinessIssues(
       `${usersWithoutRole} pengguna belum memiliki peran`,
       usersWithoutRole,
       "critical",
-      "/dashboard/admin/users",
+      "/dashboard/master-data/users",
     ),
     issue(
       "users_without_school",
       `${usersWithoutSchool} user operasional belum memiliki sekolah`,
       usersWithoutSchool,
       "critical",
-      "/dashboard/admin/users",
+      "/dashboard/master-data/users",
     ),
   ].filter((item): item is MasterDataReadinessIssue => Boolean(item));
 }

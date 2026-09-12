@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Archive,
@@ -72,26 +72,42 @@ export function TableActions({
   className,
 }: TableActionsProps) {
   const [isPending, setIsPending] = useState(false);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!detailsRef.current || !detailsRef.current.open) return;
+      if (!detailsRef.current.contains(event.target as Node)) {
+        detailsRef.current.removeAttribute("open");
+      }
+    }
+
+    document.addEventListener("click", handleClickOutside, true);
+    return () => {
+      document.removeEventListener("click", handleClickOutside, true);
+    };
+  }, []);
 
   return (
     <details
+      ref={detailsRef}
       className={cn("group relative inline-block text-left open:z-50", className)}
       onSubmitCapture={() => setIsPending(true)}
     >
       <summary
         className={cn(
-          "inline-flex h-10 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#1E293B] shadow-sm transition-all duration-150 select-none hover:bg-[#F8FAFC] active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20",
+          "inline-flex h-9 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#1E293B] shadow-2xs transition-all duration-150 select-none hover:bg-[#F8FAFC] hover:border-slate-300 active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20",
           isPending && "pointer-events-none opacity-80 border-blue-300 bg-blue-50/50 text-blue-700",
         )}
       >
         {isPending ? (
           <>
-            <Loader2 className="size-4 animate-spin text-blue-600 shrink-0" aria-hidden="true" />
+            <Loader2 className="size-3.5 animate-spin text-blue-600 shrink-0" aria-hidden="true" />
             <span>Memproses...</span>
           </>
         ) : (
           <>
-            <MoreHorizontal className="size-4 text-[#64748B]" aria-hidden="true" />
+            <MoreHorizontal className="size-3.5 text-[#64748B]" aria-hidden="true" />
             <span>{label}</span>
           </>
         )}
@@ -101,12 +117,12 @@ export function TableActions({
           const target = e.target as HTMLElement;
           const isConfirmTrigger = Boolean(target.closest("[data-confirm-trigger]"));
           if (!isConfirmTrigger && target.closest("a, button")) {
-            const details = target.closest("details");
+            const details = detailsRef.current;
             if (details) details.removeAttribute("open");
           }
         }}
         className={cn(
-          "absolute z-40 mt-2 grid min-w-48 gap-0.5 rounded-2xl border border-[#E2E8F0] bg-white p-1.5 text-xs shadow-lg animate-in fade-in-50 zoom-in-95 duration-100",
+          "absolute z-50 mt-1.5 grid min-w-48 gap-0.5 rounded-2xl border border-[#E2E8F0] bg-white p-1.5 text-xs shadow-xl animate-in fade-in-50 zoom-in-95 duration-100",
           align === "end" ? "right-0" : "left-0",
         )}
       >
@@ -114,6 +130,29 @@ export function TableActions({
       </div>
     </details>
   );
+}
+
+export function TableActionGroup({
+  label,
+  children,
+}: {
+  label?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {label ? (
+        <span className="px-2 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+          {label}
+        </span>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+export function TableActionSeparator() {
+  return <div className="my-1 h-px bg-slate-100 -mx-1" role="separator" />;
 }
 
 export function TableActionLink({

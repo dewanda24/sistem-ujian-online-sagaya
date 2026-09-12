@@ -26,7 +26,16 @@ const ALLOWED_TYPES = new Set([
 export async function GET(request: Request) {
   const user = await getCurrentUser();
 
-  if (!user?.school_id) {
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, message: "Unauthorized." },
+      { status: 401 },
+    );
+  }
+
+  const isSuperAdmin = user.roles?.name === "super_admin";
+
+  if (!user.school_id && !isSuperAdmin) {
     return NextResponse.json(
       { ok: false, message: "Akun belum memiliki scope sekolah." },
       { status: 403 },
@@ -36,7 +45,7 @@ export async function GET(request: Request) {
   const path = new URL(request.url).searchParams.get("path") ?? "";
   const mediaSchoolId = path.split("/")[0];
 
-  if (!path || mediaSchoolId !== user.school_id) {
+  if (!path || (!isSuperAdmin && mediaSchoolId !== user.school_id)) {
     return NextResponse.json(
       { ok: false, message: "Media tidak dapat diakses." },
       { status: 403 },
@@ -64,6 +73,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, message: "Unauthorized." },
+      { status: 401 },
+    );
+  }
+
   if (
     !hasPermission(user, "question_bank.manage") &&
     !hasPermission(user, "questions.create") &&
@@ -75,7 +91,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!user?.school_id) {
+  const isSuperAdmin = user.roles?.name === "super_admin";
+
+  if (!user.school_id && !isSuperAdmin) {
     return NextResponse.json(
       { ok: false, message: "Akun belum memiliki scope sekolah." },
       { status: 403 },
@@ -108,7 +126,8 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient();
   const extension = getExtension(file.name, file.type);
-  const path = `${user.school_id}/${user.id}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${extension}`;
+  const schoolScope = user.school_id ?? "global";
+  const path = `${schoolScope}/${user.id}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${extension}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     contentType: file.type,
     upsert: false,

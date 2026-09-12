@@ -513,24 +513,6 @@ async function ensureTeacherAssignments({
 }
 
 async function ensureStudentClass({ studentId, classId, academicYearId }) {
-  const existingStudentClass = await maybeSingle(
-    supabase
-      .from("student_classes")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("class_id", classId)
-      .eq("academic_year_id", academicYearId),
-  );
-
-  if (!existingStudentClass) {
-    await insertRow("student_classes", {
-      student_id: studentId,
-      class_id: classId,
-      academic_year_id: academicYearId,
-    });
-    record("student_class", "created", "demo student assignment");
-  }
-
   const existingMember = await maybeSingle(
     supabase
       .from("class_members")

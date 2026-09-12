@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PrintExamCardsButton } from "@/features/exams/components/print-exam-cards-button";
@@ -321,7 +320,7 @@ export default async function ExamCardsPage({ searchParams }: PageProps) {
               <div className="mb-2 flex items-center justify-between gap-3">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Pratinjau Kartu Peserta</h2>
                 <span className="text-[11px] text-slate-500">
-                  * Tombol "Cetak Kartu Ujian" akan mencetak seluruh kartu sesuai filter aktif.
+                  * Tombol &quot;Cetak Kartu Ujian&quot; akan mencetak seluruh kartu sesuai filter aktif.
                 </span>
               </div>
               {previewCard ? <ExamCardPreview card={previewCard} /> : null}
