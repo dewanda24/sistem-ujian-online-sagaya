@@ -286,20 +286,24 @@ export async function OperationalRoleUsersPage({
                     {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                   </TableActionSubmit>
                 </form>
-                <TableActionSeparator />
-                <form action={deleteAdminUserAction}>
-                  <input type="hidden" name="redirect_path" value={redirectPath} />
-                  <input type="hidden" name="id" value={item.id} />
-                  <TableActionSubmit
-                    icon="trash"
-                    tone="danger"
-                    confirmTitle="Hapus Pengguna Permanen"
-                    confirmMessage={`Hapus akun "${item.profile?.full_name ?? item.username}" secara permanen? Data akun dan login akan dihapus.`}
-                    confirmationText="HAPUS"
-                  >
-                    Hapus Pengguna
-                  </TableActionSubmit>
-                </form>
+                {item.role?.name !== "super_admin" && (
+                  <>
+                    <TableActionSeparator />
+                    <form action={deleteAdminUserAction}>
+                      <input type="hidden" name="redirect_path" value={redirectPath} />
+                      <input type="hidden" name="id" value={item.id} />
+                      <TableActionSubmit
+                        icon="trash"
+                        tone="danger"
+                        confirmTitle="Hapus Pengguna Permanen"
+                        confirmMessage={`Hapus akun "${item.profile?.full_name ?? item.username}" secara permanen? Data akun dan login akan dihapus.`}
+                        confirmationText="HAPUS"
+                      >
+                        Hapus Pengguna
+                      </TableActionSubmit>
+                    </form>
+                  </>
+                )}
               </TableActions>
             </td>
           </tr>

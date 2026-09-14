@@ -288,9 +288,11 @@ export async function saveAdminUserAction(formData: FormData) {
     targetSchoolId = targetUser?.school_id ?? null;
   }
 
-  const resolvedSchoolId = scope.isSuperAdmin
-    ? (school_id ?? targetSchoolId)
-    : scope.schoolId;
+  const resolvedSchoolId = roleName === "super_admin"
+    ? null
+    : scope.isSuperAdmin
+      ? (school_id ?? targetSchoolId)
+      : scope.schoolId;
 
   if (roleName === "admin" && !resolvedSchoolId) {
     redirectTo(id ? `${redirectPath}?edit=${id}` : redirectPath, {
@@ -476,19 +478,12 @@ export async function deleteAdminUserAction(formData: FormData) {
     }
   }
 
-  // Prevent deleting the last super_admin
+  // Prevent deleting super_admin
   if (targetRole?.name === "super_admin") {
-    const { count } = await dbClient
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .eq("role_id", targetUser.role_id);
-
-    if ((count ?? 0) <= 1) {
-      redirectTo(redirectPath, {
-        ok: false,
-        message: "Tidak dapat menghapus satu-satunya akun Super Admin di sistem.",
-      });
-    }
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Akun Super Admin bersifat permanen dan tidak dapat dihapus dari sistem.",
+    });
   }
 
   // 1. Clear homeroom teacher in classes
