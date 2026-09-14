@@ -6,6 +6,7 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   TableActionLink,
+  TableActionSeparator,
   TableActions,
   TableActionSubmit,
 } from "@/components/dashboard/table-actions";
@@ -13,7 +14,10 @@ import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { getSuperAdminSchoolRows } from "@/features/super-admin/school-management";
-import { toggleSchoolAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteSchoolAction,
+  toggleSchoolAction,
+} from "@/lib/actions/master-data-actions";
 
 type PageProps = {
   searchParams: Promise<{
@@ -154,19 +158,17 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
       {/* Main Data Table */}
       <DataTable
         columns={[
-          "Nama Sekolah & Lokasi",
+          "Sekolah & Jenjang",
           "NPSN",
-          "Jenjang",
           "Status",
-          "Admin",
-          "Guru",
-          "Siswa",
+          "Pengguna Terdaftar",
           "Ujian CBT",
           "Kesiapan",
           "Aksi",
         ]}
         isEmpty={schools.length === 0}
-        searchPlaceholder="Cari data sekolah..."
+        stickyActionColumn={true}
+        enableSearch={false}
         empty={
           <EmptyState
             title="Tidak ada data sekolah"
@@ -195,38 +197,38 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
 
           return (
             <tr key={school.id} className="hover:bg-muted/40 transition-colors">
-              <td className="px-4 py-3.5">
-                <Link
-                  href={`/dashboard/super-admin/schools/${school.id}`}
-                  className="font-medium text-foreground hover:text-primary transition-colors block"
-                >
-                  {school.name}
-                </Link>
+              <td className="px-3 py-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Link
+                    href={`/dashboard/super-admin/schools/${school.id}`}
+                    className="font-semibold text-foreground hover:text-primary transition-colors leading-snug"
+                  >
+                    {school.name}
+                  </Link>
+                  <span className="inline-flex items-center rounded-md border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {school.education_level || "Umum"}
+                  </span>
+                </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {[school.city, school.province].filter(Boolean).join(", ") || "Lokasi belum diatur"}
                 </div>
               </td>
-              <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+              <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                 {school.npsn || "-"}
               </td>
-              <td className="px-4 py-3.5">
-                <span className="inline-flex items-center rounded-md border bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {school.education_level || "Umum"}
-                </span>
-              </td>
-              <td className="px-4 py-3.5">
+              <td className="px-3 py-3">
                 <StatusBadge active={Boolean(school.is_active)} />
               </td>
-              <td className="px-4 py-3.5 text-center text-xs font-medium">
-                {school.stats.adminCount}
+              <td className="px-3 py-3 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                  <span><strong className="text-foreground">{school.stats.studentCount}</strong> Siswa</span>
+                  <span>•</span>
+                  <span><strong className="text-foreground">{school.stats.teacherCount}</strong> Guru</span>
+                  <span>•</span>
+                  <span><strong className="text-foreground">{school.stats.adminCount}</strong> Adm</span>
+                </div>
               </td>
-              <td className="px-4 py-3.5 text-center text-xs font-medium">
-                {school.stats.teacherCount}
-              </td>
-              <td className="px-4 py-3.5 text-center text-xs font-medium">
-                {school.stats.studentCount}
-              </td>
-              <td className="px-4 py-3.5 text-center text-xs">
+              <td className="px-3 py-3 text-xs">
                 <span className="font-semibold text-foreground">{school.stats.examCount}</span>
                 {school.stats.activeExamCount > 0 && (
                   <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 px-1.5 py-0.2 text-[10px] font-bold">
@@ -234,14 +236,14 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                   </span>
                 )}
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-3 py-3">
                 <span
                   className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${readinessBadge}`}
                 >
                   {readinessLabel}
                 </span>
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-3 py-3">
                 <TableActions>
                   <TableActionLink
                     href={`/dashboard/super-admin/schools/${school.id}`}
@@ -261,6 +263,7 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                   >
                     Monitor CBT
                   </TableActionLink>
+                  <TableActionSeparator />
                   <form action={toggleSchoolAction}>
                     <input
                       type="hidden"
@@ -280,6 +283,24 @@ export default async function SuperAdminSchoolsPage({ searchParams }: PageProps)
                       } ${school.name}?`}
                     >
                       {school.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </TableActionSubmit>
+                  </form>
+                  <TableActionSeparator />
+                  <form action={deleteSchoolAction}>
+                    <input
+                      type="hidden"
+                      name="redirect_path"
+                      value="/dashboard/super-admin/schools"
+                    />
+                    <input type="hidden" name="id" value={school.id} />
+                    <TableActionSubmit
+                      icon="trash"
+                      tone="danger"
+                      confirmTitle="Hapus Sekolah Permanen"
+                      confirmMessage={`Hapus sekolah "${school.name}" secara permanen? Semua akun pengguna, kelas, mata pelajaran, dan data terkait sekolah ini akan ikut terhapus.`}
+                      confirmationText="HAPUS"
+                    >
+                      Hapus Sekolah
                     </TableActionSubmit>
                   </form>
                 </TableActions>

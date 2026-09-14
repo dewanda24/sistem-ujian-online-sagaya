@@ -179,6 +179,8 @@ export default async function SuperAdminMonitoringPage({
             "Aksi Intervensi",
           ]}
           isEmpty={live.rows.length === 0}
+          enableSearch={false}
+          stickyActionColumn={false}
           empty={
             <EmptyState
               title={
@@ -297,6 +299,8 @@ export default async function SuperAdminMonitoringPage({
           "Aksi",
         ]}
         isEmpty={schools.length === 0}
+        enableSearch={false}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title="Belum ada sekolah"

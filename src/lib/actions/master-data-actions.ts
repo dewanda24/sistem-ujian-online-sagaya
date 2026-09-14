@@ -233,6 +233,221 @@ export async function toggleSchoolAction(formData: FormData) {
   });
 }
 
+export async function deleteSchoolAction(formData: FormData) {
+  const redirectPath = getSchoolRedirectPath(formData);
+  await requireRole("super_admin");
+  const currentUser = await requirePermission("schools.delete");
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "ID sekolah tidak valid.",
+    });
+  }
+
+  const supabase = await createClient();
+  const adminClient = serviceRoleClient();
+  const dbClient = adminClient ?? supabase;
+
+  const { data: school } = await dbClient
+    .from("schools")
+    .select("id, name, npsn")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!school) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Data sekolah tidak ditemukan.",
+    });
+  }
+
+  // 1. Clean up Exam Schedules, Attempts, Answers, Events & Proctors
+  const { data: schoolExams } = await dbClient
+    .from("exam_schedules")
+    .select("id")
+    .eq("school_id", id);
+  const examIds = (schoolExams ?? []).map((e) => e.id);
+
+  if (examIds.length > 0) {
+    const { data: attempts } = await dbClient
+      .from("exam_attempts")
+      .select("id")
+      .in("exam_schedule_id", examIds);
+    const attemptIds = (attempts ?? []).map((a) => a.id);
+
+    if (attemptIds.length > 0) {
+      await dbClient.from("exam_answers").delete().in("exam_attempt_id", attemptIds);
+      await dbClient.from("exam_events").delete().in("exam_attempt_id", attemptIds);
+      await dbClient.from("exam_attempts").delete().in("id", attemptIds);
+    }
+
+    await dbClient.from("exam_events").delete().in("exam_schedule_id", examIds);
+    await dbClient.from("exam_proctors").delete().in("exam_schedule_id", examIds);
+    await dbClient.from("exam_participants").delete().in("exam_schedule_id", examIds);
+    await dbClient.from("exam_schedule_classes").delete().in("exam_schedule_id", examIds);
+    await dbClient.from("exam_schedules").delete().in("id", examIds);
+  }
+
+  // 2. Clean up Exam Packages & Question links
+  const { data: schoolPackages } = await dbClient
+    .from("exam_packages")
+    .select("id")
+    .eq("school_id", id);
+  const packageIds = (schoolPackages ?? []).map((p) => p.id);
+
+  if (packageIds.length > 0) {
+    await dbClient.from("exam_package_questions").delete().in("exam_package_id", packageIds);
+    await dbClient.from("exam_packages").delete().in("id", packageIds);
+  }
+
+  // 3. Clean up Questions, Options, Attachments, Versions, Stimuli & Categories
+  const { data: schoolQuestions } = await dbClient
+    .from("questions")
+    .select("id")
+    .eq("school_id", id);
+  const questionIds = (schoolQuestions ?? []).map((q) => q.id);
+
+  if (questionIds.length > 0) {
+    await dbClient.from("exam_package_questions").delete().in("question_id", questionIds);
+    await dbClient.from("exam_answers").delete().in("question_id", questionIds);
+    await dbClient.from("question_options").delete().in("question_id", questionIds);
+    await dbClient.from("question_attachments").delete().in("question_id", questionIds);
+    await dbClient.from("question_versions").delete().in("question_id", questionIds);
+    await dbClient.from("questions").delete().in("id", questionIds);
+  }
+
+  await dbClient.from("question_stimuli").delete().eq("school_id", id);
+  await dbClient.from("question_categories").delete().eq("school_id", id);
+
+  // 4. Clean up Classes, Class Members & Teacher Assignments
+  const { data: schoolClasses } = await dbClient
+    .from("classes")
+    .select("id")
+    .eq("school_id", id);
+  const classIds = (schoolClasses ?? []).map((c) => c.id);
+
+  if (classIds.length > 0) {
+    await dbClient.from("teacher_subjects").delete().in("class_id", classIds);
+    await dbClient.from("class_members").delete().in("class_id", classIds);
+    await dbClient.from("exam_schedule_classes").delete().in("class_id", classIds);
+    await dbClient.from("classes").delete().in("id", classIds);
+  }
+
+  // 5. Clean up Subjects, Semesters, Academic Years
+  const { data: schoolSubjects } = await dbClient
+    .from("subjects")
+    .select("id")
+    .eq("school_id", id);
+  const subjectIds = (schoolSubjects ?? []).map((s) => s.id);
+
+  if (subjectIds.length > 0) {
+    await dbClient.from("teacher_subjects").delete().in("subject_id", subjectIds);
+    await dbClient.from("subjects").delete().in("id", subjectIds);
+  }
+
+  const { data: schoolAys } = await dbClient
+    .from("academic_years")
+    .select("id")
+    .eq("school_id", id);
+  const ayIds = (schoolAys ?? []).map((a) => a.id);
+
+  if (ayIds.length > 0) {
+    await dbClient.from("teacher_subjects").delete().in("academic_year_id", ayIds);
+    await dbClient.from("semesters").delete().in("academic_year_id", ayIds);
+    await dbClient.from("academic_years").delete().in("id", ayIds);
+  }
+
+  // 6. Fetch all users belonging to this school to clean them up
+  const { data: schoolUsers } = await dbClient
+    .from("users")
+    .select("id, auth_user_id")
+    .eq("school_id", id);
+
+  const schoolUserIds = (schoolUsers ?? []).map((u) => u.id);
+
+  if (schoolUserIds.length > 0) {
+    await dbClient.from("classes").update({ homeroom_teacher_id: null }).in("homeroom_teacher_id", schoolUserIds);
+    await dbClient.from("teacher_subjects").delete().in("teacher_id", schoolUserIds);
+    await dbClient.from("class_members").delete().in("student_id", schoolUserIds);
+    await dbClient.from("exam_participants").delete().in("student_id", schoolUserIds);
+    await dbClient.from("exam_proctors").delete().in("teacher_id", schoolUserIds);
+    await dbClient.from("exam_proctors").update({ assigned_by: null }).in("assigned_by", schoolUserIds);
+
+    const { data: userAttempts } = await dbClient
+      .from("exam_attempts")
+      .select("id")
+      .in("student_id", schoolUserIds);
+    const userAttemptIds = (userAttempts ?? []).map((a) => a.id);
+
+    if (userAttemptIds.length > 0) {
+      await dbClient.from("exam_answers").delete().in("exam_attempt_id", userAttemptIds);
+      await dbClient.from("exam_events").delete().in("exam_attempt_id", userAttemptIds);
+      await dbClient.from("exam_attempts").delete().in("id", userAttemptIds);
+    }
+
+    await dbClient.from("exam_answers").update({ graded_by: null }).in("graded_by", schoolUserIds);
+    await dbClient.from("exam_events").update({ student_id: null }).in("student_id", schoolUserIds);
+
+    await dbClient.from("questions").update({ created_by: null }).in("created_by", schoolUserIds);
+    await dbClient.from("question_versions").update({ created_by: null }).in("created_by", schoolUserIds);
+    await dbClient.from("exam_schedules").update({ created_by: null }).in("created_by", schoolUserIds);
+    await dbClient.from("exam_packages").update({ created_by: null }).in("created_by", schoolUserIds);
+
+    await dbClient.from("audit_logs").update({ user_id: null }).in("user_id", schoolUserIds);
+    await dbClient.from("system_settings").update({ updated_by: null }).in("updated_by", schoolUserIds);
+    await dbClient.from("super_admin_import_jobs").update({ created_by: null }).in("created_by", schoolUserIds);
+    await dbClient.from("super_admin_import_jobs").update({ committed_by: null }).in("committed_by", schoolUserIds);
+    await dbClient.from("super_admin_backup_jobs").update({ created_by: null }).in("created_by", schoolUserIds);
+    await dbClient.from("super_admin_backup_jobs").update({ restored_by: null }).in("restored_by", schoolUserIds);
+
+    await dbClient.from("user_profiles").delete().in("user_id", schoolUserIds);
+    await dbClient.from("users").delete().in("id", schoolUserIds);
+
+    for (const u of schoolUsers ?? []) {
+      if (u.auth_user_id) {
+        await deleteAuthUser(u.auth_user_id);
+      }
+    }
+  }
+
+  // 7. Nullify foreign references to school_id
+  await dbClient.from("audit_logs").update({ school_id: null }).eq("school_id", id);
+  await dbClient.from("super_admin_backup_jobs").update({ school_id: null }).eq("school_id", id);
+
+  // 8. Delete the school
+  const { error } = await dbClient.from("schools").delete().eq("id", id);
+
+  if (error) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: error ? getFriendlyErrorMessage(error) : "Gagal menghapus data sekolah.",
+    });
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "schools.delete",
+    entityType: "schools",
+    entityId: id,
+    payload: {
+      name: school.name,
+      npsn: school.npsn,
+    },
+  });
+
+  revalidatePath(SUPER_ADMIN_SCHOOLS_PATH);
+  revalidatePath("/dashboard/super-admin");
+  revalidatePath("/dashboard/super-admin/users");
+  revalidatePath("/dashboard/super-admin/monitoring");
+
+  redirectTo(SUPER_ADMIN_SCHOOLS_PATH, {
+    ok: true,
+    message: `Sekolah "${school.name}" beserta seluruh data terkait berhasil dihapus secara permanen.`,
+  });
+}
+
 export async function saveAcademicYearAction(formData: FormData) {
   const currentUser = await requirePermission("academic_years.manage");
   const scope = await requireSchoolScope();
@@ -798,7 +1013,11 @@ async function deleteAuthUser(authUserId: string | null | undefined) {
     return;
   }
 
-  await adminClient.auth.admin.deleteUser(authUserId);
+  try {
+    await adminClient.auth.admin.deleteUser(authUserId);
+  } catch {
+    // Ignore if auth user is already removed
+  }
 }
 
 async function updateAuthUserPassword(
@@ -2349,6 +2568,8 @@ export async function deleteStudentAction(formData: FormData) {
   // Safe to delete cleanly
   await dbClient.from("class_members").delete().eq("student_id", id);
   await dbClient.from("exam_participants").delete().eq("student_id", id);
+  await dbClient.from("exam_events").update({ student_id: null }).eq("student_id", id);
+  await dbClient.from("audit_logs").update({ user_id: null }).eq("user_id", id);
   await dbClient.from("user_profiles").delete().eq("user_id", id);
   const { error } = await dbClient.from("users").delete().eq("id", id);
 
@@ -2409,8 +2630,28 @@ export async function deleteTeacherAction(formData: FormData) {
 
   assertSameSchool(scope, teacher.school_id);
 
-  // Delete assignments & profile
+  // 1. Clear homeroom teacher in classes
+  await dbClient
+    .from("classes")
+    .update({ homeroom_teacher_id: null })
+    .eq("homeroom_teacher_id", id);
+
+  // 2. Clear teacher assignments
   await dbClient.from("teacher_subjects").delete().eq("teacher_id", id);
+
+  // 3. Clear exam proctor assignments
+  await dbClient.from("exam_proctors").delete().eq("teacher_id", id);
+  await dbClient.from("exam_proctors").update({ assigned_by: null }).eq("assigned_by", id);
+
+  // 4. Nullify grading, exam and question author relations
+  await dbClient.from("exam_answers").update({ graded_by: null }).eq("graded_by", id);
+  await dbClient.from("questions").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("question_versions").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("exam_schedules").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("exam_packages").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("audit_logs").update({ user_id: null }).eq("user_id", id);
+
+  // 5. Delete profile & user
   await dbClient.from("user_profiles").delete().eq("user_id", id);
   const { error } = await dbClient.from("users").delete().eq("id", id);
 
@@ -2479,7 +2720,10 @@ export async function deleteClassAction(formData: FormData) {
     });
   }
 
+  // Clear assignments, schedules and memberships
+  await dbClient.from("teacher_subjects").delete().eq("class_id", id);
   await dbClient.from("class_members").delete().eq("class_id", id);
+  await dbClient.from("exam_schedule_classes").delete().eq("class_id", id);
   const { error } = await dbClient.from("classes").delete().eq("id", id);
 
   if (!error) {
@@ -2527,6 +2771,32 @@ export async function deleteSubjectAction(formData: FormData) {
   }
 
   assertSameSchool(scope, subject.school_id);
+
+  // Check if subject has active question bank items
+  const { count: questionCount } = await dbClient
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("subject_id", id)
+    .is("deleted_at", null);
+
+  if ((questionCount ?? 0) > 0) {
+    redirectTo("/dashboard/master-data/subjects", {
+      ok: false,
+      message: `Mata pelajaran masih memiliki ${questionCount} butir soal di Bank Soal. Hapus atau arsipkan butir soal terlebih dahulu.`,
+    });
+  }
+
+  const { count: packageCount } = await dbClient
+    .from("exam_packages")
+    .select("id", { count: "exact", head: true })
+    .eq("subject_id", id);
+
+  if ((packageCount ?? 0) > 0) {
+    redirectTo("/dashboard/master-data/subjects", {
+      ok: false,
+      message: `Mata pelajaran masih terikat pada ${packageCount} Paket Naskah Ujian. Hapus paket ujian terkait terlebih dahulu.`,
+    });
+  }
 
   await dbClient.from("teacher_subjects").delete().eq("subject_id", id);
   const { error } = await dbClient.from("subjects").delete().eq("id", id);
@@ -2603,6 +2873,7 @@ export async function deleteAcademicYearAction(formData: FormData) {
   }
 
   const adminClient = serviceRoleClient() ?? supabase;
+  await adminClient.from("teacher_subjects").delete().eq("academic_year_id", id);
   await adminClient.from("semesters").delete().eq("academic_year_id", id);
   const { error } = await adminClient.from("academic_years").delete().eq("id", id);
 

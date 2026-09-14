@@ -18,7 +18,10 @@ import { switchSchoolImpersonationAction } from "@/features/super-admin/imperson
 import { SchoolForm } from "@/features/super-admin/components/school-form";
 import { SchoolDetailTabs } from "@/features/super-admin/components/school-detail-tabs";
 import { getSuperAdminSchoolDetail } from "@/features/super-admin/school-management";
-import { toggleSchoolAction } from "@/lib/actions/master-data-actions";
+import {
+  deleteSchoolAction,
+  toggleSchoolAction,
+} from "@/lib/actions/master-data-actions";
 
 
 type PageProps = {
@@ -113,6 +116,24 @@ export default async function SuperAdminSchoolDetailPage({
               className="text-xs"
             >
               {school.is_active ? "Nonaktifkan Sekolah" : "Aktifkan Sekolah"}
+            </ConfirmSubmitButton>
+          </form>
+
+          <form action={deleteSchoolAction}>
+            <input type="hidden" name="id" value={school.id} />
+            <input
+              type="hidden"
+              name="redirect_path"
+              value="/dashboard/super-admin/schools"
+            />
+            <ConfirmSubmitButton
+              confirmTitle="Hapus Sekolah Permanen"
+              confirmMessage={`Hapus sekolah "${school.name}" secara permanen? Semua akun pengguna, kelas, mata pelajaran, dan data terkait sekolah ini akan ikut terhapus.`}
+              confirmationText="HAPUS"
+              variant="danger"
+              className="text-xs"
+            >
+              Hapus Sekolah
             </ConfirmSubmitButton>
           </form>
 

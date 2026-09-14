@@ -188,6 +188,7 @@ export default async function BackupRecoveryPage({ searchParams }: PageProps) {
       <DataTable
         columns={["Waktu", "Jenis", "Status", "Rincian Data", "Unduh", "Pemulihan"]}
         isEmpty={backupJobs.rows.length === 0}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title={

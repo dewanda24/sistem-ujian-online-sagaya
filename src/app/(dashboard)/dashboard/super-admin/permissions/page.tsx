@@ -101,6 +101,8 @@ export default async function PermissionsPage({ searchParams }: PageProps) {
       <DataTable
         columns={["Izin", "Modul", "Aksi", ...roles.map((role) => role.label)]}
         isEmpty={filteredPermissions.length === 0}
+        enableSearch={false}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title="Izin akses belum tersedia"

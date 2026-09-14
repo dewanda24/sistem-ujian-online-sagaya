@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ActionsMenu } from "@/components/dashboard/actions-menu";
+import { TableActions, TableActionLink } from "@/components/dashboard/table-actions";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -228,8 +229,9 @@ export default async function SuperAdminDashboardPage() {
       </section>
 
       <DataTable
-        columns={["Nama Sekolah", "Status", "Kesiapan Ujian", "Kondisi", "Admin", "Guru", "Siswa", "Aksi"]}
+        columns={["Sekolah", "Status", "Kesiapan CBT", "Kondisi", "Pengguna Terdaftar", "Aksi"]}
         isEmpty={schools.length === 0}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title="Belum ada sekolah"
@@ -238,37 +240,52 @@ export default async function SuperAdminDashboardPage() {
         }
       >
         {schools.map((school) => (
-          <tr key={school.id}>
-            <td className="px-4 py-3">
-              <div className="font-medium">{school.name}</div>
-              <div className="text-xs text-muted-foreground">
+          <tr key={school.id} className="hover:bg-muted/40 transition-colors">
+            <td className="px-3 py-3">
+              <div className="font-semibold text-foreground leading-snug">{school.name}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
                 {[school.city, school.province].filter(Boolean).join(", ") || "-"}
               </div>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <StatusBadge active={Boolean(school.is_active)} />
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <ReadinessBadge status={school.readiness.status} />
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <SchoolHealthBadge status={school.health.status} />
             </td>
-            <td className="px-4 py-3">{school.stats.adminCount}</td>
-            <td className="px-4 py-3">{school.stats.teacherCount}</td>
-            <td className="px-4 py-3">{school.stats.studentCount}</td>
-            <td className="px-4 py-3">
-              <ActionsMenu label="Aksi">
-                <MenuLink href={`/dashboard/super-admin/schools/${school.id}`}>
+            <td className="px-3 py-3 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                <span><strong className="text-foreground">{school.stats.studentCount}</strong> Siswa</span>
+                <span>•</span>
+                <span><strong className="text-foreground">{school.stats.teacherCount}</strong> Guru</span>
+                <span>•</span>
+                <span><strong className="text-foreground">{school.stats.adminCount}</strong> Adm</span>
+              </div>
+            </td>
+            <td className="px-3 py-3">
+              <TableActions>
+                <TableActionLink
+                  href={`/dashboard/super-admin/schools/${school.id}`}
+                  icon="eye"
+                >
                   Lihat Detail
-                </MenuLink>
-                <MenuLink href={`/dashboard/super-admin/users?school_id=${school.id}`}>
+                </TableActionLink>
+                <TableActionLink
+                  href={`/dashboard/super-admin/users?school_id=${school.id}`}
+                  icon="user-check"
+                >
                   Lihat Pengguna
-                </MenuLink>
-                <MenuLink href="/dashboard/super-admin/backup-recovery">
+                </TableActionLink>
+                <TableActionLink
+                  href="/dashboard/super-admin/backup-recovery"
+                  icon="download"
+                >
                   Backup Sekolah
-                </MenuLink>
-              </ActionsMenu>
+                </TableActionLink>
+              </TableActions>
             </td>
           </tr>
         ))}

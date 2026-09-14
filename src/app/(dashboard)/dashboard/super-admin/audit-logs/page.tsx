@@ -209,6 +209,8 @@ export default async function AuditLogsPage({
       <DataTable
         columns={["Waktu", "Aktivitas", "Data", "Pengguna", "Ringkasan", "Aksi"]}
         isEmpty={auditLogs.rows.length === 0}
+        stickyActionColumn={false}
+        enableSearch={false}
         empty={
           <EmptyState
             title={
@@ -224,23 +226,23 @@ export default async function AuditLogsPage({
         }
       >
         {auditLogs.rows.map((item, index) => (
-          <tr key={item.id ?? index}>
-            <td className="px-4 py-3 text-xs">
+          <tr key={item.id ?? index} className="hover:bg-muted/40 transition-colors">
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
               {item.created_at
                 ? new Date(item.created_at).toLocaleString("id-ID")
                 : "-"}
             </td>
-            <td className="px-4 py-3 font-medium">
+            <td className="px-3 py-3 font-medium text-xs">
               {formatAuditAction(item.action)}
             </td>
-            <td className="px-4 py-3">{formatEntityType(item.entity_type)}</td>
-            <td className="px-4 py-3 font-mono text-xs text-muted-foreground truncate max-w-28">
+            <td className="px-3 py-3 text-xs">{formatEntityType(item.entity_type)}</td>
+            <td className="px-3 py-3 font-mono text-xs text-muted-foreground truncate max-w-28">
               {item.user_id ?? "-"}
             </td>
-            <td className="max-w-md px-4 py-3 text-xs text-muted-foreground">
+            <td className="max-w-md px-3 py-3 text-xs text-muted-foreground truncate">
               {summarizePayload(item.payload)}
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <AuditLogDetailButton item={item} />
             </td>
           </tr>

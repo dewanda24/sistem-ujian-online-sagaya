@@ -138,6 +138,7 @@ export default async function SuperAdminReportsPage() {
             "Aksi",
           ]}
           isEmpty={schools.length === 0}
+          stickyActionColumn={false}
           empty={
             <EmptyState
               title="Belum ada laporan sekolah"

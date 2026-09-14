@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -65,6 +66,7 @@ export default async function RolesPage({ searchParams }: PageProps) {
       <DataTable
         columns={["Peran", "Label", "Pengguna", "Izin", "Aksi"]}
         isEmpty={roles.length === 0}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title="Peran belum tersedia"
@@ -73,31 +75,46 @@ export default async function RolesPage({ searchParams }: PageProps) {
         }
       >
         {roles.map((role) => (
-          <tr key={role.id}>
-            <td className="px-4 py-3 font-mono text-xs">{role.name}</td>
-            <td className="px-4 py-3 font-medium">
-              <form action={updateRoleLabelAction} className="flex gap-2">
+          <tr key={role.id} className="hover:bg-muted/40 transition-colors">
+            <td className="px-3 py-3">
+              <span className="inline-flex items-center rounded-md border bg-muted/60 px-2 py-0.5 font-mono text-xs font-semibold">
+                {role.name}
+              </span>
+            </td>
+            <td className="px-3 py-3 font-medium">
+              <form action={updateRoleLabelAction} className="flex items-center gap-2">
                 <input type="hidden" name="id" value={role.id} />
                 <input
                   name="label"
                   defaultValue={role.label}
                   disabled={!canManage}
-                  className="min-w-40 rounded-md border px-3 py-1.5 text-sm disabled:opacity-70"
+                  className="min-w-40 rounded-lg border bg-background px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 disabled:opacity-70"
                 />
                 <ConfirmSubmitButton
                   disabled={!canManage}
                   confirmMessage={`Simpan perubahan label peran ${role.name}?`}
                   confirmTitle="Konfirmasi Peran"
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
                 >
                   Simpan
                 </ConfirmSubmitButton>
               </form>
             </td>
-            <td className="px-4 py-3">{role.userCount}</td>
-            <td className="px-4 py-3">{role.permissionCount}</td>
-            <td className="px-4 py-3 text-xs text-muted-foreground">
-              Matriks izin ada di halaman Izin
+            <td className="px-3 py-3 text-xs">
+              <span className="font-semibold text-foreground">{role.userCount}</span>{" "}
+              <span className="text-muted-foreground">pengguna</span>
+            </td>
+            <td className="px-3 py-3 text-xs">
+              <span className="font-semibold text-foreground">{role.permissionCount}</span>{" "}
+              <span className="text-muted-foreground">izin</span>
+            </td>
+            <td className="px-3 py-3 text-xs">
+              <Link
+                href="/dashboard/super-admin/permissions"
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Matriks Izin →
+              </Link>
             </td>
           </tr>
         ))}

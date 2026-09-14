@@ -427,6 +427,169 @@ export async function toggleAdminUserStatusAction(formData: FormData) {
   });
 }
 
+export async function deleteAdminUserAction(formData: FormData) {
+  const redirectPath = getOperationalUserRedirectPath(formData);
+  const currentUser = await requirePermission("users.delete");
+  const scope = await requireSchoolScope();
+  const id = formString(formData, "id");
+
+  if (!id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "ID pengguna tidak valid.",
+    });
+  }
+
+  if (id === currentUser.id) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan.",
+    });
+  }
+
+  const supabase = await createClient();
+  const adminClient = serviceRoleClient();
+  const dbClient = adminClient ?? supabase;
+
+  const { data: targetUser } = await dbClient
+    .from("users")
+    .select("id, school_id, auth_user_id, email, username, role_id, roles(name)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!targetUser) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: "Pengguna tidak ditemukan.",
+    });
+  }
+
+  const targetRole = firstRelation(targetUser.roles);
+
+  if (!scope.isSuperAdmin) {
+    assertSameSchool(scope, targetUser.school_id);
+    if (isGlobalUserRole(targetRole?.name)) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: "Hanya Super Admin yang dapat menghapus akun Admin atau Super Admin.",
+      });
+    }
+  }
+
+  // Prevent deleting the last super_admin
+  if (targetRole?.name === "super_admin") {
+    const { count } = await dbClient
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role_id", targetUser.role_id);
+
+    if ((count ?? 0) <= 1) {
+      redirectTo(redirectPath, {
+        ok: false,
+        message: "Tidak dapat menghapus satu-satunya akun Super Admin di sistem.",
+      });
+    }
+  }
+
+  // 1. Clear homeroom teacher in classes
+  await dbClient
+    .from("classes")
+    .update({ homeroom_teacher_id: null })
+    .eq("homeroom_teacher_id", id);
+
+  // 2. Clear teacher subjects assignments
+  await dbClient.from("teacher_subjects").delete().eq("teacher_id", id);
+
+  // 3. Clear class members
+  await dbClient.from("class_members").delete().eq("student_id", id);
+
+  // 4. Clear exam proctors (both as proctor teacher or assigned_by)
+  await dbClient.from("exam_proctors").delete().eq("teacher_id", id);
+  await dbClient.from("exam_proctors").update({ assigned_by: null }).eq("assigned_by", id);
+
+  // 5. Clear exam participants & attempts & answers & events
+  const { data: userAttempts } = await dbClient
+    .from("exam_attempts")
+    .select("id")
+    .eq("student_id", id);
+  const userAttemptIds = (userAttempts ?? []).map((a) => a.id);
+
+  if (userAttemptIds.length > 0) {
+    await dbClient.from("exam_answers").delete().in("exam_attempt_id", userAttemptIds);
+    await dbClient.from("exam_events").delete().in("exam_attempt_id", userAttemptIds);
+    await dbClient.from("exam_attempts").delete().in("id", userAttemptIds);
+  }
+
+  await dbClient.from("exam_answers").update({ graded_by: null }).eq("graded_by", id);
+  await dbClient.from("exam_events").update({ student_id: null }).eq("student_id", id);
+  await dbClient.from("exam_participants").delete().eq("student_id", id);
+
+  // 6. Clear created_by in questions and exams
+  await dbClient.from("questions").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("question_versions").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("exam_schedules").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("exam_packages").update({ created_by: null }).eq("created_by", id);
+
+  // 7. Clear audit logs & system settings & jobs
+  await dbClient.from("audit_logs").update({ user_id: null }).eq("user_id", id);
+  await dbClient.from("system_settings").update({ updated_by: null }).eq("updated_by", id);
+  await dbClient.from("super_admin_import_jobs").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("super_admin_import_jobs").update({ committed_by: null }).eq("committed_by", id);
+  await dbClient.from("super_admin_backup_jobs").update({ created_by: null }).eq("created_by", id);
+  await dbClient.from("super_admin_backup_jobs").update({ restored_by: null }).eq("restored_by", id);
+
+  // 8. Delete user profile
+  await dbClient.from("user_profiles").delete().eq("user_id", id);
+
+  // 9. Delete user row
+  const { error } = await dbClient.from("users").delete().eq("id", id);
+
+  if (error) {
+    redirectTo(redirectPath, {
+      ok: false,
+      message: getFriendlyErrorMessage(error),
+    });
+  }
+
+  // 4. Delete auth user
+  if (targetUser.auth_user_id && adminClient) {
+    try {
+      await adminClient.auth.admin.deleteUser(targetUser.auth_user_id);
+    } catch {
+      // Ignore if auth user is already removed
+    }
+  }
+
+  await logAuditEvent({
+    userId: currentUser.id,
+    action: "users.delete",
+    entityType: "users",
+    entityId: id,
+    payload: {
+      email: targetUser.email,
+      username: targetUser.username,
+      role: targetRole?.name,
+    },
+  });
+
+  revalidatePath("/dashboard/super-admin/users");
+  revalidatePath("/dashboard/master-data/users");
+  revalidatePath("/dashboard/master-data/teachers");
+  revalidatePath("/dashboard/master-data/students");
+  revalidatePath("/dashboard/master-data/admins");
+  revalidatePath("/dashboard/master-data/proctors");
+  revalidatePath("/dashboard/super-admin/admins");
+  revalidatePath("/dashboard/super-admin/schools");
+  if (targetUser.school_id) {
+    revalidatePath(`/dashboard/super-admin/schools/${targetUser.school_id}`);
+  }
+
+  redirectTo(redirectPath, {
+    ok: true,
+    message: `Akun "${targetUser.username}" berhasil dihapus secara permanen.`,
+  });
+}
+
 export async function resetAdminUserPasswordAction(formData: FormData) {
   const redirectPath = getOperationalUserRedirectPath(formData);
   const currentUser = await requirePermission("users.update");

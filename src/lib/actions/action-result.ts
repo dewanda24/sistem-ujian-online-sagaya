@@ -70,8 +70,19 @@ export function getFriendlyErrorMessage(input: FriendlyErrorInput) {
     return "Anda tidak memiliki akses untuk melakukan aksi ini.";
   }
 
-  if (message.includes("foreign key") || message.includes("violates")) {
-    return "Data terkait tidak valid atau belum tersedia.";
+  if (
+    message.includes("foreign key") ||
+    message.includes("violates") ||
+    message.includes("referential integrity")
+  ) {
+    if (
+      message.includes("delete") ||
+      message.includes("still referenced") ||
+      message.includes("update or delete on table")
+    ) {
+      return "Data tidak dapat dihapus karena masih terikat dengan data lain di sistem (seperti riwayat ujian, kelas, soal, atau akun terkait).";
+    }
+    return "Data referensi terkait tidak valid atau belum tersedia.";
   }
 
   if (message.includes("network") || message.includes("fetch failed")) {

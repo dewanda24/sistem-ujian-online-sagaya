@@ -82,6 +82,7 @@ export default async function SuperAdminSupportPage() {
       <DataTable
         columns={["Sekolah", "Masalah", "Tindakan Disarankan", "Aksi"]}
         isEmpty={supportRows.length === 0}
+        stickyActionColumn={false}
         empty={
           <EmptyState
             title="Tidak ada masalah sekolah"

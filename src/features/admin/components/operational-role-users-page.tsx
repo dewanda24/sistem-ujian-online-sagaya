@@ -1,4 +1,5 @@
 
+import { UserCheck, UserX } from "lucide-react";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -13,6 +14,7 @@ import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import {
+  deleteAdminUserAction,
   saveAdminUserAction,
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
@@ -210,42 +212,51 @@ export async function OperationalRoleUsersPage({
       <DataTable
         columns={["Nama", "Email", "Peran", "Sekolah", "Akun Login", "Status", "Aksi"]}
         isEmpty={users.length === 0}
+        stickyActionColumn={false}
+        enableSearch={false}
         empty={
           <EmptyState title={emptyTitle} description={emptyDescription} />
         }
       >
         {users.map((item) => (
-          <tr key={item.id}>
-            <td className="px-4 py-3">
-              <div className="font-medium">
+          <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+            <td className="px-3 py-3">
+              <div className="font-semibold text-foreground leading-snug">
                 {item.profile?.full_name ?? item.username}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {item.username}
+              <div className="text-xs text-muted-foreground font-mono">
+                @{item.username}
               </div>
             </td>
-            <td className="px-4 py-3">{item.email}</td>
-            <td className="px-4 py-3">
-              <div className="font-medium">{item.role?.label ?? "-"}</div>
-              <div className="text-xs text-muted-foreground">
-                {item.role?.name ?? "-"}
-              </div>
+            <td className="px-3 py-3 text-xs text-muted-foreground">{item.email}</td>
+            <td className="px-3 py-3">
+              <span className="inline-flex items-center rounded-md border bg-muted/60 px-2 py-0.5 text-xs font-medium">
+                {item.role?.label ?? item.role?.name ?? "-"}
+              </span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <SchoolScopeCell
                 roleName={item.role?.name}
                 schoolName={item.school?.name}
               />
             </td>
-            <td className="px-4 py-3">
-              <span className="font-mono text-xs">
-                {item.auth_user_id ?? "-"}
-              </span>
+            <td className="px-3 py-3">
+              {item.auth_user_id ? (
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                  <UserCheck className="size-3.5" />
+                  Terhubung
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                  <UserX className="size-3.5" />
+                  Belum Terhubung
+                </span>
+              )}
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <StatusBadge active={item.status === "active"} />
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <TableActions>
                 <TableActionLink
                   href={`${redirectPath}?edit=${item.id}${
@@ -273,6 +284,20 @@ export async function OperationalRoleUsersPage({
                     } akun ${item.profile?.full_name ?? item.username}?`}
                   >
                     {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                  </TableActionSubmit>
+                </form>
+                <TableActionSeparator />
+                <form action={deleteAdminUserAction}>
+                  <input type="hidden" name="redirect_path" value={redirectPath} />
+                  <input type="hidden" name="id" value={item.id} />
+                  <TableActionSubmit
+                    icon="trash"
+                    tone="danger"
+                    confirmTitle="Hapus Pengguna Permanen"
+                    confirmMessage={`Hapus akun "${item.profile?.full_name ?? item.username}" secara permanen? Data akun dan login akan dihapus.`}
+                    confirmationText="HAPUS"
+                  >
+                    Hapus Pengguna
                   </TableActionSubmit>
                 </form>
               </TableActions>

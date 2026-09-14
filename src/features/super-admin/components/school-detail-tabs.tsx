@@ -7,12 +7,22 @@ import {
   Calendar,
   ShieldCheck,
   Activity,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import { DataTable } from "@/components/master-data/data-table";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import {
+  TableActions,
+  TableActionButton,
+  TableActionSubmit,
+  TableActionSeparator,
+} from "@/components/dashboard/table-actions";
+import { UserPasswordResetModal } from "@/features/admin/components/user-password-reset-modal";
+import {
+  deleteAdminUserAction,
   resetAdminUserPasswordAction,
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
@@ -106,6 +116,12 @@ export function SchoolDetailTabs({
   const [activeTab, setActiveTab] = useState<
     "ringkasan" | "admins" | "akademik" | "ujian" | "aktivitas"
   >("ringkasan");
+  const [resetTargetUser, setResetTargetUser] = useState<{
+    id: string;
+    username: string;
+    email: string;
+    full_name?: string | null;
+  } | null>(null);
 
   const tabs = [
     {
@@ -124,17 +140,17 @@ export function SchoolDetailTabs({
       id: "akademik" as const,
       label: "Guru & Siswa",
       icon: Users,
-      count: stats.teacherCount + stats.studentCount,
+      count: teachers.length + students.length,
     },
     {
       id: "ujian" as const,
-      label: "Jadwal Ujian CBT",
+      label: "Jadwal Ujian",
       icon: Calendar,
       count: schedules.length,
     },
     {
       id: "aktivitas" as const,
-      label: "Jejak Aktivitas",
+      label: "Jejak Audit",
       icon: Activity,
       count: auditLogs.length,
     },
@@ -142,30 +158,37 @@ export function SchoolDetailTabs({
 
   return (
     <div className="space-y-6">
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      {resetTargetUser && (
+        <UserPasswordResetModal
+          user={resetTargetUser}
+          redirectPath={redirectPath}
+          onClose={() => setResetTargetUser(null)}
+        />
+      )}
+
+      {/* Tabs Header */}
+      <div className="flex border-b border-border overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="size-4" />
               <span>{tab.label}</span>
               {tab.count !== null && (
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     isActive
-                      ? "bg-primary-foreground/20 text-primary-foreground"
-                      : "bg-background/80 text-foreground"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {tab.count}
@@ -179,14 +202,17 @@ export function SchoolDetailTabs({
       {/* Tab: Ringkasan & Kesiapan */}
       {activeTab === "ringkasan" && (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
               <span className="text-xs font-medium text-muted-foreground">Kesiapan CBT</span>
-              <div className="mt-1 text-2xl font-bold">
-                {readiness.readyCount} / {readiness.totalCount}
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-bold">
+                  {readiness.readyCount}/{readiness.totalCount}
+                </span>
+                <span className="text-xs text-muted-foreground">Indikator</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {readiness.missing.length === 0
+                {readiness.status === "ready"
                   ? "Semua syarat utama terpenuhi."
                   : `Kurang: ${readiness.missing.slice(0, 2).join(", ")}`}
               </p>
@@ -259,6 +285,7 @@ export function SchoolDetailTabs({
           <DataTable
             columns={["Nama", "Email", "Username", "Akun Auth Login", "Status", "Aksi"]}
             isEmpty={admins.length === 0}
+            stickyActionColumn={false}
             empty={
               <EmptyState
                 title="Belum ada admin sekolah"
@@ -267,22 +294,44 @@ export function SchoolDetailTabs({
             }
           >
             {admins.map((admin) => (
-              <tr key={admin.id}>
-                <td className="px-4 py-3 font-medium text-foreground">
+              <tr key={admin.id} className="hover:bg-muted/40 transition-colors">
+                <td className="px-3 py-3 font-semibold text-foreground leading-snug">
                   {admin.profile?.full_name ?? admin.username}
                 </td>
-                <td className="px-4 py-3">{admin.email}</td>
-                <td className="px-4 py-3 font-mono text-xs">{admin.username}</td>
-                <td className="px-4 py-3">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {admin.auth_user_id ? "Terhubung" : "Belum Ada"}
-                  </span>
+                <td className="px-3 py-3 text-xs text-muted-foreground">{admin.email}</td>
+                <td className="px-3 py-3 font-mono text-xs text-muted-foreground">@{admin.username}</td>
+                <td className="px-3 py-3">
+                  {admin.auth_user_id ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                      <UserCheck className="size-3.5" />
+                      Terhubung
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                      <UserX className="size-3.5" />
+                      Belum Terhubung
+                    </span>
+                  )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3">
                   <StatusBadge active={admin.status === "active"} />
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
+                <td className="px-3 py-3">
+                  <TableActions>
+                    <TableActionButton
+                      icon="key-round"
+                      onClick={() =>
+                        setResetTargetUser({
+                          id: admin.id,
+                          username: admin.username ?? "",
+                          email: admin.email ?? "",
+                          full_name: admin.profile?.full_name,
+                        })
+                      }
+                    >
+                      Reset Sandi
+                    </TableActionButton>
+                    <TableActionSeparator />
                     <form action={toggleAdminUserStatusAction}>
                       <input type="hidden" name="redirect_path" value={redirectPath} />
                       <input type="hidden" name="id" value={admin.id} />
@@ -291,34 +340,30 @@ export function SchoolDetailTabs({
                         name="status"
                         value={admin.status === "active" ? "inactive" : "active"}
                       />
-                      <ConfirmSubmitButton
+                      <TableActionSubmit
+                        icon="power"
                         confirmMessage={`${
                           admin.status === "active" ? "Nonaktifkan" : "Aktifkan"
                         } ${admin.profile?.full_name ?? admin.username}?`}
                       >
                         {admin.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                      </ConfirmSubmitButton>
+                      </TableActionSubmit>
                     </form>
-                    <form action={resetAdminUserPasswordAction} className="flex gap-1.5">
+                    <TableActionSeparator />
+                    <form action={deleteAdminUserAction}>
                       <input type="hidden" name="redirect_path" value={redirectPath} />
                       <input type="hidden" name="id" value={admin.id} />
-                      <input
-                        name="password"
-                        type="password"
-                        placeholder="Password baru"
-                        className="w-32 rounded-md border border-input px-2 py-1 text-xs"
-                        required
-                        minLength={6}
-                      />
-                      <ConfirmSubmitButton
-                        confirmMessage={`Reset password untuk ${admin.profile?.full_name ?? admin.username}?`}
-                        confirmationText="RESET"
-                        variant="danger"
+                      <TableActionSubmit
+                        icon="trash"
+                        tone="danger"
+                        confirmTitle="Hapus Admin Permanen"
+                        confirmMessage={`Hapus akun admin "${admin.profile?.full_name ?? admin.username}" secara permanen? Data akun dan login akan dihapus.`}
+                        confirmationText="HAPUS"
                       >
-                        Reset
-                      </ConfirmSubmitButton>
+                        Hapus Admin
+                      </TableActionSubmit>
                     </form>
-                  </div>
+                  </TableActions>
                 </td>
               </tr>
             ))}
@@ -348,15 +393,17 @@ export function SchoolDetailTabs({
             <DataTable
               columns={["Nama Lengkap", "Email", "Username", "No. Telepon", "Status"]}
               isEmpty={teachers.length === 0}
+              stickyActionColumn={false}
+              searchPlaceholder="Cari guru..."
               empty={<EmptyState title="Belum ada guru" description="Data guru dikelola oleh Admin Sekolah." />}
             >
-              {teachers.slice(0, 20).map((teacher) => (
-                <tr key={teacher.id}>
-                  <td className="px-4 py-3 font-medium">{teacher.profile?.full_name ?? teacher.username}</td>
-                  <td className="px-4 py-3">{teacher.email}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{teacher.username}</td>
-                  <td className="px-4 py-3">{teacher.profile?.phone || "-"}</td>
-                  <td className="px-4 py-3"><StatusBadge active={teacher.status === "active"} /></td>
+              {teachers.map((teacher) => (
+                <tr key={teacher.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-3 py-3 font-medium">{teacher.profile?.full_name ?? teacher.username}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground">{teacher.email}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-muted-foreground">@{teacher.username}</td>
+                  <td className="px-3 py-3 text-xs">{teacher.profile?.phone || "-"}</td>
+                  <td className="px-3 py-3"><StatusBadge active={teacher.status === "active"} /></td>
                 </tr>
               ))}
             </DataTable>
@@ -370,15 +417,17 @@ export function SchoolDetailTabs({
             <DataTable
               columns={["Nama Lengkap", "Email", "Username", "No. Telepon", "Status"]}
               isEmpty={students.length === 0}
+              stickyActionColumn={false}
+              searchPlaceholder="Cari siswa..."
               empty={<EmptyState title="Belum ada siswa" description="Data siswa dikelola oleh Admin Sekolah." />}
             >
-              {students.slice(0, 20).map((student) => (
-                <tr key={student.id}>
-                  <td className="px-4 py-3 font-medium">{student.profile?.full_name ?? student.username}</td>
-                  <td className="px-4 py-3">{student.email}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{student.username}</td>
-                  <td className="px-4 py-3">{student.profile?.phone || "-"}</td>
-                  <td className="px-4 py-3"><StatusBadge active={student.status === "active"} /></td>
+              {students.map((student) => (
+                <tr key={student.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-3 py-3 font-medium">{student.profile?.full_name ?? student.username}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground">{student.email}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-muted-foreground">@{student.username}</td>
+                  <td className="px-3 py-3 text-xs">{student.profile?.phone || "-"}</td>
+                  <td className="px-3 py-3"><StatusBadge active={student.status === "active"} /></td>
                 </tr>
               ))}
             </DataTable>
@@ -399,12 +448,13 @@ export function SchoolDetailTabs({
           <DataTable
             columns={["Judul Ujian", "Status", "Waktu Mulai", "Waktu Selesai", "Durasi"]}
             isEmpty={schedules.length === 0}
+            stickyActionColumn={false}
             empty={<EmptyState title="Belum ada jadwal ujian" description="Jadwal ujian dibuat dan dikelola oleh Admin Sekolah." />}
           >
             {schedules.map((schedule) => (
-              <tr key={schedule.id}>
-                <td className="px-4 py-3 font-medium">{schedule.title}</td>
-                <td className="px-4 py-3">
+              <tr key={schedule.id} className="hover:bg-muted/40 transition-colors">
+                <td className="px-3 py-3 font-medium">{schedule.title}</td>
+                <td className="px-3 py-3">
                   <span
                     className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       schedule.status === "active"
@@ -423,13 +473,13 @@ export function SchoolDetailTabs({
                           : schedule.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs">
+                <td className="px-3 py-3 text-xs">
                   {schedule.start_at ? new Date(schedule.start_at).toLocaleString("id-ID") : "-"}
                 </td>
-                <td className="px-4 py-3 text-xs">
+                <td className="px-3 py-3 text-xs">
                   {schedule.end_at ? new Date(schedule.end_at).toLocaleString("id-ID") : "-"}
                 </td>
-                <td className="px-4 py-3 text-xs">{schedule.duration_minutes ? `${schedule.duration_minutes} Menit` : "-"}</td>
+                <td className="px-3 py-3 text-xs">{schedule.duration_minutes ? `${schedule.duration_minutes} Menit` : "-"}</td>
               </tr>
             ))}
           </DataTable>
@@ -447,16 +497,17 @@ export function SchoolDetailTabs({
           <DataTable
             columns={["Waktu", "Aksi", "Modul / Entitas", "User ID"]}
             isEmpty={auditLogs.length === 0}
+            stickyActionColumn={false}
             empty={<EmptyState title="Belum ada catatan aktivitas" description="Jejak audit sekolah akan terekam saat ada perubahan data." />}
           >
             {auditLogs.map((log, index) => (
-              <tr key={log.id ?? index}>
-                <td className="px-4 py-3 text-xs">
+              <tr key={log.id ?? index} className="hover:bg-muted/40 transition-colors">
+                <td className="px-3 py-3 text-xs">
                   {log.created_at ? new Date(log.created_at).toLocaleString("id-ID") : "-"}
                 </td>
-                <td className="px-4 py-3 font-medium font-mono text-xs">{log.action ?? "-"}</td>
-                <td className="px-4 py-3">{log.entity_type ?? "-"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{log.user_id ?? "-"}</td>
+                <td className="px-3 py-3 font-medium font-mono text-xs">{log.action ?? "-"}</td>
+                <td className="px-3 py-3 text-xs">{log.entity_type ?? "-"}</td>
+                <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{log.user_id ?? "-"}</td>
               </tr>
             ))}
           </DataTable>

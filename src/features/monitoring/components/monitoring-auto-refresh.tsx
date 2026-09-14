@@ -14,19 +14,21 @@ export function MonitoringAutoRefresh({
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(intervalSeconds);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setSecondsUntilRefresh((current) => {
-        if (current > 1) {
-          return current - 1;
-        }
+    let current = intervalSeconds;
+    setSecondsUntilRefresh(intervalSeconds);
 
+    const timer = window.setInterval(() => {
+      current -= 1;
+      if (current <= 0) {
+        current = intervalSeconds;
+        setSecondsUntilRefresh(intervalSeconds);
         startTransition(() => {
           router.refresh();
           setLastUpdatedAt(new Date());
         });
-
-        return intervalSeconds;
-      });
+      } else {
+        setSecondsUntilRefresh(current);
+      }
     }, 1000);
 
     return () => window.clearInterval(timer);

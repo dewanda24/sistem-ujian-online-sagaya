@@ -3,12 +3,18 @@ import { UserCheck, UserX, KeyRound, ShieldAlert, Plus, Search, FilterX } from "
 
 import { ConfirmSubmitButton } from "@/components/dashboard/confirm-submit-button";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { ActionToast } from "@/components/master-data/action-toast";
 import { DataTable } from "@/components/master-data/data-table";
 import { FormSection } from "@/components/master-data/form-section";
 import { StatusBadge } from "@/components/master-data/status-badge";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import {
+  TableActionLink,
+  TableActionSeparator,
+  TableActions,
+  TableActionSubmit,
+} from "@/components/dashboard/table-actions";
 import {
   getAdminRoleOptions,
   getAdminUsers,
@@ -16,6 +22,7 @@ import {
   getUserGovernanceSummary,
 } from "@/features/admin/queries";
 import {
+  deleteAdminUserAction,
   saveAdminUserAction,
   toggleAdminUserStatusAction,
 } from "@/features/admin/actions";
@@ -355,15 +362,17 @@ export default async function UsersPage({
       {/* User Data Table */}
       <DataTable
         columns={[
-          "Nama & Username",
+          "Pengguna",
           "Email",
-          "Peran Hak Akses",
+          "Peran",
           "Sekolah",
-          "Akun Auth Login",
+          "Auth Login",
           "Status",
           "Aksi",
         ]}
         isEmpty={users.length === 0}
+        stickyActionColumn={true}
+        enableSearch={false}
         empty={
           <EmptyState
             title="Pengguna tidak ditemukan"
@@ -373,35 +382,50 @@ export default async function UsersPage({
       >
         {users.map((item) => {
           const hasAuth = Boolean(item.auth_user_id);
+          const roleName = item.role?.name;
+          const roleBadgeClass =
+            roleName === "super_admin"
+              ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800"
+              : roleName === "admin"
+                ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800"
+                : roleName === "teacher" || roleName === "guru"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+                  : roleName === "student" || roleName === "siswa"
+                    ? "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                    : "bg-muted/60 text-muted-foreground border-border";
 
           return (
             <tr key={item.id} className="hover:bg-muted/40 transition-colors">
-              <td className="px-4 py-3.5">
-                <div className="font-medium text-foreground">
+              <td className="px-3 py-3">
+                <div className="font-semibold text-foreground leading-snug truncate max-w-[180px]">
                   {item.profile?.full_name ?? item.username}
                 </div>
-                <div className="text-xs text-muted-foreground font-mono">
+                <div className="text-xs text-muted-foreground font-mono truncate max-w-[180px]">
                   @{item.username}
                 </div>
               </td>
-              <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                {item.email}
+              <td className="px-3 py-3 text-xs text-muted-foreground">
+                <span className="block truncate max-w-[190px]" title={item.email}>
+                  {item.email}
+                </span>
               </td>
-              <td className="px-4 py-3.5">
-                <span className="inline-flex items-center rounded-md border bg-muted/60 px-2 py-0.5 text-xs font-medium">
+              <td className="px-3 py-3 whitespace-nowrap">
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${roleBadgeClass}`}>
                   {item.role?.label ?? item.role?.name ?? "-"}
                 </span>
               </td>
-              <td className="px-4 py-3.5 text-xs">
+              <td className="px-3 py-3 text-xs">
                 {item.school?.name ? (
-                  <span className="text-foreground font-medium">{item.school.name}</span>
+                  <span className="text-foreground font-medium block truncate max-w-[150px]" title={item.school.name}>
+                    {item.school.name}
+                  </span>
                 ) : item.role?.name === "super_admin" ? (
-                  <span className="text-primary font-semibold">Global Platform</span>
+                  <span className="text-primary font-semibold whitespace-nowrap">Global Platform</span>
                 ) : (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">Belum diatur</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">Belum diatur</span>
                 )}
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-3 py-3 whitespace-nowrap">
                 {hasAuth ? (
                   <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
                     <UserCheck className="size-3.5" />
@@ -414,28 +438,28 @@ export default async function UsersPage({
                   </span>
                 )}
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-3 py-3 whitespace-nowrap">
                 <StatusBadge active={item.status === "active"} />
               </td>
-              <td className="px-4 py-3.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Link
+              <td className="px-3 py-3 text-right">
+                <TableActions>
+                  <TableActionLink
                     href={`${basePath}?edit=${item.id}${
                       params.school_id ? `&school_id=${params.school_id}` : ""
                     }${params.role_id ? `&role_id=${params.role_id}` : ""}`}
-                    className="rounded-md border px-2.5 py-1 text-xs hover:bg-muted font-medium transition-colors"
+                    icon="pencil"
                   >
-                    Edit
-                  </Link>
-                  <Link
+                    Edit Profil
+                  </TableActionLink>
+                  <TableActionLink
                     href={`${basePath}?reset_user=${item.id}${
                       params.school_id ? `&school_id=${params.school_id}` : ""
                     }${params.role_id ? `&role_id=${params.role_id}` : ""}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 px-2.5 py-1 text-xs hover:bg-amber-100 dark:hover:bg-amber-900/40 font-medium transition-colors"
+                    icon="key-round"
                   >
-                    <KeyRound className="size-3" />
                     Reset Sandi
-                  </Link>
+                  </TableActionLink>
+                  <TableActionSeparator />
                   <form action={toggleAdminUserStatusAction}>
                     <input type="hidden" name="redirect_path" value={basePath} />
                     <input type="hidden" name="id" value={item.id} />
@@ -444,16 +468,30 @@ export default async function UsersPage({
                       name="status"
                       value={item.status === "active" ? "inactive" : "active"}
                     />
-                    <ConfirmSubmitButton
+                    <TableActionSubmit
+                      icon="power"
                       confirmMessage={`${
                         item.status === "active" ? "Nonaktifkan" : "Aktifkan"
                       } akun ${item.profile?.full_name ?? item.username}?`}
-                      className="text-xs px-2.5 py-1"
                     >
                       {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                    </ConfirmSubmitButton>
+                    </TableActionSubmit>
                   </form>
-                </div>
+                  <TableActionSeparator />
+                  <form action={deleteAdminUserAction}>
+                    <input type="hidden" name="redirect_path" value={basePath} />
+                    <input type="hidden" name="id" value={item.id} />
+                    <TableActionSubmit
+                      icon="trash"
+                      tone="danger"
+                      confirmTitle="Hapus Pengguna Permanen"
+                      confirmMessage={`Hapus akun "${item.profile?.full_name ?? item.username}" secara permanen? Data akun dan login akan dihapus.`}
+                      confirmationText="HAPUS"
+                    >
+                      Hapus Pengguna
+                    </TableActionSubmit>
+                  </form>
+                </TableActions>
               </td>
             </tr>
           );

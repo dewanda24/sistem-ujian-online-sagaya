@@ -13,16 +13,20 @@ export function LiveMonitoringRefresher() {
   useEffect(() => {
     if (intervalSeconds <= 0) return;
 
+    let current = intervalSeconds;
+    setCountdown(intervalSeconds);
+
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          startTransition(() => {
-            router.refresh();
-          });
-          return intervalSeconds;
-        }
-        return prev - 1;
-      });
+      current -= 1;
+      if (current <= 0) {
+        current = intervalSeconds;
+        setCountdown(intervalSeconds);
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setCountdown(current);
+      }
     }, 1000);
 
     return () => clearInterval(timer);

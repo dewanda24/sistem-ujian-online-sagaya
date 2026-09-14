@@ -67,7 +67,7 @@ type TableActionSubmitProps = {
 
 export function TableActions({
   children,
-  label = "Aksi",
+  label,
   align = "end",
   className,
 }: TableActionsProps) {
@@ -96,19 +96,19 @@ export function TableActions({
     >
       <summary
         className={cn(
-          "inline-flex h-9 min-w-20 cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#1E293B] shadow-2xs transition-all duration-150 select-none hover:bg-[#F8FAFC] hover:border-slate-300 active:scale-[0.96] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20",
-          isPending && "pointer-events-none opacity-80 border-blue-300 bg-blue-50/50 text-blue-700",
+          label
+            ? "inline-flex h-8 cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-2xs transition select-none hover:bg-muted active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            : "inline-flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-2xs transition select-none hover:text-foreground hover:bg-muted active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20",
+          isPending && "pointer-events-none opacity-80 border-primary/40 bg-primary/10 text-primary",
         )}
+        title={label || "Aksi"}
       >
         {isPending ? (
-          <>
-            <Loader2 className="size-3.5 animate-spin text-blue-600 shrink-0" aria-hidden="true" />
-            <span>Memproses...</span>
-          </>
+          <Loader2 className="size-3.5 animate-spin text-primary shrink-0" aria-hidden="true" />
         ) : (
           <>
-            <MoreHorizontal className="size-3.5 text-[#64748B]" aria-hidden="true" />
-            <span>{label}</span>
+            <MoreHorizontal className="size-4 shrink-0" aria-hidden="true" />
+            {label ? <span>{label}</span> : null}
           </>
         )}
       </summary>
@@ -122,7 +122,7 @@ export function TableActions({
           }
         }}
         className={cn(
-          "absolute z-50 mt-1.5 grid min-w-48 gap-0.5 rounded-2xl border border-[#E2E8F0] bg-white p-1.5 text-xs shadow-xl animate-in fade-in-50 zoom-in-95 duration-100",
+          "absolute z-50 mt-1.5 grid min-w-44 gap-0.5 rounded-xl border border-border bg-popover p-1.5 text-xs text-popover-foreground shadow-lg animate-in fade-in-50 zoom-in-95 duration-100",
           align === "end" ? "right-0" : "left-0",
         )}
       >
